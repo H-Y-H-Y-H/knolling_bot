@@ -9,7 +9,7 @@
     <visual>
       <origin rpy="0 0 -1.570796325" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/Base.stl" scale="1 1 1"/>
+        <mesh filename="meshes/base.stl" scale="1 1 1"/>
       </geometry>
       <material
         name="">
@@ -20,7 +20,7 @@
     <collision>
       <origin rpy="0 0 -1.570796325" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/Base.stl" scale="1 1 1"/>
+        <mesh filename="meshes/base.stl" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
