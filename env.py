@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import random
 import math
-import reorder
+
 
 
 class Arm_env(gym.Env):
@@ -116,19 +116,13 @@ class Arm_env(gym.Env):
 
         # box1_min, box1_max = p.getAABB(box1_id)
 
-        self.num_joints = p.getNumJoints(self.arm_id)
-
-        # for zzz in range(p.getNumJoints(self.arm_id)):
-        #     joint_id = zzz
-        #     joint_info = p.getJointInfo(self.arm_id, joint_id)
-        #     print(joint_info)
-
-        self.robot_pos_obs = p.getLinkState(self.arm_id, self.num_joints - 1)[4]
-
         p.setJointMotorControlArray(self.arm_id, [0, 1, 2, 3, 4, 7, 8], p.POSITION_CONTROL,
-                                    targetPositions=[0, -np.pi / 2, np.pi / 2, 0, 0, 0, 0])
+                                    targetPositions=[0, -np.pi / 2, np.pi / 2, 0, 0, 0, 0],
+                                    forces = [10]*7)
 
-        # p.stepSimulation()
+        for _ in range(40):
+            p.stepSimulation()
+
 
         return self.get_obs()
 
@@ -138,9 +132,7 @@ class Arm_env(gym.Env):
 
         # Joint execution
         for i in range(5):
-            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=a_joint[i], force=2, maxVelocity=100)
-
-
+            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=a_joint[i], force=2, maxVelocity=4)
 
         # Gripper execution
         a_gripper = a_pos[5]
@@ -167,6 +159,13 @@ class Arm_env(gym.Env):
 
     def get_obs(self):
         # Measure objects position and orientation
+        self.num_joints = p.getNumJoints(self.arm_id)
+        self.robot_pos_obs = p.getLinkState(self.arm_id, self.num_joints - 1)[4]
+        # for zzz in range(p.getNumJoints(self.arm_id)):
+        #     joint_id = zzz
+        #     joint_info = p.getJointInfo(self.arm_id, joint_id)
+        #     print(joint_info)
+
 
         return 0
 
@@ -209,7 +208,7 @@ if __name__ == '__main__':
         for num_step in range(40):
             a = [0, -np.pi / 2, np.pi / 2, 0, 0, 0, 0]
             a = np.asarray(a)
-            a *= np.sin(num_step/np.pi)
+            a *= 0.5*np.sin(num_step/np.pi)
             obs, r, done, _ = env.step(a)
             epoch_r += r
 
