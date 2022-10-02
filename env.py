@@ -10,10 +10,9 @@ import random
 import math
 
 
-
 class Arm_env(gym.Env):
 
-    def __init__(self, is_render=True):
+    def __init__(self, is_render=True, num_objects=1):
 
         self.kImageSize = {'width': 480, 'height': 480}
 
@@ -21,16 +20,19 @@ class Arm_env(gym.Env):
         self.pybullet_path = pd.getDataPath()
         self.is_render = is_render
 
-        self.x_low_obs = 0.15
-        self.x_high_obs = 0.55
+        self.x_low_obs = 0
+        self.x_high_obs = 0.3
         self.y_low_obs = -0.2
         self.y_high_obs = 0.2
-        self.z_low_obs = 0
+        self.z_low_obs = 0.001
         self.z_high_obs = 0.55
         self.friction = 0.99
-        self.friction = 0.99
-        self.num_objects = 2
-        self.action_space = np.asarray([np.pi, 2 * np.pi / 3, 2 * np.pi / 3, np.pi / 2, np.pi])
+        self.num_objects = num_objects
+        # self.action_space = np.asarray([np.pi/3, np.pi / 6, np.pi / 4, np.pi / 2, np.pi])
+        # self.shift = np.asarray([-np.pi/6, -np.pi/12, 0, 0, 0])
+        self.ik_space = np.asarray([0.3, 0.4, 0.06, np.pi]) # x, y, z, yaw
+        self.ik_space_shift = np.asarray([0,-0.2,0, -np.pi/2])
+
         self.slep_t = 0
 
         # 5 6 9不用管，固定的！
@@ -42,9 +44,9 @@ class Arm_env(gym.Env):
             p.connect(p.DIRECT)
 
         self.camera_parameters = {
-            'width': 960.,
-            'height': 720,
-            'fov': 69,
+            'width': 640.,
+            'height': 480,
+            'fov': 42,
             'near': 0.1,
             'far': 100.,
             'eye_position': [0.59, 0, 0.8],
@@ -59,7 +61,7 @@ class Arm_env(gym.Env):
             cameraTargetPosition=[0.40, 0, 0.05],
             distance=0.40,
             yaw=90,
-            pitch=-75,
+            pitch=-45,
             roll=0,
             upAxisIndex=2)
         self.projection_matrix = p.computeProjectionMatrixFOV(
@@ -71,9 +73,10 @@ class Arm_env(gym.Env):
 
         p.configureDebugVisualizer(lightPosition=[5, 0, 5])
         p.resetDebugVisualizerCamera(cameraDistance=0.5,
-                                     cameraYaw=0,
+                                     cameraYaw=90,
                                      cameraPitch=-45,
-                                     cameraTargetPosition=[0.55, -0.35, 0.4])
+                                     cameraTargetPosition=[0.55, 0, 0.4])
+        p.setAdditionalSearchPath(pd.getDataPath())
 
     def reset(self):
 
@@ -96,14 +99,13 @@ class Arm_env(gym.Env):
         #     exec('box{} = 1'.format(i))
         # print(box0)
 
-        p.loadURDF(os.path.join(self.pybullet_path, "plane.urdf"), basePosition=[0, 0, -0.65])
-        self.arm_id = p.loadURDF(os.path.join(self.urdf_path, "robot_arm928/robot_arm1.urdf"), useFixedBase=True)
-        table_id = p.loadURDF(os.path.join(self.pybullet_path, "table/table.urdf"),
-                              basePosition=[(0.5 - 0.16), 0, -0.65],
-                              baseOrientation=p.getQuaternionFromEuler([0, 0, np.pi / 2]))
+        baseid = p.loadURDF("urdf/base.urdf", basePosition=[0, 0, -0.05], useFixedBase=1)
+        self.arm_id = p.loadURDF(os.path.join(self.urdf_path, "robot_arm928/robot_arm1.urdf"),
+                                 basePosition=[-.08, 0, 0.02], useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT or p.URDF_USE_SELF_COLLISION)
 
-        p.changeDynamics(table_id, -1, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
-        p.changeVisualShape(table_id, -1, rgbaColor=[1, 1, 1, 1])
+        textureId = p.loadTexture("table/table.png")
+        p.changeDynamics(baseid, -1, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
+        p.changeVisualShape(baseid, -1, rgbaColor=[1, 1, 1, 1], textureUniqueId=textureId)
 
         # Generate the pos and orin of objects randomly.
         obj_idx = []
@@ -117,30 +119,30 @@ class Arm_env(gym.Env):
         # box1_min, box1_max = p.getAABB(box1_id)
 
         p.setJointMotorControlArray(self.arm_id, [0, 1, 2, 3, 4, 7, 8], p.POSITION_CONTROL,
-                                    targetPositions=[0, -np.pi / 2, np.pi / 2, 0, 0, 0, 0],
-                                    forces = [10]*7)
+                                    targetPositions=[0, 0, 0, 0, 0, 0, 0],
+                                    forces=[10] * 7)
 
         for _ in range(40):
             p.stepSimulation()
-
-
         return self.get_obs()
 
     def act(self, a_pos):
-
-        a_joint = a_pos[:5] * self.action_space
-
+        a_pos = a_pos*self.ik_space+self.ik_space_shift
+        # a_joint = a_pos[:5]  # * self.action_space + self.shift
+        ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=a_pos[:3], maxNumIterations=2000,
+                                                targetOrientation=p.getQuaternionFromEuler([0, 1.57, a_pos[3]]))
         # Joint execution
         for i in range(5):
-            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=a_joint[i], force=2, maxVelocity=4)
+            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=ik_angle[i], force=10,
+                                    maxVelocity=4)
 
         # Gripper execution
-        a_gripper = a_pos[5]
+        a_gripper = 0
         p.setJointMotorControlArray(self.arm_id, [7, 8],
                                     p.POSITION_CONTROL,
                                     targetPositions=[a_gripper, a_gripper])
 
-        for i in range(100):
+        for i in range(40):
             self.images = self.get_image()
             p.stepSimulation()
             time.sleep(self.slep_t)
@@ -149,7 +151,6 @@ class Arm_env(gym.Env):
         self.act(a)
 
         obs = self.get_obs()
-
 
         r = 1
 
@@ -165,7 +166,6 @@ class Arm_env(gym.Env):
         #     joint_id = zzz
         #     joint_info = p.getJointInfo(self.arm_id, joint_id)
         #     print(joint_info)
-
 
         return 0
 
@@ -196,19 +196,34 @@ class Arm_env(gym.Env):
 
 if __name__ == '__main__':
 
-    env = Arm_env(is_render=True)
+    env = Arm_env(is_render=True, num_objects=1)
 
     num_item = 2
     num_epoch = 3
-    env.slep_t = 1/240
+    env.slep_t = 1 / 240
+    num_step = 40
 
+    Debug_para = []
+
+    Debug_para.append(p.addUserDebugParameter("x" , 0, 1, 0))
+    Debug_para.append(p.addUserDebugParameter("y" , 0, 1, 0.5))
+    Debug_para.append(p.addUserDebugParameter("z" , 0, 1, 0))
+    Debug_para.append(p.addUserDebugParameter("yaw" , 0, 1, 0.5))
+    Debug_para.append(p.addUserDebugParameter("gripper" , 0, 1, 0.5))
+
+    # 5 Joints and 1 End-effector
     for epoch in range(num_epoch):
         state = env.reset()
         epoch_r = 0
-        for num_step in range(40):
-            a = [0, -np.pi / 2, np.pi / 2, 0, 0, 0, 0]
+
+        for i_step in range(num_step):
+            print(i_step)
+            # a = np.random.uniform(0,1,size = 4)
+            a = []
+            # get parameters
+            for j in range(4):
+                a.append(p.readUserDebugParameter(Debug_para[j]))
             a = np.asarray(a)
-            a *= 0.5*np.sin(num_step/np.pi)
+            # a *= 0.5 * np.sin(i_step/np.pi)
             obs, r, done, _ = env.step(a)
             epoch_r += r
-
