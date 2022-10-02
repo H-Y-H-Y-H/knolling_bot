@@ -1,3 +1,5 @@
+import time
+
 import pybullet as p
 import pybullet_data as pd
 import os
@@ -7,6 +9,7 @@ import numpy as np
 import random
 import math
 import reorder
+
 
 class Arm_env(gym.Env):
 
@@ -26,15 +29,18 @@ class Arm_env(gym.Env):
         self.z_high_obs = 0.55
         self.friction = 0.99
         self.friction = 0.99
+        self.num_objects = 2
+        self.action_space = np.asarray([np.pi, 2 * np.pi / 3, 2 * np.pi / 3, np.pi / 2, np.pi])
+        self.slep_t = 0
 
         # 5 6 9不用管，固定的！
         self.init_joint_positions = [0, 0, -1.57, 0, 0, 0, 0, 0, 0, 0]
-        
+
         if self.is_render:
             p.connect(p.GUI)
         else:
             p.connect(p.DIRECT)
-            
+
         self.camera_parameters = {
             'width': 960.,
             'height': 720,
@@ -92,55 +98,23 @@ class Arm_env(gym.Env):
 
         p.loadURDF(os.path.join(self.pybullet_path, "plane.urdf"), basePosition=[0, 0, -0.65])
         self.arm_id = p.loadURDF(os.path.join(self.urdf_path, "robot_arm928/robot_arm1.urdf"), useFixedBase=True)
-        table_id = p.loadURDF(os.path.join(self.pybullet_path, "table/table.urdf"), basePosition=[0, 0, -0.65])
+        table_id = p.loadURDF(os.path.join(self.pybullet_path, "table/table.urdf"),
+                              basePosition=[(0.5 - 0.16), 0, -0.65],
+                              baseOrientation=p.getQuaternionFromEuler([0, 0, np.pi / 2]))
 
-        p.changeDynamics(table_id, -1, lateralFriction=self.friction,spinningFriction=0.02,rollingFriction=0.002)
+        p.changeDynamics(table_id, -1, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
         p.changeVisualShape(table_id, -1, rgbaColor=[1, 1, 1, 1])
-        
-        box1_pos = [random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs), 0.01]
-        box2_pos = [random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs), 0.01]
-        box3_pos = [random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs), 0.01]
-        box4_pos = [random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs), 0.01]
-        box1_ori = [0, 0, random.uniform(-math.pi/2, math.pi/2)]
-        box2_ori = [0, 0, random.uniform(-math.pi/2, math.pi/2)]
-        box3_ori = [0, 0, random.uniform(-math.pi/2, math.pi/2)]
-        box4_ori = [0, 0, random.uniform(-math.pi/2, math.pi/2)]
-        box1_qua = p.getQuaternionFromEuler(box1_ori)
-        box2_qua = p.getQuaternionFromEuler(box2_ori)
-        box3_qua = p.getQuaternionFromEuler(box3_ori)
-        box4_qua = p.getQuaternionFromEuler(box4_ori)
 
-        box1_id = p.loadURDF(os.path.join(self.urdf_path, "box/box1.urdf"), basePosition = box1_pos, baseOrientation = box1_qua)
-        box2_id = p.loadURDF(os.path.join(self.urdf_path, "box/box2.urdf"), basePosition = box2_pos, baseOrientation = box2_qua)
-        box3_id = p.loadURDF(os.path.join(self.urdf_path, "box/box3.urdf"), basePosition = box3_pos, baseOrientation = box3_qua)
-        box4_id = p.loadURDF(os.path.join(self.urdf_path, "box/box4.urdf"), basePosition = box4_pos, baseOrientation = box4_qua)
-        
-        position = []
-        box1_min, box1_max = p.getAABB(box1_id)
-        box2_min, box2_max = p.getAABB(box2_id)
-        box3_min, box3_max = p.getAABB(box3_id)
-        box4_min, box4_max = p.getAABB(box4_id)
-        position.append(list(box1_min + box1_max))
-        position.append(list(box2_min + box2_max))
-        position.append(list(box3_min + box3_max))
-        position.append(list(box4_min + box4_max))
-        orientation = []
-        orientation.append(list(box1_ori))
-        orientation.append(list(box2_ori))
-        orientation.append(list(box3_ori))
-        orientation.append(list(box4_ori))
+        # Generate the pos and orin of objects randomly.
+        obj_idx = []
+        for i in range(self.num_objects):
+            rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs),
+                       0.01]
+            rdm_ori = [0, 0, random.uniform(-math.pi / 2, math.pi / 2)]
+            obj_idx.append(p.loadURDF(os.path.join(self.urdf_path, "box/box%d.urdf" % i), basePosition=rdm_pos,
+                                      baseOrientation=p.getQuaternionFromEuler(rdm_ori)))
 
-        new_position, new_orientation = reorder.configuration(position, orientation)
-        
-        box1_qua = p.getQuaternionFromEuler(new_orientation[0])
-        box2_qua = p.getQuaternionFromEuler(new_orientation[1])
-        box3_qua = p.getQuaternionFromEuler(new_orientation[2])
-        box4_qua = p.getQuaternionFromEuler(new_orientation[3])
-
-        p.resetBasePositionAndOrientation(box1_id, new_position[0], box1_qua)
-        p.resetBasePositionAndOrientation(box2_id, new_position[1], box2_qua)
-        p.resetBasePositionAndOrientation(box3_id, new_position[2], box3_qua)
-        p.resetBasePositionAndOrientation(box4_id, new_position[3], box4_qua)
+        # box1_min, box1_max = p.getAABB(box1_id)
 
         self.num_joints = p.getNumJoints(self.arm_id)
 
@@ -149,46 +123,63 @@ class Arm_env(gym.Env):
         #     joint_info = p.getJointInfo(self.arm_id, joint_id)
         #     print(joint_info)
 
-        for i in range(self.num_joints):
-            p.resetJointState(
-                self.arm_id,
-                jointIndex=i,
-                targetValue=self.init_joint_positions[i],
-            )
-
         self.robot_pos_obs = p.getLinkState(self.arm_id, self.num_joints - 1)[4]
-
-        # reset camera
-        (width, length, px, _, _) = p.getCameraImage(width=960,
-                                                    height=720,
-                                                    viewMatrix=self.view_matrix,
-                                                    projectionMatrix=self.projection_matrix,
-                                                    renderer=p.ER_BULLET_HARDWARE_OPENGL)
-        self.images = px
-        # print(width, length)
-
-
-        self.images = self.images[:, :, :3]
 
         p.setJointMotorControlArray(self.arm_id, [0, 1, 2, 3, 4, 7, 8], p.POSITION_CONTROL,
                                     targetPositions=[0, -np.pi / 2, np.pi / 2, 0, 0, 0, 0])
 
         # p.stepSimulation()
-        
-        return self._process_image(self.images)
+
+        return self.get_obs()
 
     def act(self, a_pos):
-        p.setJointMotorControlArray(self.arm_id, [0, 1, 2, 3, 4], p.POSITION_CONTROL, targetPositions=a_pos,
-                                    targetVelocities=[1, 1, 1, 1, 1])
 
+        a_joint = a_pos[:5] * self.action_space
+
+        # Joint execution
+        for i in range(5):
+            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=a_joint[i], force=2, maxVelocity=100)
+
+
+
+        # Gripper execution
+        a_gripper = a_pos[5]
+        p.setJointMotorControlArray(self.arm_id, [7, 8],
+                                    p.POSITION_CONTROL,
+                                    targetPositions=[a_gripper, a_gripper])
+
+        for i in range(100):
+            self.images = self.get_image()
+            p.stepSimulation()
+            time.sleep(self.slep_t)
 
     def step(self, a):
         self.act(a)
 
+        obs = self.get_obs()
 
 
+        r = 1
 
-    
+        done = False
+
+        return obs, r, done, {}
+
+    def get_obs(self):
+        # Measure objects position and orientation
+
+        return 0
+
+    def get_image(self):
+        # reset camera
+        (width, length, px, _, _) = p.getCameraImage(width=960,
+                                                     height=720,
+                                                     viewMatrix=self.view_matrix,
+                                                     projectionMatrix=self.projection_matrix,
+                                                     renderer=p.ER_BULLET_HARDWARE_OPENGL)
+        # print(width, length)
+        return px
+
     def _process_image(self, image):
         """Convert the RGB pic to gray pic and add a channel 1
 
@@ -199,24 +190,26 @@ class Arm_env(gym.Env):
         if image is not None:
             image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
             image = cv2.resize(image, (self.kImageSize['width'], self.kImageSize['height']))[None, :, :] / 255.
-            # print("process_image的图像")
-            # print(image)
             return image
         else:
             return np.zeros((1, self.kImageSize['width'], self.kImageSize['height']))
 
+
 if __name__ == '__main__':
 
     env = Arm_env(is_render=True)
-    
+
     num_item = 2
+    num_epoch = 3
+    env.slep_t = 1/240
 
-    state = env.reset()
-    while True:
-        p.stepSimulation()
-    # print(state.shape)
-    # img = state[0] # 去除图像两个多余的维度
-    # print(img)
+    for epoch in range(num_epoch):
+        state = env.reset()
+        epoch_r = 0
+        for num_step in range(40):
+            a = [0, -np.pi / 2, np.pi / 2, 0, 0, 0, 0]
+            a = np.asarray(a)
+            a *= np.sin(num_step/np.pi)
+            obs, r, done, _ = env.step(a)
+            epoch_r += r
 
-    # plt.imshow(img, cmap='gray')
-    # plt.show()

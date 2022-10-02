@@ -50,6 +50,7 @@ if __name__ == "__main__":
     # print(num_joints)
     # print(p.getLinkState(boxId,12))
 
+
     #ee_link index = 9
     #base_rot_joint_index = 0
     #shuold_index = 1
