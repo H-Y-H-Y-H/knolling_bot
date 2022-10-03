@@ -4,7 +4,7 @@ import pybullet as p
 import pybullet_data as pd
 import os
 import gym
-import cv2
+# import cv2
 import numpy as np
 import random
 import math
@@ -34,7 +34,7 @@ class Arm_env(gym.Env):
         self.ik_space_shift = np.asarray([0,-0.2,0, -np.pi/2])
 
         self.slep_t = 0
-
+        self.joints_index = [0, 1, 2, 3, 4, 7, 8]
         # 5 6 9不用管，固定的！
         self.init_joint_positions = [0, 0, -1.57, 0, 0, 0, 0, 0, 0, 0]
 
@@ -101,7 +101,7 @@ class Arm_env(gym.Env):
 
         baseid = p.loadURDF("urdf/base.urdf", basePosition=[0, 0, -0.05], useFixedBase=1)
         self.arm_id = p.loadURDF(os.path.join(self.urdf_path, "robot_arm928/robot_arm1.urdf"),
-                                 basePosition=[-.08, 0, 0.02], useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT or p.URDF_USE_SELF_COLLISION)
+                                 basePosition=[-.08, 0, 0.02], useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
         textureId = p.loadTexture("table/table.png")
         p.changeDynamics(baseid, -1, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
@@ -127,7 +127,7 @@ class Arm_env(gym.Env):
         return self.get_obs()
 
     def act(self, a_pos):
-        a_pos = a_pos*self.ik_space+self.ik_space_shift
+        a_pos[:4] = a_pos[:4]*self.ik_space+self.ik_space_shift
         # a_joint = a_pos[:5]  # * self.action_space + self.shift
         ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=a_pos[:3], maxNumIterations=2000,
                                                 targetOrientation=p.getQuaternionFromEuler([0, 1.57, a_pos[3]]))
@@ -137,7 +137,7 @@ class Arm_env(gym.Env):
                                     maxVelocity=4)
 
         # Gripper execution
-        a_gripper = 0
+        a_gripper = a_pos[4]//0.5001
         p.setJointMotorControlArray(self.arm_id, [7, 8],
                                     p.POSITION_CONTROL,
                                     targetPositions=[a_gripper, a_gripper])
@@ -159,15 +159,21 @@ class Arm_env(gym.Env):
         return obs, r, done, {}
 
     def get_obs(self):
-        # Measure objects position and orientation
-        self.num_joints = p.getNumJoints(self.arm_id)
-        self.robot_pos_obs = p.getLinkState(self.arm_id, self.num_joints - 1)[4]
+        # Get end-effector obs
+        self.ee_pos = p.getLinkState(self.arm_id, 9)[0]
+        self.ee_ori = p.getEulerFromQuaternion(p.getLinkState(self.arm_id,9)[1])
+        self.ee_pos, self.ee_ori = np.asarray(self.ee_pos), np.asarray(self.ee_ori)
+
         # for zzz in range(p.getNumJoints(self.arm_id)):
         #     joint_id = zzz
         #     joint_info = p.getJointInfo(self.arm_id, joint_id)
         #     print(joint_info)
+        self.joints_angle = np.asarray(p.getJointStates(self.arm_id, self.joints_index))[:, 0]
 
-        return 0
+        self.joints_angle[len(self.joints_angle)-2:] = abs(self.joints_angle[len(self.joints_angle)-2:])//0.01601
+        obs = np.concatenate([self.ee_pos, self.ee_ori, self.joints_angle])
+
+        return obs
 
     def get_image(self):
         # reset camera
@@ -179,19 +185,19 @@ class Arm_env(gym.Env):
         # print(width, length)
         return px
 
-    def _process_image(self, image):
-        """Convert the RGB pic to gray pic and add a channel 1
-
-        Args:
-            image ([type]): [description]
-        """
-
-        if image is not None:
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-            image = cv2.resize(image, (self.kImageSize['width'], self.kImageSize['height']))[None, :, :] / 255.
-            return image
-        else:
-            return np.zeros((1, self.kImageSize['width'], self.kImageSize['height']))
+    # def _process_image(self, image):
+    #     """Convert the RGB pic to gray pic and add a channel 1
+    #
+    #     Args:
+    #         image ([type]): [description]
+    #     """
+    #
+    #     if image is not None:
+    #         image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    #         image = cv2.resize(image, (self.kImageSize['width'], self.kImageSize['height']))[None, :, :] / 255.
+    #         return image
+    #     else:
+    #         return np.zeros((1, self.kImageSize['width'], self.kImageSize['height']))
 
 
 if __name__ == '__main__':
@@ -221,9 +227,10 @@ if __name__ == '__main__':
             # a = np.random.uniform(0,1,size = 4)
             a = []
             # get parameters
-            for j in range(4):
+            for j in range(5):
                 a.append(p.readUserDebugParameter(Debug_para[j]))
             a = np.asarray(a)
             # a *= 0.5 * np.sin(i_step/np.pi)
             obs, r, done, _ = env.step(a)
+            print(obs)
             epoch_r += r
