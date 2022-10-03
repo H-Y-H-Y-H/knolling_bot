@@ -119,7 +119,7 @@ class Arm_env(gym.Env):
         # box1_min, box1_max = p.getAABB(box1_id)
 
         p.setJointMotorControlArray(self.arm_id, [0, 1, 2, 3, 4, 7, 8], p.POSITION_CONTROL,
-                                    targetPositions=[0, 0, 0, 0, 0, 0, 0],
+                                    targetPositions=[0, -0.48627556248779596, 1.3546790099090924, 0.7016159753143177, 0, 0, 0],
                                     forces=[10] * 7)
 
         for _ in range(40):
