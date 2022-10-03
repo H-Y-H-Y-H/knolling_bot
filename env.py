@@ -99,12 +99,14 @@ class Arm_env(gym.Env):
         #     exec('box{} = 1'.format(i))
         # print(box0)
 
-        baseid = p.loadURDF("urdf/base.urdf", basePosition=[0, 0, -0.05], useFixedBase=1)
+        baseid = p.loadURDF("urdf/base.urdf", basePosition=[0, 0, -0.05], useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         self.arm_id = p.loadURDF(os.path.join(self.urdf_path, "robot_arm928/robot_arm1.urdf"),
                                  basePosition=[-.08, 0, 0.02], useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
         textureId = p.loadTexture("table/table.png")
         p.changeDynamics(baseid, -1, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
+        p.changeDynamics(self.arm_id, 7, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
+        p.changeDynamics(self.arm_id, 8, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
         p.changeVisualShape(baseid, -1, rgbaColor=[1, 1, 1, 1], textureUniqueId=textureId)
 
         # Generate the pos and orin of objects randomly.
@@ -114,8 +116,9 @@ class Arm_env(gym.Env):
                        0.01]
             rdm_ori = [0, 0, random.uniform(-math.pi / 2, math.pi / 2)]
             obj_idx.append(p.loadURDF(os.path.join(self.urdf_path, "box/box%d.urdf" % i), basePosition=rdm_pos,
-                                      baseOrientation=p.getQuaternionFromEuler(rdm_ori)))
-
+                                      baseOrientation=p.getQuaternionFromEuler(rdm_ori),flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+            p.changeDynamics(obj_idx[i], -1, lateralFriction=self.friction, spinningFriction=0.02,
+                             rollingFriction=0.002)
         # box1_min, box1_max = p.getAABB(box1_id)
 
         p.setJointMotorControlArray(self.arm_id, [0, 1, 2, 3, 4, 7, 8], p.POSITION_CONTROL,
@@ -127,6 +130,7 @@ class Arm_env(gym.Env):
         return self.get_obs()
 
     def act(self, a_pos):
+        self.gripper_flag = False
         a_pos[:4] = a_pos[:4]*self.ik_space+self.ik_space_shift
         # a_joint = a_pos[:5]  # * self.action_space + self.shift
         ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=a_pos[:3], maxNumIterations=2000,
@@ -138,14 +142,46 @@ class Arm_env(gym.Env):
 
         # Gripper execution
         a_gripper = a_pos[4]//0.5001
-        p.setJointMotorControlArray(self.arm_id, [7, 8],
-                                    p.POSITION_CONTROL,
-                                    targetPositions=[a_gripper, a_gripper])
+        # p.setJointMotorControlArray(self.arm_id, [7, 8],
+        #                             p.POSITION_CONTROL,
+        #                             targetPositions=[a_gripper, a_gripper])
+        if self.gripper_flag == False:
+            self.gripper_flag = self.gripper_control(a_gripper)
+        else:
+            pass
+
+        print(self.gripper_flag)
 
         for i in range(40):
             self.images = self.get_image()
             p.stepSimulation()
             time.sleep(self.slep_t)
+
+    def gripper_control(self, cmds):
+        flag = False
+        # open gripper
+        if cmds == 0:
+            p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=[0, 0])
+        elif cmds == 1:
+            while True:
+                cur_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]))[:, 0]
+                tar_pos = np.add(cur_pos, [0.032/20, 0.032/20])
+                print(tar_pos)
+                p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=tar_pos)
+
+                for i in range(20):
+                    p.stepSimulation()
+                    time.sleep(self.slep_t)
+
+                obs_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]))[:, 0]
+                print(obs_pos)
+                if abs(obs_pos[1] - tar_pos[1]) > 0.0005:
+                    if obs_pos[1] >= 0.03186:
+                        break
+
+                    flag = True
+                    break
+        return flag
 
     def step(self, a):
         self.act(a)
@@ -207,7 +243,7 @@ if __name__ == '__main__':
     num_item = 2
     num_epoch = 3
     env.slep_t = 1 / 240
-    num_step = 40
+    num_step = 400
 
     Debug_para = []
 
