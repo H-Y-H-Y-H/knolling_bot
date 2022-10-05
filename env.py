@@ -31,7 +31,7 @@ class Arm_env(gym.Env):
         # self.action_space = np.asarray([np.pi/3, np.pi / 6, np.pi / 4, np.pi / 2, np.pi])
         # self.shift = np.asarray([-np.pi/6, -np.pi/12, 0, 0, 0])
         self.ik_space = np.asarray([0.3, 0.4, 0.06, np.pi]) # x, y, z, yaw
-        self.ik_space_shift = np.asarray([0,-0.2,0, -np.pi/2])
+        self.ik_space_shift = np.asarray([0, -0.2, 0, -np.pi/2])
 
         self.slep_t = 0
         self.joints_index = [0, 1, 2, 3, 4, 7, 8]
@@ -58,10 +58,10 @@ class Arm_env(gym.Env):
             ],  # the direction is from the light source position to the origin of the world frame.
         }
         self.view_matrix = p.computeViewMatrixFromYawPitchRoll(
-            cameraTargetPosition=[0.40, 0, 0.05],
-            distance=0.40,
+            cameraTargetPosition=[0.25, 0, 0.05],
+            distance=0.38,
             yaw=90,
-            pitch=-45,
+            pitch=-50.5,
             roll=0,
             upAxisIndex=2)
         self.projection_matrix = p.computeProjectionMatrixFOV(
@@ -112,11 +112,12 @@ class Arm_env(gym.Env):
         # Generate the pos and orin of objects randomly.
         obj_idx = []
         for i in range(self.num_objects):
-            rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs),
-                       0.01]
+            # rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs),
+            #            0.01]
+            rdm_pos = [0.3,0.2,0.01]
             rdm_ori = [0, 0, random.uniform(-math.pi / 2, math.pi / 2)]
             obj_idx.append(p.loadURDF(os.path.join(self.urdf_path, "box/box%d.urdf" % i), basePosition=rdm_pos,
-                                      baseOrientation=p.getQuaternionFromEuler(rdm_ori),flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+                                      baseOrientation=p.getQuaternionFromEuler(rdm_ori), flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
             p.changeDynamics(obj_idx[i], -1, lateralFriction=self.friction, spinningFriction=0.02,
                              rollingFriction=0.002)
         # box1_min, box1_max = p.getAABB(box1_id)
@@ -150,7 +151,7 @@ class Arm_env(gym.Env):
         else:
             pass
 
-        print(self.gripper_flag)
+        # print(self.gripper_flag)
 
         for i in range(40):
             self.images = self.get_image()
@@ -166,7 +167,7 @@ class Arm_env(gym.Env):
             while True:
                 cur_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]))[:, 0]
                 tar_pos = np.add(cur_pos, [0.032/20, 0.032/20])
-                print(tar_pos)
+                # print(tar_pos)
                 p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=tar_pos)
 
                 for i in range(20):
@@ -174,7 +175,7 @@ class Arm_env(gym.Env):
                     time.sleep(self.slep_t)
 
                 obs_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]))[:, 0]
-                print(obs_pos)
+                # print(obs_pos)
                 if abs(obs_pos[1] - tar_pos[1]) > 0.0005:
                     if obs_pos[1] >= 0.03186:
                         break
@@ -268,5 +269,5 @@ if __name__ == '__main__':
             a = np.asarray(a)
             # a *= 0.5 * np.sin(i_step/np.pi)
             obs, r, done, _ = env.step(a)
-            print(obs)
+            # print(obs)
             epoch_r += r
