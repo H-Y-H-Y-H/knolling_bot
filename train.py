@@ -90,4 +90,9 @@ if __name__ == '__main__':
     # model.save("PPO_knolling")
     print('finished')
 
+    num_epoch = 100
+    num_steps = 500
+    for epoch in range(num_epoch):
+        model.learn(total_timesteps=num_steps)
+
 

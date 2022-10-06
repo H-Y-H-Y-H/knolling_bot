@@ -1,5 +1,7 @@
 import time
 import logging
+
+import cv2
 from easy_logx.easy_logx import EasyLog
 from gym import spaces
 from gym.utils import seeding
@@ -16,17 +18,15 @@ logger=EasyLog(log_level=logging.INFO)
 
 class Arm_env(gym.Env):
 
-    def __init__(self, is_render=True, is_good_view = False, num_objects=1):
+    def __init__(self, is_render=True,  num_objects=1):
 
         self.kImageSize = {'width': 480, 'height': 480}
 
         self.step_counter = 0
-        self.kMaxEpisodeSteps: int = 500
 
         self.urdf_path = 'urdf'
         self.pybullet_path = pd.getDataPath()
         self.is_render = is_render
-        self.is_good_view = is_good_view
 
         self.x_low_obs = 0
         self.x_high_obs = 0.3
@@ -51,9 +51,9 @@ class Arm_env(gym.Env):
         # self.action_space = np.asarray([np.pi/3, np.pi / 6, np.pi / 4, np.pi / 2, np.pi])
         # self.shift = np.asarray([-np.pi/6, -np.pi/12, 0, 0, 0])
         self.ik_space = np.asarray([0.3, 0.4, 0.06, np.pi]) # x, y, z, yaw
-        self.ik_space_shift = np.asarray([0,-0.2,0, -np.pi/2])
+        self.ik_space_shift = np.asarray([0, -0.2, 0, -np.pi/2])
 
-        self.slep_t = 0
+        self.slep_t = 1./240
         self.joints_index = [0, 1, 2, 3, 4, 7, 8]
         # 5 6 9不用管，固定的！
         self.init_joint_positions = [0, 0, -1.57, 0, 0, 0, 0, 0, 0, 0]
@@ -78,10 +78,10 @@ class Arm_env(gym.Env):
             ],  # the direction is from the light source position to the origin of the world frame.
         }
         self.view_matrix = p.computeViewMatrixFromYawPitchRoll(
-            cameraTargetPosition=[0.40, 0, 0.05],
-            distance=0.50,
+            cameraTargetPosition=[0.25, 0, 0.05],
+            distance=0.38,
             yaw=90,
-            pitch=-50,
+            pitch=-50.5,
             roll=0,
             upAxisIndex=2)
         self.projection_matrix = p.computeProjectionMatrixFOV(
@@ -155,6 +155,7 @@ class Arm_env(gym.Env):
             logger.debug(f'this is the urdf id: {self.obj_idx}')
 
         #! initiate the position
+        # TBD use xyz pos to initialize robot arm (IK)
         p.setJointMotorControlArray(self.arm_id, [0, 1, 2, 3, 4, 7, 8], p.POSITION_CONTROL,
                                     targetPositions=[0, -0.48627556248779596, 1.1546790099090924, 0.7016159753143177, 0, 0, 0],
                                     forces=[10] * 7)
@@ -162,28 +163,7 @@ class Arm_env(gym.Env):
             p.stepSimulation()
         return self.get_obs()
 
-    def act(self, a_pos):
-        a_pos[:4] = a_pos[:4]*self.ik_space+self.ik_space_shift
-        # a_joint = a_pos[:5]  # * self.action_space + self.shift
-        ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=a_pos[:3], maxNumIterations=2000,
-                                                targetOrientation=p.getQuaternionFromEuler([0, 1.57, a_pos[3]]))
-        # Joint execution
-        for i in range(5):
-            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=ik_angle[i], force=10,
-                                    maxVelocity=4)
-
-        # Gripper execution
-        a_gripper = a_pos[4]//0.5001
-        p.setJointMotorControlArray(self.arm_id, [7, 8],
-                                    p.POSITION_CONTROL,
-                                    targetPositions=[a_gripper, a_gripper])
-
-        for i in range(40):
-            self.images = self.get_image()
-            p.stepSimulation()
-            time.sleep(self.slep_t)
-    
-    def RL_act(self, action):
+    def act(self, action):
 
         dv = 0.1
         # action = np.array([0.1, 0.1, 0.1, 1.57, 0.5])
@@ -199,23 +179,22 @@ class Arm_env(gym.Env):
 
         ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=2000,
                                                 targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
-        for i in range(5):
-            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=ik_angle[i], force=100,
-                                    maxVelocity=40)
+        for i in [0,2,3]:
+            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=ik_angle[i], force=4.1, maxVelocity=4.8)
+        p.setJointMotorControl2(self.arm_id, 1, p.POSITION_CONTROL, targetPosition=ik_angle[1], force=8.2, maxVelocity=4.8)
+        p.setJointMotorControl2(self.arm_id, 4, p.POSITION_CONTROL, targetPosition=ik_angle[4], force=1.5, maxVelocity=6.4)
         
-        # for i in range(10):
-        #     self.images = self.get_image()
-        #     p.stepSimulation()
-        #     time.sleep(self.slep_t)
-
-        p.stepSimulation()
-        if self.is_good_view:
-            time.sleep(0.05)
+        for i in range(10):
+            self.images = self.get_image()
+            p.stepSimulation()
+            if self.is_render:
+                time.sleep(self.slep_t)
 
         #! don't forget the decision of grasp!
         self.decision_flag = False
-        new_arm_obs = p.getLinkState(self.arm_id, 9)[0]
-        new_box_pos = p.getBasePositionAndOrientation(self.obj_idx[0])[0]
+        cur_ee_pos = p.getLinkState(self.arm_id, 9)[0]
+        cur_box_pos = p.getBasePositionAndOrientation(self.obj_idx[0])[0]
+
 
         grasp_decision = bool(abs(new_arm_obs[0] - new_box_pos[0]) < (self.x_high_obs - self.x_low_obs)/15 and
         abs(new_arm_obs[1] - new_box_pos[1]) < (self.y_high_obs - self.y_low_obs)/15 and
@@ -227,18 +206,11 @@ class Arm_env(gym.Env):
             a_gripper = action[4]//0.5001
             # logger.info('choose to grasp')
             self.gripper_flag = self.gripper_control(a_gripper)
-
-        # if a_gripper == 1:
-        #     logger.info('choose to grasp')
-        #     self.gripper_flag = self.gripper_control(a_gripper)
-            # print(f'gripper_flag = {self.gripper_flag}')
         else:
             p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=[0, 0])
             # logger.info('choose not to grasp')
             # self.gripper_flag = None
 
-        if self.gripper_flag == True:
-            time.sleep(3)
 
     def gripper_control(self, cmds):
         flag = False
@@ -274,18 +246,18 @@ class Arm_env(gym.Env):
     def step(self, a):
         # self.act(a)
 
+        #! sample some actions: x y z yaw
+        self.act(a)
+
         obs = self.get_obs()
 
-        #! sample some actions: x y z yaw
-        self.RL_act(a)
-
-        r, done = self.reward()
+        r, done = self.reward_func(obs)
 
         self.step_counter += 1
 
         return obs, r, done, {}
 
-    def reward(self):
+    def reward_func(self, obs):
 
         self.ee_pos = p.getLinkState(self.arm_id, 9)[0]
         self.ee_ori = p.getEulerFromQuaternion(p.getLinkState(self.arm_id,9)[1])
@@ -297,6 +269,7 @@ class Arm_env(gym.Env):
         ee_yaw = self.ee_ori[2]
         box_yaw = self.box_ori[2]
 
+        ##!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         square_dx = (self.ee_pos[0] - self.ee_ori[0]) ** 2
         square_dy = (self.ee_pos[1] - self.ee_ori[1]) ** 2
         square_dz = (self.ee_pos[2] - self.ee_ori[2]) ** 2
@@ -355,7 +328,7 @@ class Arm_env(gym.Env):
             r = 0
             self.terminated = False
         
-        self.r = self.r + r
+        self.r += r
 
         return self.r, self.terminated
 
@@ -390,29 +363,20 @@ class Arm_env(gym.Env):
         obs = obs.astype(np.float32)
         return obs
 
-    def get_image(self):
+    def get_image(self, gray_flag = False, resize_flag=False):
         # reset camera
-        (width, length, px, _, _) = p.getCameraImage(width=960,
+        (width, length, image, _, _) = p.getCameraImage(width=960,
                                                      height=720,
                                                      viewMatrix=self.view_matrix,
                                                      projectionMatrix=self.projection_matrix,
                                                      renderer=p.ER_BULLET_HARDWARE_OPENGL)
-        # print(width, length)
-        return px
+        if gray_flag:
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        if resize_flag:
+            image = cv2.resize(image, (self.kImageSize['width'], self.kImageSize['height']))[None, :, :] / 255.
+            return image
 
-    # def _process_image(self, image):
-    #     """Convert the RGB pic to gray pic and add a channel 1
-    #
-    #     Args:
-    #         image ([type]): [description]
-    #     """
-    #
-    #     if image is not None:
-    #         image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    #         image = cv2.resize(image, (self.kImageSize['width'], self.kImageSize['height']))[None, :, :] / 255.
-    #         return image
-    #     else:
-    #         return np.zeros((1, self.kImageSize['width'], self.kImageSize['height']))
+        return image
 
 
 if __name__ == '__main__':

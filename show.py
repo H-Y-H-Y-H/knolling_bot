@@ -4,9 +4,9 @@ from stable_baselines3.common.evaluation import evaluate_policy
 import os
 import pathlib
 
-env=Arm_env(is_render = True, is_good_view= True, num_objects=1)
+env = Arm_env(is_render = True, is_good_view= True, num_objects=1)
 
-model = PPO.load("best_model")
+model = PPO.load("best_model",env)
 
 obs = env.reset()
 
