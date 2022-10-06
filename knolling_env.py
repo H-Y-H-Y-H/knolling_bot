@@ -35,7 +35,7 @@ class Arm_env(gym.Env):
         self.y_low_obs = -0.2
         self.y_high_obs = 0.2
         self.z_low_obs = 0.001
-        self.z_high_obs = 0.4
+        self.z_high_obs = 0.3
         self.x_grasp_interval = (self.x_high_obs - self.x_low_obs) * x_grasp_accuracy
         self.y_grasp_interval = (self.y_high_obs - self.y_low_obs) * y_grasp_accuracy
         self.z_grasp_interval = (self.z_high_obs - self.z_low_obs) * z_grasp_accuracy
@@ -188,20 +188,20 @@ class Arm_env(gym.Env):
         p.setJointMotorControl2(self.arm_id, 4, p.POSITION_CONTROL, targetPosition=ik_angle[4], force=1.5,
                                 maxVelocity=6.4)
 
-        gripper_a = action[5]
-        gripper_a //=0.5001
+        # gripper_a = action[4]
+        # gripper_a //=0.5001
 
-        for i in range(10):
+        for i in range(60):
             self.images = self.get_image()
             p.stepSimulation()
             if self.is_render:
                 time.sleep(self.slep_t)
 
-        get_objects = False
-        if gripper_a == 1:
-            get_objects = self.gripper_control()
+        # get_objects = False
+        # if gripper_a == 1:
+        #     get_objects = self.gripper_control()
 
-        return gripper_a, get_objects
+        # return gripper_a, get_objects
 
 
     def slider_act(self, a_pos):
@@ -220,6 +220,12 @@ class Arm_env(gym.Env):
         p.setJointMotorControlArray(self.arm_id, [7, 8],
                                     p.POSITION_CONTROL,
                                     targetPositions=[a_gripper, a_gripper])
+
+        gripper_a = a_pos[4]
+        gripper_a //=0.5001
+
+        if gripper_a == 1:
+            self.gripper_control()
 
         for i in range(40):
             self.images = self.get_image()
@@ -246,42 +252,29 @@ class Arm_env(gym.Env):
                 flag = True
                 logger.info(f'get it, the flag is {flag}')
                 break
-            else:
+            if tar_pos[0] >= 0.032:
                 flag = False
-                logger.info(
-                    f'decided to grasp and the distance is appropriate, but not catch the box, the flag is {flag}')
+                logger.info(f'decided to grasp and the distance is appropriate, but not catch the box, the flag is {flag}')
                 break
+
         return flag
 
     def step(self, action):
 
         # action: 4 xyzyaw + gripper [0,1]
-        current_obs = # from obs
-        current_yaw = # from obs
-        current_obs, current_yaw = np.asarray(current_obs), np.asarray(current_yaw)
-        current_state = np.append(current_obs, current_yaw)
+        obs = self.get_obs()
+
+        current_pos = obs[:3]# from obs
+        current_yaw = obs[5]# from obs
+        current_pos, current_yaw = np.asarray(current_pos), np.asarray(current_yaw)
+        current_state = np.append(current_pos, current_yaw)
         action[:4] = action[:4] * self.dv + current_state
 
-        gripper_a, get_obj = self.act(action)
+        self.act(action)
 
         obs = self.get_obs()
 
-
-        # ! don't forget the decision of grasp!
-        cur_ee_pos = obs[0:3]
-        # cur_box_pos = obs[6:6+self.num_objects*3]
-        cur_box_pos = obs[6:6 + 3]
-        logger.info(f'cur_ee_pos is {cur_ee_pos}')
-        logger.info(f'cur_box_pos is {cur_box_pos}')
-
         # ! determine whether the distance is appropriate
-        grasp_decision = bool(abs(cur_ee_pos[0] - cur_box_pos[0]) < self.x_grasp_interval and
-                              abs(cur_ee_pos[1] - cur_box_pos[1]) < self.y_grasp_interval and
-                              abs(cur_ee_pos[2] - cur_box_pos[2]) < self.z_grasp_interval)
-
-        self.gripper_flag = None
-        self.decision_flag = None
-
 
         r, done = self.reward_func(obs, action)
 
@@ -298,6 +291,12 @@ class Arm_env(gym.Env):
         # box_yaw = obs[5 + self.num_objects * 3 + 3]
         obj_yaw = obs[5 + 3 + 3]
 
+        gripper_a = action[4]
+        gripper_a //=0.5001
+
+        get_objects = None
+        if gripper_a == 1:
+            get_objects = self.gripper_control()
 
         ##!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # distance = np.linalg.norm(obs[0:3] - obs[6:6+self.num_objects*3])
@@ -311,6 +310,10 @@ class Arm_env(gym.Env):
         top_decision = bool(abs(x - cur_box_pos[0]) < self.x_grasp_interval and
                             abs(y - cur_box_pos[1]) < self.y_grasp_interval and
                             (0.03 < z - cur_box_pos[2]) < 0.15)
+        
+        grasp_decision = bool(abs(x - cur_box_pos[0]) < self.x_grasp_interval and
+                              abs(y - cur_box_pos[1]) < self.y_grasp_interval and
+                              abs(z - cur_box_pos[2]) < self.z_grasp_interval)
 
         # elif self.step_counter > self.kMaxEpisodeSteps:
         #     r = -0.1
@@ -323,6 +326,12 @@ class Arm_env(gym.Env):
             self.r += r
             logger.info('next to the box')
             self.terminated = False
+        
+        if grasp_decision:
+            r = 0.01
+            self.r += r
+            logger.info('this position is appropriate to grasp, keep it!')
+            self. terminated = False
 
         if top_decision:
             r = 0.001
@@ -336,9 +345,9 @@ class Arm_env(gym.Env):
             logger.debug('the yaw is same')
             self.terminated = False
 
-        if self.gripper_flag == False:
+        if get_objects == False:
             r = -1
-            logger.info('because some trouble, the grasp is not successful, the reward is -1!')
+            logger.info('grasp failed, the reward is -1!')
             self.terminated = True
 
         elif boundary:
@@ -346,15 +355,15 @@ class Arm_env(gym.Env):
             logger.info('hit the border')
             self.terminated = True
 
-        elif self.gripper_flag == True:
+        elif get_objects == True:
             r = 10
             logger.info('get the box, the reward is 10!')
             self.terminated = True
 
-        elif self.decision_flag == False:
-            r = -1
-            logger.info('it is too early to grasp')
-            self.terminated = True
+        # elif self.decision_flag == False:
+        #     r = -1
+        #     logger.info('it is too early to grasp')
+        #     self.terminated = True
 
         else:
             r = 0
@@ -393,7 +402,7 @@ class Arm_env(gym.Env):
         # ee_pos = 3, ee_ori = 3, box_pos = 3 * num_objects, box_ori = 3 * num_objects, joints_angle = 7
         self.obs = np.concatenate([self.ee_pos, self.ee_ori, self.box_pos, self.box_ori, self.joints_angle])
         self.obs = self.obs.astype(np.float32)
-        logger.debug(f'the shape of obs is {obs.size}')
+        logger.debug(f'the shape of obs is {self.obs.size}')
 
         return self.obs
 
@@ -447,7 +456,7 @@ if __name__ == '__main__':
                 a = np.asarray(a)
                 env.slider_act(a)
 
-                epoch_r += r
+                # epoch_r += r
 
     elif mode == 2:  # ! use the random action
         obs = env.reset()
@@ -458,5 +467,5 @@ if __name__ == '__main__':
             state_, reward, done, _ = env.step(a)
             if done:
                 print(f'reward of this try is {reward}\n')
-                time.sleep(1)
+                time.sleep(2)
                 obs = env.reset()
