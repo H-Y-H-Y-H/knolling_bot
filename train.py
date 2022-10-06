@@ -79,20 +79,28 @@ if __name__ == '__main__':
     os.makedirs(log_dir, exist_ok=True)
 
     # Create environment
-    env=SubprocVecEnv([make_env(None) for _ in range(2)])
+    env=SubprocVecEnv([make_env(None) for _ in range(4)])
     env=VecMonitor(env,log_dir)
     # Instantiate the agent
     model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=log_dir)
-    # Train the agent
-    callback = SaveOnBestTrainingRewardCallback(check_freq=50, log_dir=log_dir)
-    model.learn(total_timesteps=50000, callback=callback)
-    # Save the agent
-    # model.save("PPO_knolling")
-    print('finished')
+
+    # # Train the agent
+    # callback = SaveOnBestTrainingRewardCallback(check_freq=50, log_dir=log_dir)
+    # model.learn(total_timesteps=50000, callback=callback)
+    # # Save the agent
+    # # model.save("PPO_knolling")
+    # print('finished')
 
     num_epoch = 100
     num_steps = 500
     for epoch in range(num_epoch):
+        print(f'epoch:{num_epoch}')
         model.learn(total_timesteps=num_steps)
+        mean_reward, std_reward = evaluate_policy(model, num_episodes=3)
+
+        if best_r < mean_reward:
+            best_r = mean_reward
+            model.save(log_dir + "/best_model")
+    print('finished')
 
 

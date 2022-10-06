@@ -18,7 +18,7 @@ logger=EasyLog(log_level=logging.INFO)
 
 class Arm_env(gym.Env):
 
-    def __init__(self, is_render=True,  num_objects=1):
+    def __init__(self, is_render=True,  num_objects=1, x_grasp_accuracy = 0.03, y_grasp_accuracy = 0.03, z_grasp_accuracy = 0.03):
 
         self.kImageSize = {'width': 480, 'height': 480}
 
@@ -33,7 +33,10 @@ class Arm_env(gym.Env):
         self.y_low_obs = -0.2
         self.y_high_obs = 0.2
         self.z_low_obs = 0.001
-        self.z_high_obs = 0.35
+        self.z_high_obs = 0.4
+        self.x_grasp_interval = (self.x_high_obs - self.x_low_obs) * x_grasp_accuracy
+        self.y_grasp_interval = (self.y_high_obs - self.y_low_obs) * y_grasp_accuracy
+        self.z_grasp_interval = (self.z_high_obs - self.z_low_obs) * z_grasp_accuracy
 
         self.x_low_act = -0.5
         self.x_high_act = 0.5
@@ -53,7 +56,7 @@ class Arm_env(gym.Env):
         self.ik_space = np.asarray([0.3, 0.4, 0.06, np.pi]) # x, y, z, yaw
         self.ik_space_shift = np.asarray([0, -0.2, 0, -np.pi/2])
 
-        self.slep_t = 1./240
+        self.slep_t = 1/240
         self.joints_index = [0, 1, 2, 3, 4, 7, 8]
         # 5 6 9不用管，固定的！
         self.init_joint_positions = [0, 0, -1.57, 0, 0, 0, 0, 0, 0, 0]
@@ -133,7 +136,7 @@ class Arm_env(gym.Env):
 
         baseid = p.loadURDF(os.path.join(self.urdf_path, "base.urdf"), basePosition=[0, 0, -0.05], useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         self.arm_id = p.loadURDF(os.path.join(self.urdf_path, "robot_arm928/robot_arm1.urdf"),
-                                 basePosition=[-.08, 0, 0.02], useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
+                                 basePosition=[-0.08, 0, 0.02], useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
         textureId = p.loadTexture(os.path.join(self.urdf_path, "table/table.png"))
         p.changeDynamics(baseid, -1, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
@@ -190,66 +193,113 @@ class Arm_env(gym.Env):
             if self.is_render:
                 time.sleep(self.slep_t)
 
-        #! don't forget the decision of grasp!
-        self.decision_flag = False
-        cur_ee_pos = p.getLinkState(self.arm_id, 9)[0]
-        cur_box_pos = p.getBasePositionAndOrientation(self.obj_idx[0])[0]
+        # #! don't forget the decision of grasp!
+        # self.decision_flag = False
+        # cur_ee_pos = p.getLinkState(self.arm_id, 9)[0]
+        # cur_box_pos = p.getBasePositionAndOrientation(self.obj_idx[0])[0]
 
 
-        grasp_decision = bool(abs(new_arm_obs[0] - new_box_pos[0]) < (self.x_high_obs - self.x_low_obs)/15 and
-        abs(new_arm_obs[1] - new_box_pos[1]) < (self.y_high_obs - self.y_low_obs)/15 and
-        (0.005 < new_arm_obs[2]-new_box_pos[2])< 0.03)
+        # grasp_decision = bool(abs(cur_ee_pos[0] - cur_box_pos[0]) < (self.x_high_obs - self.x_low_obs)/15 and
+        # abs(cur_ee_pos[1] - cur_box_pos[1]) < (self.y_high_obs - self.y_low_obs)/15 and
+        # (0.005 < cur_ee_pos[2]-cur_box_pos[2])< 0.03)
 
-        self.gripper_flag = None
-        if grasp_decision:
-            self.decision_flag = True
-            a_gripper = action[4]//0.5001
-            # logger.info('choose to grasp')
-            self.gripper_flag = self.gripper_control(a_gripper)
-        else:
-            p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=[0, 0])
-            # logger.info('choose not to grasp')
-            # self.gripper_flag = None
+        # self.gripper_flag = None
+        # if grasp_decision:
+        #     self.decision_flag = True
+        #     a_gripper = action[4]//0.5001
+        #     # logger.info('choose to grasp')
+        #     self.gripper_flag = self.gripper_control(a_gripper)
+        # else:
+        #     p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=[0, 0])
+        #     # logger.info('choose not to grasp')
+        #     # self.gripper_flag = None
+    
+    def slider_act(self, a_pos):
+
+        a_pos[:4] = a_pos[:4]*self.ik_space+self.ik_space_shift
+        # a_joint = a_pos[:5]  # * self.action_space + self.shift
+        ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=a_pos[:3], maxNumIterations=2000,
+                                                targetOrientation=p.getQuaternionFromEuler([0, 1.57, a_pos[3]]))
+        # Joint execution
+        for i in range(5):
+            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=ik_angle[i], force=10,
+                                    maxVelocity=4)
+
+        # Gripper execution
+        a_gripper = a_pos[4]//0.5001
+        p.setJointMotorControlArray(self.arm_id, [7, 8],
+                                    p.POSITION_CONTROL,
+                                    targetPositions=[a_gripper, a_gripper])
+
+        for i in range(40):
+            self.images = self.get_image()
+            p.stepSimulation()
+            time.sleep(self.slep_t)
 
 
-    def gripper_control(self, cmds):
+    def gripper_control(self):
         flag = False
-        # open gripper
-        if cmds == 0:
-            logger.info(f'the distance is ok but the arm does not decide to grasp, the flag is {flag}')
-            p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=[0, 0])
-        elif cmds == 1:
-            while True:
-                cur_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]))[:, 0]
-                tar_pos = np.add(cur_pos, [0.032/20, 0.032/20])
-                # print(tar_pos)
-                p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=tar_pos)
+        while True:
+            cur_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]))[:, 0]
+            tar_pos = np.add(cur_pos, [0.032/20, 0.032/20])
+            # print(tar_pos)
+            p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=tar_pos)
 
-                for i in range(20):
-                    p.stepSimulation()
-                    time.sleep(self.slep_t)
+            for i in range(20):
+                p.stepSimulation()
+                time.sleep(self.slep_t)
 
-                obs_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]))[:, 0]
-                # print(obs_pos)
-                if abs(obs_pos[1] - tar_pos[1]) > 0.0005:
-                    if obs_pos[1] >= 0.03186:
-                        break
-                    flag = True
-                    logger.info(f'get it, the flag is {flag}')
+            obs_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]))[:, 0]
+            # print(obs_pos)
+            if abs(obs_pos[1] - tar_pos[1]) > 0.0005:
+                if obs_pos[1] >= 0.03186:
                     break
-                else:
-                    flag = False
-                    logger.info(f'decided to grasp, not catch the box, the flag is {flag}')
-                    break
+                flag = True
+                logger.info(f'get it, the flag is {flag}')
+                break
+            else:
+                flag = False
+                logger.info(f'decided to grasp and the distance is appropriate, but not catch the box, the flag is {flag}')
+                break
         return flag
 
-    def step(self, a):
-        # self.act(a)
+    def step(self, action, mode_flag):
 
         #! sample some actions: x y z yaw
-        self.act(a)
+        if mode_flag == 1:
+            self.slider_act(action)
+        if mode_flag == 2:
+            self.act(action)
 
         obs = self.get_obs()
+
+        #! don't forget the decision of grasp!
+        cur_ee_pos = obs[0:3]
+        # cur_box_pos = obs[6:6+self.num_objects*3]
+        cur_box_pos = obs[6:6 + 3]
+        logger.info(f'cur_ee_pos is {cur_ee_pos}')
+        logger.info(f'cur_box_pos is {cur_box_pos}')
+
+        #! determine whether the distance is appropriate
+        grasp_decision = bool(abs(cur_ee_pos[0] - cur_box_pos[0]) < self.x_grasp_interval and
+        abs(cur_ee_pos[1] - cur_box_pos[1]) < self.y_grasp_interval and
+        abs(cur_ee_pos[2] - cur_box_pos[2]) < self.z_grasp_interval)
+
+        self.gripper_flag = None
+        self.decision_flag = None
+
+        a_gripper = action[4]//0.5001
+        if a_gripper == 1:
+            logger.info(f'the robot decided to grasp')
+            if grasp_decision == False:
+                self.decision_flag = False
+                logger.info('the robot decided to grasp but the position is not correct')
+            else:
+                self.decision_flag = True
+                self.gripper_flag = self.gripper_control()
+        else:
+            p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=[0, 0])
+            self.decision_flag = None        
 
         r, done = self.reward_func(obs)
 
@@ -259,42 +309,60 @@ class Arm_env(gym.Env):
 
     def reward_func(self, obs):
 
-        self.ee_pos = p.getLinkState(self.arm_id, 9)[0]
-        self.ee_ori = p.getEulerFromQuaternion(p.getLinkState(self.arm_id,9)[1])
-        self.box_pos = p.getBasePositionAndOrientation(self.obj_idx[0])[0]
-        self.box_ori = p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.obj_idx[0])[1])
-        x = self.ee_pos[0]
-        y = self.ee_pos[1]
-        z = self.ee_pos[2]
-        ee_yaw = self.ee_ori[2]
-        box_yaw = self.box_ori[2]
+        cur_ee_pos = obs[0:3]
+        # cur_box_pos = obs[6:6+self.num_objects*3]
+        cur_box_pos = obs[6:6 + 3]
+        ee_yaw = obs[5]
+        # box_yaw = obs[5 + self.num_objects * 3 + 3]
+        box_yaw = obs[5 + 3 + 3]
+
+        x = cur_ee_pos[0]
+        y = cur_ee_pos[1]
+        z = cur_ee_pos[2]
 
         ##!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        square_dx = (self.ee_pos[0] - self.ee_ori[0]) ** 2
-        square_dy = (self.ee_pos[1] - self.ee_ori[1]) ** 2
-        square_dz = (self.ee_pos[2] - self.ee_ori[2]) ** 2
-        self.distance = math.sqrt(square_dx + square_dy + square_dz)
+        # distance = np.linalg.norm(obs[0:3] - obs[6:6+self.num_objects*3])
+        distance = np.linalg.norm(obs[0:3] - obs[6:6 + 3])
+        logger.debug(f'the distance between ee and box is {distance}')
 
-        self.terminated = False
-
-        terminated = bool(x < self.x_low_obs or x > self.x_high_obs
+        boundary = bool(x < self.x_low_obs or x > self.x_high_obs
                           or y < self.y_low_obs or y > self.y_high_obs
                           or z < self.z_low_obs or z > self.z_high_obs)
         
-        top_decision = bool(abs(self.ee_pos[0] - self.box_pos[0]) < (self.x_high_obs - self.x_low_obs)/10 and
-        abs(self.ee_pos[1] - self.box_pos[1]) < (self.y_high_obs - self.y_low_obs)/10 and
-        (0.03 < self.ee_pos[2]-self.box_pos[2])< 0.15)
+        top_decision = bool(abs(x - cur_box_pos[0]) < self.x_grasp_interval and
+        abs(y - cur_box_pos[1]) < self.y_grasp_interval and
+        (0.03 < z - cur_box_pos[2])< 0.15)
         
+        # elif self.step_counter > self.kMaxEpisodeSteps:
+        #     r = -0.1
+        #     logger.info('times up')
+        #     self.terminated = True
+        self.terminated = False
+
+        if distance < 0.03:
+            r = 0.0001
+            self.r += r
+            logger.info('next to the box')
+            self.terminated = False
+        
+        if top_decision:
+            r = 0.001
+            self.r += r
+            logger.info('on the top of box')
+            self.terminated = False
+
+        if abs(box_yaw - ee_yaw) < 0.05:
+            r = 0.0001
+            self.r += r
+            logger.debug('the yaw is same')
+            self.terminated = False
+
         if self.gripper_flag == False:
             r = -1
+            logger.info('because some trouble, the grasp is not successful, the reward is -1!')
             self.terminated = True
 
-        elif self.step_counter > self.kMaxEpisodeSteps:
-            r = -0.1
-            logger.info('times up')
-            self.terminated = True
-
-        elif terminated:
+        elif boundary:
             r = -0.1
             logger.info('hit the border')
             self.terminated = True
@@ -304,29 +372,13 @@ class Arm_env(gym.Env):
             logger.info('get the box, the reward is 10!')
             self.terminated = True
 
-        elif self.decision_flag == True:
-            r = 1
-            logger.info('locate the position of grasp')
-            self.terminated = False
-        
-        # elif self.distance < 0.1:
-        #     r = 0.0001
-        #     logger.info('next to the box')
-        #     self.terminated = False
-        
-        elif top_decision:
-            r = 0.05
-            logger.info('on the top of box')
-            self.terminated = False
-
-        elif abs(box_yaw - ee_yaw) < 0.05:
-            r = 0.0001
-            logger.debug('the yaw is same')
-            self.terminated = False
+        elif self.decision_flag == False:
+            r = -1
+            logger.info('it is too early to grasp')
+            self.terminated = True
 
         else:
             r = 0
-            self.terminated = False
         
         self.r += r
 
@@ -335,21 +387,23 @@ class Arm_env(gym.Env):
 
     def get_obs(self):
         # Get end-effector obs
-        self.ee_pos = p.getLinkState(self.arm_id, 9)[0]
-        self.ee_ori = p.getEulerFromQuaternion(p.getLinkState(self.arm_id,9)[1])
-        self.ee_pos, self.ee_ori = np.asarray(self.ee_pos), np.asarray(self.ee_ori)
+        self.ee_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
+        self.ee_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id,9)[1]))
         self.ee_pos.astype(np.float32)
         self.ee_ori.astype(np.float32)
-        # logger.debug(self.ee_ori)
+        logger.debug(self.ee_ori)
 
-        # only one box!
-        self.box_pos = p.getBasePositionAndOrientation(self.obj_idx[0])[0]
-        self.box_ori = p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.obj_idx[0])[1])
-        self.box_pos, self.box_ori = np.asarray(self.box_pos), np.asarray(self.box_ori)
-        self.box_pos.astype(np.float32)
-        self.box_ori.astype(np.float32)
-        # logger.debug(self.box_pos)
+        # Get box obs!
+        self.box_pos, self.box_ori = [], []
+        for i in range(len(self.obj_idx)):
+            box_pos = np.asarray(p.getBasePositionAndOrientation(self.obj_idx[i])[0])
+            box_ori = np.asarray(p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.obj_idx[0])[1]))
+            self.box_pos = np.append(self.box_pos, box_pos).astype(np.float32)
+            self.box_ori = np.append(self.box_ori, box_ori).astype(np.float32)
+        logger.debug(f'self.box_pos = {self.box_pos}')
+        logger.debug(f'self.box_ori = {self.box_ori}')
 
+        # Get Joint angle
         Joint_info_list = p.getJointStates(self.arm_id, self.joints_index)
         self.joints_angle = []
         for i in range(len(Joint_info_list)):
@@ -358,9 +412,11 @@ class Arm_env(gym.Env):
         self.joints_angle[len(self.joints_angle)-2:] = abs(self.joints_angle[len(self.joints_angle)-2:])//0.01601
         self.joints_angle = self.joints_angle.astype(np.float32)
         
+        # ee_pos = 3, ee_ori = 3, box_pos = 3 * num_objects, box_ori = 3 * num_objects, joints_angle = 7
         obs = np.concatenate([self.ee_pos, self.ee_ori, self.box_pos, self.box_ori, self.joints_angle])
-        logger.debug(f'the shape of obs is {obs.size}')
         obs = obs.astype(np.float32)
+        logger.debug(f'the shape of obs is {obs.size}')
+
         return obs
 
     def get_image(self, gray_flag = False, resize_flag=False):
@@ -383,33 +439,47 @@ if __name__ == '__main__':
 
     env = Arm_env(is_render=True, num_objects=1)
 
-    num_item = 2
-    num_epoch = 3
-    env.slep_t = 1 / 240
-    num_step = 400
+    mode = 1
 
-    Debug_para = []
+    if mode == 1: #! use the slider module
+        num_item = 2
+        num_epoch = 3
+        env.slep_t = 1 / 240
+        num_step = 400
 
-    Debug_para.append(p.addUserDebugParameter("x" , 0, 1, 0))
-    Debug_para.append(p.addUserDebugParameter("y" , 0, 1, 0.5))
-    Debug_para.append(p.addUserDebugParameter("z" , 0, 1, 0))
-    Debug_para.append(p.addUserDebugParameter("yaw" , 0, 1, 0.5))
-    Debug_para.append(p.addUserDebugParameter("gripper" , 0, 1, 0.5))
+        Debug_para = []
 
-    # 5 Joints and 1 End-effector
-    for epoch in range(num_epoch):
-        state = env.reset()
-        epoch_r = 0
+        Debug_para.append(p.addUserDebugParameter("x" , 0, 1, 0))
+        Debug_para.append(p.addUserDebugParameter("y" , 0, 1, 0.5))
+        Debug_para.append(p.addUserDebugParameter("z" , 0, 1, 0))
+        Debug_para.append(p.addUserDebugParameter("yaw" , 0, 1, 0.5))
+        Debug_para.append(p.addUserDebugParameter("gripper" , 0, 1, 0.5))
 
-        for i_step in range(num_step):
-            print(i_step)
-            # a = np.random.uniform(0,1,size = 4)
-            a = []
-            # get parameters
-            for j in range(5):
-                a.append(p.readUserDebugParameter(Debug_para[j]))
-            a = np.asarray(a)
-            # a *= 0.5 * np.sin(i_step/np.pi)
-            obs, r, done, _ = env.step(a)
-            # print(obs)
-            epoch_r += r
+        # 5 Joints and 1 End-effector
+        for epoch in range(num_epoch):
+            state = env.reset()
+            epoch_r = 0
+
+            for i_step in range(num_step):
+                print(i_step)
+                # a = np.random.uniform(0,1,size = 4)
+                a = []
+                # get parameters
+                for j in range(5):
+                    a.append(p.readUserDebugParameter(Debug_para[j]))
+                a = np.asarray(a)
+                # a *= 0.5 * np.sin(i_step/np.pi)
+                obs, r, done, _ = env.step(a, mode)
+                # print(obs)
+                epoch_r += r
+
+    elif mode == 2: #! use the random action
+        obs=env.reset()
+        for _ in range(10000):
+            a=env.action_space.sample()
+            # print(action)
+            state_, reward, done, _ =env.step(a, mode)
+            if done:
+                print(f'reward of this try is {reward}\n')
+                time.sleep(1)
+                obs=env.reset()
