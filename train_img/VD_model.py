@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
     # Plot summary and test speed
     print("start", device)
-    model = ResNet101(img_channel=1, output_size=4).to(device)
+    model = ResNet101(img_channel=1, output_size=3).to(device)
     img = torch.randn(32, 1, 256, 256).to(device)
 
     # summary(model, [(5, 128, 128),(1,1,24)])
