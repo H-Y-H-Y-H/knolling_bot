@@ -30,28 +30,22 @@ class Arm_env(gym.Env):
         self.pybullet_path = pd.getDataPath()
         self.is_render = is_render
 
-        self.x_low_obs = 0
+        self.x_low_obs = 0.05
         self.x_high_obs = 0.3
-        self.y_low_obs = -0.2
-        self.y_high_obs = 0.2
-        self.z_low_obs = 0.001
-        self.z_high_obs = 0.3
+        self.y_low_obs = -0.15
+        self.y_high_obs = 0.15
+        self.z_low_obs = 0.005
+        self.z_high_obs = 0.04
         self.x_grasp_interval = (self.x_high_obs - self.x_low_obs) * x_grasp_accuracy
         self.y_grasp_interval = (self.y_high_obs - self.y_low_obs) * y_grasp_accuracy
         self.z_grasp_interval = (self.z_high_obs - self.z_low_obs) * z_grasp_accuracy
 
-        self.x_low_act = -0.5
-        self.x_high_act = 0.5
-        self.y_low_act = -0.5
-        self.y_high_act = 0.5
-        self.z_low_act = -0.5
-        self.z_high_act = 0.5
-        self.yaw_low_act = -2
-        self.yaw_high_act = 2
-        self.gripper_low_act = 0
-        self.gripper_high_act = 1
-        self.dv = .1
+        self.yaw_low_obs = - np.pi / 2
+        self.yaw_high_obs = np.pi / 2
+        self.gripper_low_obs = 0
+        self.gripper_high_obs = 1
         self.obs = np.zeros(19)
+        self.table_boundary = 0.05
 
         self.friction = 0.99
         self.num_objects = num_objects
@@ -86,7 +80,7 @@ class Arm_env(gym.Env):
         }
         self.view_matrix = p.computeViewMatrixFromYawPitchRoll(
             cameraTargetPosition=[0.25, 0, 0.05],
-            distance=0.38,
+            distance=0.4,
             yaw=90,
             pitch=-50.5,
             roll=0,
@@ -106,9 +100,9 @@ class Arm_env(gym.Env):
         p.setAdditionalSearchPath(pd.getDataPath())
 
         self.action_space = spaces.Box(
-            low=np.array([self.x_low_act, self.y_low_act, self.z_low_act, self.yaw_low_act, self.gripper_low_act]),
+            low=np.array([self.x_low_obs, self.y_low_obs, self.z_low_obs, self.yaw_low_obs, self.gripper_low_obs]),
             high=np.array(
-                [self.x_high_act, self.y_high_act, self.z_high_act, self.yaw_high_act, self.gripper_high_act]),
+                [self.x_high_obs, self.y_high_obs, self.z_high_obs, self.yaw_high_obs, self.gripper_high_obs]),
             dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.ones(19) * np.inf,
                                             high=np.ones(19) * np.inf,
@@ -127,18 +121,20 @@ class Arm_env(gym.Env):
 
         p.resetSimulation()
         p.setGravity(0, 0, -10)
+
+        # Draw workspace lines
         p.addUserDebugLine(
-            lineFromXYZ=[self.x_low_obs, self.y_low_obs, self.z_low_obs],
-            lineToXYZ=[self.x_high_obs, self.y_low_obs, self.z_low_obs])
+            lineFromXYZ=[ self.x_low_obs-self.table_boundary, self.y_low_obs-self.table_boundary, self.z_low_obs],
+            lineToXYZ=[  self.x_high_obs+self.table_boundary, self.y_low_obs-self.table_boundary, self.z_low_obs])
         p.addUserDebugLine(
-            lineFromXYZ=[self.x_low_obs, self.y_low_obs, self.z_low_obs],
-            lineToXYZ=[self.x_low_obs, self.y_high_obs, self.z_low_obs])
+            lineFromXYZ=[ self.x_low_obs-self.table_boundary, self.y_low_obs -self.table_boundary, self.z_low_obs],
+            lineToXYZ=  [ self.x_low_obs-self.table_boundary, self.y_high_obs+self.table_boundary, self.z_low_obs])
         p.addUserDebugLine(
-            lineFromXYZ=[self.x_high_obs, self.y_high_obs, self.z_low_obs],
-            lineToXYZ=[self.x_high_obs, self.y_low_obs, self.z_low_obs])
+            lineFromXYZ=[self.x_high_obs+self.table_boundary, self.y_high_obs+self.table_boundary, self.z_low_obs],
+            lineToXYZ=[  self.x_high_obs+self.table_boundary, self.y_low_obs-self.table_boundary, self.z_low_obs])
         p.addUserDebugLine(
-            lineFromXYZ=[self.x_high_obs, self.y_high_obs, self.z_low_obs],
-            lineToXYZ=[self.x_low_obs, self.y_high_obs, self.z_low_obs])
+            lineFromXYZ=[self.x_high_obs+self.table_boundary, self.y_high_obs+self.table_boundary, self.z_low_obs],
+            lineToXYZ=[   self.x_low_obs-self.table_boundary, self.y_high_obs+self.table_boundary, self.z_low_obs])
 
         baseid = p.loadURDF(os.path.join(self.urdf_path, "base.urdf"), basePosition=[0, 0, -0.05], useFixedBase=1,
                             flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
@@ -176,8 +172,7 @@ class Arm_env(gym.Env):
         return self.get_obs()
 
     def act(self, action):
-
-
+        print(action)
         ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=2000,
                                                 targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
         for i in [0, 2, 3]:
@@ -188,20 +183,12 @@ class Arm_env(gym.Env):
         p.setJointMotorControl2(self.arm_id, 4, p.POSITION_CONTROL, targetPosition=ik_angle[4], force=1.5,
                                 maxVelocity=6.4)
 
-        # gripper_a = action[4]
-        # gripper_a //=0.5001
-
         for i in range(60):
-            self.images = self.get_image()
+            # self.images = self.get_image()
             p.stepSimulation()
             if self.is_render:
                 time.sleep(self.slep_t)
 
-        # get_objects = False
-        # if gripper_a == 1:
-        #     get_objects = self.gripper_control()
-
-        # return gripper_a, get_objects
 
 
     def slider_act(self, a_pos):
@@ -222,7 +209,7 @@ class Arm_env(gym.Env):
                                     targetPositions=[a_gripper, a_gripper])
 
         gripper_a = a_pos[4]
-        gripper_a //=0.5001
+        gripper_a //= 0.5001
 
         if gripper_a == 1:
             self.gripper_control()
@@ -254,21 +241,21 @@ class Arm_env(gym.Env):
                 break
             if tar_pos[0] >= 0.032:
                 flag = False
-                logger.info(f'decided to grasp and the distance is appropriate, but not catch the box, the flag is {flag}')
+                logger.info(
+                    f'decided to grasp and the distance is appropriate, but not catch the box, the flag is {flag}')
                 break
 
         return flag
 
     def step(self, action):
-
         # action: 4 xyzyaw + gripper [0,1]
-        obs = self.get_obs()
 
-        current_pos = obs[:3]# from obs
-        current_yaw = obs[5]# from obs
-        current_pos, current_yaw = np.asarray(current_pos), np.asarray(current_yaw)
-        current_state = np.append(current_pos, current_yaw)
-        action[:4] = action[:4] * self.dv + current_state
+
+        # current_pos = obs[:3]# from obs
+        # current_yaw = obs[5]# from obs
+        # current_pos, current_yaw = np.asarray(current_pos), np.asarray(current_yaw)
+        # current_state = np.append(current_pos, current_yaw)
+        # action[:4] = action[:4] * self.dv + current_state
 
         self.act(action)
 
@@ -284,7 +271,7 @@ class Arm_env(gym.Env):
 
     def reward_func(self, obs, action):
 
-        x,y,z = obs[:3]
+        x, y, z = obs[:3]
         # cur_box_pos = obs[6:6+self.num_objects*3]
         cur_box_pos = obs[6:6 + 3]
         ee_yaw = obs[5]
@@ -292,7 +279,7 @@ class Arm_env(gym.Env):
         obj_yaw = obs[5 + 3 + 3]
 
         gripper_a = action[4]
-        gripper_a //=0.5001
+        gripper_a //= 0.5001
 
         get_objects = None
         if gripper_a == 1:
@@ -310,7 +297,7 @@ class Arm_env(gym.Env):
         top_decision = bool(abs(x - cur_box_pos[0]) < self.x_grasp_interval and
                             abs(y - cur_box_pos[1]) < self.y_grasp_interval and
                             (0.03 < z - cur_box_pos[2]) < 0.15)
-        
+
         grasp_decision = bool(abs(x - cur_box_pos[0]) < self.x_grasp_interval and
                               abs(y - cur_box_pos[1]) < self.y_grasp_interval and
                               abs(z - cur_box_pos[2]) < self.z_grasp_interval)
@@ -326,12 +313,12 @@ class Arm_env(gym.Env):
             self.r += r
             logger.info('next to the box')
             self.terminated = False
-        
+
         if grasp_decision:
             r = 0.01
             self.r += r
             logger.info('this position is appropriate to grasp, keep it!')
-            self. terminated = False
+            self.terminated = False
 
         if top_decision:
             r = 0.001
@@ -461,11 +448,10 @@ if __name__ == '__main__':
     elif mode == 2:  # ! use the random action
         obs = env.reset()
         for _ in range(10000):
-            # a = env.action_space.sample()
-            a = np.random.uniform(0,1,size=5)
+            a = env.action_space.sample()
             print(a)
             state_, reward, done, _ = env.step(a)
             if done:
                 print(f'reward of this try is {reward}\n')
-                time.sleep(2)
+
                 obs = env.reset()

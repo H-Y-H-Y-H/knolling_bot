@@ -60,7 +60,8 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 
 def make_env(seed):
     def _init():
-        env = Arm_env(is_render=False)
+        env = Arm_env(is_render=True)
+        env.slep_t = 1/960
         env.seed(seed)
         return env
 
@@ -79,7 +80,7 @@ if __name__ == '__main__':
     os.makedirs(log_dir, exist_ok=True)
 
     # Create environment
-    env=SubprocVecEnv([make_env(None) for _ in range(4)])
+    env=SubprocVecEnv([make_env(None) for _ in range(1)])
     env=VecMonitor(env,log_dir)
     # Instantiate the agent
     model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=log_dir)
@@ -93,10 +94,11 @@ if __name__ == '__main__':
 
     num_epoch = 100
     num_steps = 500
+    best_r = -np.inf
     for epoch in range(num_epoch):
         print(f'epoch:{num_epoch}')
         model.learn(total_timesteps=num_steps)
-        mean_reward, std_reward = evaluate_policy(model, num_episodes=3)
+        mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=3)
 
         if best_r < mean_reward:
             best_r = mean_reward
