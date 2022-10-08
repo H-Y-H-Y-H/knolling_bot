@@ -20,7 +20,7 @@ logger = EasyLog(log_level=logging.INFO)
 
 class Arm_env(gym.Env):
 
-    def __init__(self, is_render=True, num_objects=1, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
+    def __init__(self,max_step, is_render=True, num_objects=1, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
                  z_grasp_accuracy=0.2):
 
         self.kImageSize = {'width': 480, 'height': 480}
@@ -36,7 +36,7 @@ class Arm_env(gym.Env):
         self.y_low_obs = -0.15
         self.y_high_obs = 0.15
         self.z_low_obs = 0.005
-        self.z_high_obs = 0.08
+        self.z_high_obs = 0.05
         self.x_grasp_interval = (self.x_high_obs - self.x_low_obs) * x_grasp_accuracy
         self.y_grasp_interval = (self.y_high_obs - self.y_low_obs) * y_grasp_accuracy
         self.z_grasp_interval = (self.z_high_obs - self.z_low_obs) * z_grasp_accuracy
@@ -47,6 +47,7 @@ class Arm_env(gym.Env):
         self.gripper_high_obs = 0.4
         self.obs = np.zeros(19)
         self.table_boundary = 0.05
+        self.max_step = max_step
 
         self.friction = 0.99
         self.num_objects = num_objects
@@ -109,7 +110,7 @@ class Arm_env(gym.Env):
                                             high=np.ones(19) * np.inf,
                                             dtype=np.float32)
         self.seed()
-        self.reset()
+
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -144,9 +145,9 @@ class Arm_env(gym.Env):
                                  flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
         textureId = p.loadTexture(os.path.join(self.urdf_path, "table/table.png"))
-        p.changeDynamics(baseid, -1, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
-        p.changeDynamics(self.arm_id, 7, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
-        p.changeDynamics(self.arm_id, 8, lateralFriction=self.friction, spinningFriction=0.02, rollingFriction=0.002)
+        p.changeDynamics(baseid, -1, lateralFriction=self.friction)
+        p.changeDynamics(self.arm_id, 7, lateralFriction=self.friction)
+        p.changeDynamics(self.arm_id, 8, lateralFriction=self.friction)
         p.changeVisualShape(baseid, -1, rgbaColor=[1, 1, 1, 1], textureUniqueId=textureId)
 
         # Generate the pos and orin of objects randomly.
@@ -173,7 +174,7 @@ class Arm_env(gym.Env):
         return self.get_obs()
 
     def act(self, action):
-        print(action)
+        # print(self.step_counter, action)
         ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=2000,
                                                 targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
         for i in [0, 2, 3]:
@@ -276,6 +277,8 @@ class Arm_env(gym.Env):
         r, done = self.reward_func(obs, action)
 
         self.step_counter += 1
+        if self.step_counter >= self.max_step:
+            done = True
 
         return obs, r, done, {}
 
@@ -283,7 +286,7 @@ class Arm_env(gym.Env):
 
         x, y, z = obs[:3]
         # cur_box_pos = obs[6:6+self.num_objects*3]
-        cur_box_pos = obs[6:6 + 3]
+        cur_box_pos = obs[6:(6 + 3)]
         ee_yaw = obs[5]
         # box_yaw = obs[5 + self.num_objects * 3 + 3]
         obj_yaw = obs[5 + 3 + 3]
@@ -345,21 +348,14 @@ class Arm_env(gym.Env):
         #     self.terminated = True
         self.terminated = False
 
-        if abs(x - cur_box_pos[0]) < np.inf:
-            r = (1 - abs(x - cur_box_pos[0])) * 0.01
-            self.r += r
-            # logger.info('next to x')
-            self.terminated = False
-        if abs(y - cur_box_pos[1]) < np.inf:
-            r = (1 - abs(y - cur_box_pos[1])) * 0.01
-            self.r += r
-            # logger.info('next to y')
-            self.terminated = False
-        if abs(z - cur_box_pos[2]) < np.inf:
-            r = (1 - abs(z - cur_box_pos[2] - 0.03)) * 0.1
-            self.r += r
-            # logger.info('next to z')
-            self.terminated = False
+
+        # X Y rewards
+        r = (1 - np.sum(abs(obs[:2] - cur_box_pos[:2]))) * 0.01
+        self.r += r
+
+        # r = (1 - abs(z - cur_box_pos[2] - 0.03)) * 0.1
+        # self.r += r
+
 
         # if distance < 0.03:
         #     r = 0.0001
@@ -381,7 +377,7 @@ class Arm_env(gym.Env):
 
 
         if abs(obj_yaw - ee_yaw) < 0.05:
-            r = 0.0001
+            r = 0.001
             self.r += r
             logger.debug('the yaw is same')
             self.terminated = False
@@ -394,13 +390,13 @@ class Arm_env(gym.Env):
         elif boundary:
             r = -1
             logger.info('hit the border')
-            print(f'xyz is {x},{y},{z}')
+            # print(f'xyz is {x},{y},{z}')
             self.terminated = True
 
         elif get_objects == True:
             r = 10
             logger.info('get the box, the reward is 10!')
-            time.sleep(3)
+            # time.sleep(3)
             self.terminated = True
 
         # elif self.decision_flag == False:
@@ -469,7 +465,7 @@ class Arm_env(gym.Env):
 
 if __name__ == '__main__':
 
-    env = Arm_env(is_render=True, num_objects=1)
+    env = Arm_env(max_step = 3, is_render=True, num_objects=1)
 
     mode = 2
 
