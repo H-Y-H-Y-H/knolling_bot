@@ -350,11 +350,15 @@ class Arm_env(gym.Env):
 
 
         # X Y rewards
-        r = (1 - np.sum(abs(obs[:2] - cur_box_pos[:2]))) * 0.01
-        self.r += r
-
-        # r = (1 - abs(z - cur_box_pos[2] - 0.03)) * 0.1
+        # r = (1 - np.sum(abs(obs[:2] - cur_box_pos[:2]))) * 0.1
         # self.r += r
+        r = (1 - abs(x - cur_box_pos[0])) * 1
+        self.r += r
+        # r = (1 - abs(y - cur_box_pos[1])) * 1
+        # self.r += r
+
+        r = (1 - abs(z - cur_box_pos[2] - 0.03)) * 0.1
+        self.r += r
 
 
         # if distance < 0.03:
@@ -377,7 +381,7 @@ class Arm_env(gym.Env):
 
 
         if abs(obj_yaw - ee_yaw) < 0.05:
-            r = 0.001
+            r = 0.01
             self.r += r
             logger.debug('the yaw is same')
             self.terminated = False
@@ -388,7 +392,7 @@ class Arm_env(gym.Env):
             self.terminated = True
 
         elif boundary:
-            r = -1
+            r = -5
             logger.info('hit the border')
             # print(f'xyz is {x},{y},{z}')
             self.terminated = True
