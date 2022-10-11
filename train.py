@@ -25,7 +25,7 @@ if __name__ == '__main__':
         log_dir = "models/" + current_file_name
         os.makedirs(log_dir, exist_ok=True)
 
-        env = Arm_env(max_step = MAX_STEP, is_render=False)
+        env = Arm_env(max_step = MAX_STEP, is_render=True)
         env.slep_t = 0
 
         # model = PPO.load(log_path + "best_model", env)

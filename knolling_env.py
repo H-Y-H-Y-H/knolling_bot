@@ -206,7 +206,7 @@ class Arm_env(gym.Env):
             p.stepSimulation()
             # time.sleep(0.02)
             if self.is_render:
-                time.sleep(0.02)
+                time.sleep(self.slep_t)
 
 
     def slider_act(self, a_pos):
@@ -286,14 +286,14 @@ class Arm_env(gym.Env):
         # action[:4] = action[:4] * self.dv + current_state
 
         self.act(action)
-        print(f'the action is {action}')
+        # print(f'the action is {action}')
 
         obs = self.get_obs()
-        print(f'the ee is {obs[:3]}')
+        # print(f'the ee is {obs[:3]}')
         if obs[0] < 0:
             np.savetxt('test_data')
             print('OMG')
-        print(f'the box is {obs[6:9]}')
+        # print(f'the box is {obs[6:9]}')
 
         # ! determine whether the distance is appropriate
 
@@ -375,19 +375,14 @@ class Arm_env(gym.Env):
         #     self.terminated = True
         self.terminated = False
 
-
-        # X Y rewards
-        # r = (1 - np.sum(abs(obs[:2] - cur_box_pos[:2]))) * 0.1
-        # self.r += r
-        # print(f'ee_pos {obs[:3]}')
-        # print(f'box_pos {obs[6:9]}')
         # r = ((self.x_high_obs - self.x_low_obs) / 3 - abs(x - cur_box_pos[0])) * 5
         # self.r += r
-        r1 = ((self.x_high_obs - self.x_low_obs) / 3 - abs(x - cur_box_pos[0])) * 5
+        # r1 = ((self.x_high_obs - self.x_low_obs) / 3 - abs(x - cur_box_pos[0])) * 5
+        #
+        # r2 = ((self.y_high_obs - self.y_low_obs) / 3 - abs(y - cur_box_pos[1])) * 5
+        #
+        # r3 = ((self.z_high_obs - self.z_low_obs) / 3 - abs(z - cur_box_pos[2] - 0.03)) * 50
 
-        r2 = ((self.y_high_obs - self.y_low_obs) / 3 - abs(y - cur_box_pos[1])) * 5
-
-        r3 = ((self.z_high_obs - self.z_low_obs) / 3 - abs(z - cur_box_pos[2] - 0.03)) * 50
 
         # if distance < 0.03:
         #     r = 0.0001
@@ -444,12 +439,10 @@ class Arm_env(gym.Env):
         else:
             r = 0
 
-        reward_ = r1 + r2 + r3 + r
-
-        # if self.terminated:
-        #     print(f'the total reward is {reward_}')
-        print(r1, r2, r3)
-        # print(f'the total reward is {reward_}')
+        cube_pos =np.copy( obs[6:9])
+        cube_pos[2] += 0.03 # cube height: 0.03 m
+        reward_ = np.linalg.norm(obs[:3] - cube_pos)
+        print("step reward", reward_)
 
         return reward_, self.terminated
 
@@ -542,10 +535,10 @@ if __name__ == '__main__':
     elif mode == 2:  # ! use the random action
         obs = env.reset()
         for _ in range(10000):
-            # a = env.action_space.sample()
-            a = [0.05, -0.15, 0.005, 0.8985989, 0.4]
+            a = env.action_space.sample()
+            # a = [0.05, -0.15, 0.005, 0.8985989, 0.4]
             state_, reward, done, _ = env.step(a)
 
-            time.sleep(100)
+            # time.sleep(100)
             if done:
                 obs = env.reset()
