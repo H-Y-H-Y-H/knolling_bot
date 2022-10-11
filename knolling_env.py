@@ -1,3 +1,4 @@
+from pickle import FALSE
 import time
 import logging
 from xml.etree.ElementTree import TreeBuilder
@@ -31,6 +32,9 @@ class Arm_env(gym.Env):
         self.pybullet_path = pd.getDataPath()
         self.is_render = is_render
 
+        self.ik_low = [-1.57, -1.57, -1.57, -1.57, -1.57, -10, -10]
+        self.ik_high = [1.57, 1.57, 1.57, 1.57, 1.57, 10, 10]
+
         self.x_low_obs = 0.05
         self.x_high_obs = 0.3
         self.y_low_obs = -0.15
@@ -41,8 +45,8 @@ class Arm_env(gym.Env):
         self.y_grasp_interval = (self.y_high_obs - self.y_low_obs) * y_grasp_accuracy
         self.z_grasp_interval = (self.z_high_obs - self.z_low_obs) * z_grasp_accuracy
 
-        self.yaw_low_obs = - np.pi / 2
-        self.yaw_high_obs = np.pi / 2
+        self.yaw_low_obs = - np.pi / 2.1
+        self.yaw_high_obs = np.pi / 2.1
         self.gripper_low_obs = 0
         self.gripper_high_obs = 0.4
         self.obs = np.zeros(19)
@@ -56,7 +60,7 @@ class Arm_env(gym.Env):
         self.ik_space = np.asarray([0.3, 0.4, 0.06, np.pi])  # x, y, z, yaw
         self.ik_space_shift = np.asarray([0, -0.2, 0, -np.pi / 2])
 
-        self.slep_t = 1 / 120
+        self.slep_t = 1 / 50
         self.joints_index = [0, 1, 2, 3, 4, 7, 8]
         # 5 6 9不用管，固定的！
         self.init_joint_positions = [0, 0, -1.57, 0, 0, 0, 0, 0, 0, 0]
@@ -118,7 +122,6 @@ class Arm_env(gym.Env):
 
     def reset(self):
 
-        self.r = 0
         self.step_counter = 0
 
         p.resetSimulation()
@@ -175,21 +178,35 @@ class Arm_env(gym.Env):
 
     def act(self, action):
         # print(self.step_counter, action)
-        ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=2000,
+        self.ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=3000,
+                                                lowerLimits=self.ik_low, upperLimits=self.ik_high, 
+                                                jointRanges=[3.14, 3.14, 3.14, 3.14, 3.14, 20, 20],
+                                                restPoses=[0, -0.48627556248779596, 1.1546790099090924, 0.7016159753143177, 0, 0, 0],
                                                 targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
+        # self.ik_angle_2 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=3000,
+        #                                         lowerLimits=self.ik_low, upperLimits=self.ik_high, 
+        #                                         targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
+        # self.ik_angle = np.asarray(self.ik_angle)
+        # self.ik_angle_2 = np.asarray(self.ik_angle_2)
+        # if np.sum(self.ik_angle - self.ik_angle) > 0.01:
+        #     print('the calculation of ik is wrong!')
+
+
+        
+        p.setJointMotorControl2(self.arm_id, 4, p.POSITION_CONTROL, targetPosition=self.ik_angle[4], force=15,
+                                maxVelocity=32)
         for i in [0, 2, 3]:
-            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=ik_angle[i], force=4.1,
-                                    maxVelocity=4.8)
-        p.setJointMotorControl2(self.arm_id, 1, p.POSITION_CONTROL, targetPosition=ik_angle[1], force=8.2,
-                                maxVelocity=4.8)
-        p.setJointMotorControl2(self.arm_id, 4, p.POSITION_CONTROL, targetPosition=ik_angle[4], force=1.5,
-                                maxVelocity=6.4)
+            p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=self.ik_angle[i], force=41,
+                                    maxVelocity=24)
+        p.setJointMotorControl2(self.arm_id, 1, p.POSITION_CONTROL, targetPosition=self.ik_angle[1], force=82,
+                                maxVelocity=24)
 
         for i in range(40):
             # self.images = self.get_image()
             p.stepSimulation()
+            # time.sleep(0.02)
             if self.is_render:
-                time.sleep(self.slep_t)
+                time.sleep(0.02)
 
 
     def slider_act(self, a_pos):
@@ -269,8 +286,14 @@ class Arm_env(gym.Env):
         # action[:4] = action[:4] * self.dv + current_state
 
         self.act(action)
+        print(f'the action is {action}')
 
         obs = self.get_obs()
+        print(f'the ee is {obs[:3]}')
+        if obs[0] < 0:
+            np.savetxt('test_data')
+            print('OMG')
+        print(f'the box is {obs[6:9]}')
 
         # ! determine whether the distance is appropriate
 
@@ -284,6 +307,7 @@ class Arm_env(gym.Env):
 
     def reward_func(self, obs, action):
 
+        reward_ = 0
         x, y, z = obs[:3]
         # cur_box_pos = obs[6:6+self.num_objects*3]
         cur_box_pos = obs[6:(6 + 3)]
@@ -294,35 +318,35 @@ class Arm_env(gym.Env):
         gripper_a = action[4]
         gripper_a //= 0.5001
 
-        get_objects = None
-        if gripper_a == 1:
-            get_objects = self.gripper_control()
-        if get_objects == True:
-            test_distance = 0.03
-            test_pos = [x, y, z + test_distance]
-            ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=test_pos, maxNumIterations=2000,
-                                                targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
-            for i in [0, 2, 3]:
-                p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=ik_angle[i], force=4.1,
-                                        maxVelocity=4.8)
-            p.setJointMotorControl2(self.arm_id, 1, p.POSITION_CONTROL, targetPosition=ik_angle[1], force=8.2,
-                                    maxVelocity=4.8)
-            p.setJointMotorControl2(self.arm_id, 4, p.POSITION_CONTROL, targetPosition=ik_angle[4], force=1.5,
-                                    maxVelocity=6.4)
-            for i in range(60):
-                # self.images = self.get_image()
-                p.stepSimulation()
-                if self.is_render:
-                    time.sleep(self.slep_t)
+        # get_objects = None
+        # if gripper_a == 1:
+        #     get_objects = self.gripper_control()
+        # if get_objects == True:
+        #     test_distance = 0.03
+        #     test_pos = [x, y, z + test_distance]
+        #     ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=test_pos, maxNumIterations=2000,
+        #                                         targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
+        #     for i in [0, 2, 3]:
+        #         p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=ik_angle[i], force=4.1,
+        #                                 maxVelocity=4.8)
+        #     p.setJointMotorControl2(self.arm_id, 1, p.POSITION_CONTROL, targetPosition=ik_angle[1], force=8.2,
+        #                             maxVelocity=4.8)
+        #     p.setJointMotorControl2(self.arm_id, 4, p.POSITION_CONTROL, targetPosition=ik_angle[4], force=1.5,
+        #                             maxVelocity=6.4)
+        #     for i in range(60):
+        #         # self.images = self.get_image()
+        #         p.stepSimulation()
+        #         if self.is_render:
+        #             time.sleep(self.slep_t)
 
-            new_obs = self.get_obs()
-            new_box_pos = new_obs[6:6 + 3]
-            if (new_box_pos[2] - cur_box_pos[2]) > test_distance - 0.01:
-                get_objects = True
-            else:
-                get_objects = False
-                logger.info('This "True" signal is unreal, the flag is still false!')
-                time.sleep(3)
+        #     new_obs = self.get_obs()
+        #     new_box_pos = new_obs[6:6 + 3]
+        #     if (new_box_pos[2] - cur_box_pos[2]) > test_distance - 0.01:
+        #         get_objects = True
+        #     else:
+        #         get_objects = False
+        #         logger.info('This "True" signal is unreal, the flag is still false!')
+        #         time.sleep(3)
 
 
         ##!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -330,9 +354,12 @@ class Arm_env(gym.Env):
         distance = np.linalg.norm(obs[:3] - obs[6:(6 + 3)])
         logger.debug(f'the distance between ee and box is {distance}')
 
-        boundary = bool(x < self.x_low_obs or x > self.x_high_obs
-                        or y < self.y_low_obs or y > self.y_high_obs
-                        or z < self.z_low_obs or z > self.z_high_obs)
+        boundary = bool(x < self.x_low_obs - self.table_boundary or x > self.x_high_obs + self.table_boundary
+                        or y < self.y_low_obs - self.table_boundary or y > self.y_high_obs + self.table_boundary
+                        or z < self.z_low_obs - 0.005 or z > self.z_high_obs + self.table_boundary)
+        box_boundary = bool(cur_box_pos[0] < self.x_low_obs - self.table_boundary or cur_box_pos[0] > self.x_high_obs + self.table_boundary
+                        or cur_box_pos[1] < self.y_low_obs - self.table_boundary or cur_box_pos[1] > self.y_high_obs + self.table_boundary
+                        or cur_box_pos[2] < self.z_low_obs - self.table_boundary or cur_box_pos[2] > self.z_high_obs + self.table_boundary)
 
         top_decision = bool(abs(x - cur_box_pos[0]) < self.x_grasp_interval and
                             abs(y - cur_box_pos[1]) < self.y_grasp_interval and
@@ -352,14 +379,15 @@ class Arm_env(gym.Env):
         # X Y rewards
         # r = (1 - np.sum(abs(obs[:2] - cur_box_pos[:2]))) * 0.1
         # self.r += r
-        r = (1 - abs(x - cur_box_pos[0])) * 1
-        self.r += r
-        # r = (1 - abs(y - cur_box_pos[1])) * 1
+        # print(f'ee_pos {obs[:3]}')
+        # print(f'box_pos {obs[6:9]}')
+        # r = ((self.x_high_obs - self.x_low_obs) / 3 - abs(x - cur_box_pos[0])) * 5
         # self.r += r
+        r1 = ((self.x_high_obs - self.x_low_obs) / 3 - abs(x - cur_box_pos[0])) * 5
 
-        r = (1 - abs(z - cur_box_pos[2] - 0.03)) * 0.1
-        self.r += r
+        r2 = ((self.y_high_obs - self.y_low_obs) / 3 - abs(y - cur_box_pos[1])) * 5
 
+        r3 = ((self.z_high_obs - self.z_low_obs) / 3 - abs(z - cur_box_pos[2] - 0.03)) * 50
 
         # if distance < 0.03:
         #     r = 0.0001
@@ -382,26 +410,31 @@ class Arm_env(gym.Env):
 
         if abs(obj_yaw - ee_yaw) < 0.05:
             r = 0.01
-            self.r += r
             logger.debug('the yaw is same')
             self.terminated = False
 
-        if get_objects == False:
-            r = -1
-            logger.info('grasp failed, the reward is -1!')
-            self.terminated = True
+        # if get_objects == False:
+        #     r = -1
+        #     logger.info('grasp failed, the reward is -1!')
+        #     self.terminated = True
 
         elif boundary:
-            r = -5
+            r = -1
             logger.info('hit the border')
+            print(obs[:3])
             # print(f'xyz is {x},{y},{z}')
             self.terminated = True
-
-        elif get_objects == True:
-            r = 10
-            logger.info('get the box, the reward is 10!')
-            # time.sleep(3)
+        
+        elif box_boundary:
+            r = -3
+            logger.info('the box hit the border')
             self.terminated = True
+
+        # elif get_objects == True:
+        #     r = 10
+        #     logger.info('get the box, the reward is 10!')
+        #     # time.sleep(3)
+        #     self.terminated = True
 
         # elif self.decision_flag == False:
         #     r = -1
@@ -411,11 +444,14 @@ class Arm_env(gym.Env):
         else:
             r = 0
 
-        self.r += r
-        if self.terminated:
-            print(f'the total reward is {self.r}')
+        reward_ = r1 + r2 + r3 + r
 
-        return self.r, self.terminated
+        # if self.terminated:
+        #     print(f'the total reward is {reward_}')
+        print(r1, r2, r3)
+        # print(f'the total reward is {reward_}')
+
+        return reward_, self.terminated
 
     def get_obs(self):
         # Get end-effector obs
@@ -506,8 +542,10 @@ if __name__ == '__main__':
     elif mode == 2:  # ! use the random action
         obs = env.reset()
         for _ in range(10000):
-            a = env.action_space.sample()
-            # print(a)
+            # a = env.action_space.sample()
+            a = [0.05, -0.15, 0.005, 0.8985989, 0.4]
             state_, reward, done, _ = env.step(a)
+
+            time.sleep(100)
             if done:
                 obs = env.reset()
