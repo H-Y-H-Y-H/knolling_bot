@@ -3,7 +3,6 @@ import time
 import logging
 from xml.etree.ElementTree import TreeBuilder
 
-import cv2
 from easy_logx.easy_logx import EasyLog
 from gym import spaces
 from gym.utils import seeding
@@ -21,7 +20,7 @@ logger = EasyLog(log_level=logging.INFO)
 
 class Arm_env(gym.Env):
 
-    def __init__(self, max_step, is_render=True, num_objects=1, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
+    def __init__(self, max_step, is_render=False, num_objects=1, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
                  z_grasp_accuracy=0.2):
 
         self.kImageSize = {'width': 480, 'height': 480}
@@ -435,7 +434,7 @@ class Arm_env(gym.Env):
 
         cube_pos = np.copy(obs[6:9])
         cube_pos[2] += 0.03 # cube height: 0.03 m
-        reward_ = np.linalg.norm(obs[:3] - cube_pos)
+        reward_ = 0.40 - np.linalg.norm(obs[:3] - cube_pos)
         print("step reward", reward_)
 
         return reward_, self.terminated
@@ -492,7 +491,7 @@ class Arm_env(gym.Env):
 
 if __name__ == '__main__':
 
-    env = Arm_env(max_step=3, is_render=True, num_objects=1)
+    env = Arm_env(max_step=3, is_render=False, num_objects=1)
 
     mode = 2
 
