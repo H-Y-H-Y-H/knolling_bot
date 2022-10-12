@@ -1,14 +1,9 @@
 from knolling_env import Arm_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.results_plotter import load_results, ts2xy, plot_results
-from stable_baselines3.common.vec_env.vec_monitor import VecMonitor
-from stable_baselines3.common.vec_env import DummyVecEnv,SubprocVecEnv,VecEnv
 import os
 import pathlib
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 
 def run():
@@ -18,7 +13,7 @@ def run():
 if __name__ == '__main__':
     MAX_STEP = 6
 
-    mode = 0
+    mode = 1
     if mode == 0:
 
         current_file_name = pathlib.Path(__file__).stem
@@ -28,8 +23,8 @@ if __name__ == '__main__':
         env = Arm_env(max_step = MAX_STEP, is_render=True)
         env.slep_t = 0
 
-        # model = PPO.load(log_path + "best_model", env)
-        model = PPO("MlpPolicy", env,n_steps=MAX_STEP, verbose = 0)
+        # model = PPO.load(pre_trained_model_path + "best_model", env)
+        model = PPO("MlpPolicy", env,n_steps=256, verbose = 0)
 
         num_epoch = 10000
         num_steps = MAX_STEP * 100
@@ -63,9 +58,9 @@ if __name__ == '__main__':
 
     if mode == 1:
         
-        N_ID = 0
+        N_ID = 1
         log_path= "models/trainrun%d/"%N_ID
-        env = Arm_env(max_step = MAX_STEP * 5, is_render=False)
+        env = Arm_env(max_step = MAX_STEP * 5, is_render=True)
 
         model = PPO.load(log_path + "best_model", env)
         obs = env.reset()

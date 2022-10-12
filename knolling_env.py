@@ -21,7 +21,7 @@ logger = EasyLog(log_level=logging.INFO)
 
 class Arm_env(gym.Env):
 
-    def __init__(self,max_step, is_render=True, num_objects=1, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
+    def __init__(self, max_step, is_render=True, num_objects=1, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
                  z_grasp_accuracy=0.2):
 
         self.kImageSize = {'width': 480, 'height': 480}
@@ -115,7 +115,6 @@ class Arm_env(gym.Env):
                                             dtype=np.float32)
         self.seed()
 
-
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
@@ -129,17 +128,17 @@ class Arm_env(gym.Env):
 
         # Draw workspace lines
         p.addUserDebugLine(
-            lineFromXYZ=[ self.x_low_obs-self.table_boundary, self.y_low_obs-self.table_boundary, self.z_low_obs],
-            lineToXYZ=[  self.x_high_obs+self.table_boundary, self.y_low_obs-self.table_boundary, self.z_low_obs])
+            lineFromXYZ=[self.x_low_obs - self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs],
+            lineToXYZ=[self.x_high_obs + self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs])
         p.addUserDebugLine(
-            lineFromXYZ=[ self.x_low_obs-self.table_boundary, self.y_low_obs -self.table_boundary, self.z_low_obs],
-            lineToXYZ=  [ self.x_low_obs-self.table_boundary, self.y_high_obs+self.table_boundary, self.z_low_obs])
+            lineFromXYZ=[self.x_low_obs - self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs],
+            lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
         p.addUserDebugLine(
-            lineFromXYZ=[self.x_high_obs+self.table_boundary, self.y_high_obs+self.table_boundary, self.z_low_obs],
-            lineToXYZ=[  self.x_high_obs+self.table_boundary, self.y_low_obs-self.table_boundary, self.z_low_obs])
+            lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
+            lineToXYZ=[self.x_high_obs + self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs])
         p.addUserDebugLine(
-            lineFromXYZ=[self.x_high_obs+self.table_boundary, self.y_high_obs+self.table_boundary, self.z_low_obs],
-            lineToXYZ=[   self.x_low_obs-self.table_boundary, self.y_high_obs+self.table_boundary, self.z_low_obs])
+            lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
+            lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
 
         baseid = p.loadURDF(os.path.join(self.urdf_path, "base.urdf"), basePosition=[0, 0, -0.05], useFixedBase=1,
                             flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
@@ -179,10 +178,11 @@ class Arm_env(gym.Env):
     def act(self, action):
         # print(self.step_counter, action)
         self.ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=3000,
-                                                lowerLimits=self.ik_low, upperLimits=self.ik_high, 
-                                                jointRanges=[3.14, 3.14, 3.14, 3.14, 3.14, 20, 20],
-                                                restPoses=[0, -0.48627556248779596, 1.1546790099090924, 0.7016159753143177, 0, 0, 0],
-                                                targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
+                                                     lowerLimits=self.ik_low, upperLimits=self.ik_high,
+                                                     jointRanges=[3.14, 3.14, 3.14, 3.14, 3.14, 20, 20],
+                                                     restPoses=[0, -0.48627556248779596, 1.1546790099090924,
+                                                                0.7016159753143177, 0, 0, 0],
+                                                     targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
         # self.ik_angle_2 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=3000,
         #                                         lowerLimits=self.ik_low, upperLimits=self.ik_high, 
         #                                         targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
@@ -191,8 +191,6 @@ class Arm_env(gym.Env):
         # if np.sum(self.ik_angle - self.ik_angle) > 0.01:
         #     print('the calculation of ik is wrong!')
 
-
-        
         p.setJointMotorControl2(self.arm_id, 4, p.POSITION_CONTROL, targetPosition=self.ik_angle[4], force=15,
                                 maxVelocity=32)
         for i in [0, 2, 3]:
@@ -207,7 +205,6 @@ class Arm_env(gym.Env):
             # time.sleep(0.02)
             if self.is_render:
                 time.sleep(self.slep_t)
-
 
     def slider_act(self, a_pos):
 
@@ -278,7 +275,6 @@ class Arm_env(gym.Env):
     def step(self, action):
         # action: 4 xyzyaw + gripper [0,1]
 
-
         # current_pos = obs[:3]# from obs
         # current_yaw = obs[5]# from obs
         # current_pos, current_yaw = np.asarray(current_pos), np.asarray(current_yaw)
@@ -290,9 +286,7 @@ class Arm_env(gym.Env):
 
         obs = self.get_obs()
         # print(f'the ee is {obs[:3]}')
-        if obs[0] < 0:
-            np.savetxt('test_data')
-            print('OMG')
+
         # print(f'the box is {obs[6:9]}')
 
         # ! determine whether the distance is appropriate
@@ -348,7 +342,6 @@ class Arm_env(gym.Env):
         #         logger.info('This "True" signal is unreal, the flag is still false!')
         #         time.sleep(3)
 
-
         ##!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # distance = np.linalg.norm(obs[0:3] - obs[6:6+self.num_objects*3])
         distance = np.linalg.norm(obs[:3] - obs[6:(6 + 3)])
@@ -357,9 +350,12 @@ class Arm_env(gym.Env):
         boundary = bool(x < self.x_low_obs - self.table_boundary or x > self.x_high_obs + self.table_boundary
                         or y < self.y_low_obs - self.table_boundary or y > self.y_high_obs + self.table_boundary
                         or z < self.z_low_obs - 0.005 or z > self.z_high_obs + self.table_boundary)
-        box_boundary = bool(cur_box_pos[0] < self.x_low_obs - self.table_boundary or cur_box_pos[0] > self.x_high_obs + self.table_boundary
-                        or cur_box_pos[1] < self.y_low_obs - self.table_boundary or cur_box_pos[1] > self.y_high_obs + self.table_boundary
-                        or cur_box_pos[2] < self.z_low_obs - self.table_boundary or cur_box_pos[2] > self.z_high_obs + self.table_boundary)
+        box_boundary = bool(cur_box_pos[0] < self.x_low_obs - self.table_boundary or cur_box_pos[
+            0] > self.x_high_obs + self.table_boundary
+                            or cur_box_pos[1] < self.y_low_obs - self.table_boundary or cur_box_pos[
+                                1] > self.y_high_obs + self.table_boundary
+                            or cur_box_pos[2] < self.z_low_obs - self.table_boundary or cur_box_pos[
+                                2] > self.z_high_obs + self.table_boundary)
 
         top_decision = bool(abs(x - cur_box_pos[0]) < self.x_grasp_interval and
                             abs(y - cur_box_pos[1]) < self.y_grasp_interval and
@@ -383,7 +379,6 @@ class Arm_env(gym.Env):
         #
         # r3 = ((self.z_high_obs - self.z_low_obs) / 3 - abs(z - cur_box_pos[2] - 0.03)) * 50
 
-
         # if distance < 0.03:
         #     r = 0.0001
         #     self.r += r
@@ -402,7 +397,6 @@ class Arm_env(gym.Env):
         #     logger.info('on the top of box')
         #     self.terminated = False
 
-
         if abs(obj_yaw - ee_yaw) < 0.05:
             r = 0.01
             logger.debug('the yaw is same')
@@ -419,7 +413,7 @@ class Arm_env(gym.Env):
             print(obs[:3])
             # print(f'xyz is {x},{y},{z}')
             self.terminated = True
-        
+
         elif box_boundary:
             r = -3
             logger.info('the box hit the border')
@@ -439,7 +433,7 @@ class Arm_env(gym.Env):
         else:
             r = 0
 
-        cube_pos =np.copy( obs[6:9])
+        cube_pos = np.copy(obs[6:9])
         cube_pos[2] += 0.03 # cube height: 0.03 m
         reward_ = np.linalg.norm(obs[:3] - cube_pos)
         print("step reward", reward_)
@@ -498,7 +492,7 @@ class Arm_env(gym.Env):
 
 if __name__ == '__main__':
 
-    env = Arm_env(max_step = 3, is_render=True, num_objects=1)
+    env = Arm_env(max_step=3, is_render=True, num_objects=1)
 
     mode = 2
 
