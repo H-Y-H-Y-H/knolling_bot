@@ -3,6 +3,7 @@ import time
 import logging
 from xml.etree.ElementTree import TreeBuilder
 
+import cv2
 from easy_logx.easy_logx import EasyLog
 from gym import spaces
 from gym.utils import seeding
@@ -20,7 +21,7 @@ logger = EasyLog(log_level=logging.INFO)
 
 class Arm_env(gym.Env):
 
-    def __init__(self, max_step, is_render=False, num_objects=1, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
+    def __init__(self, max_step, is_render=True, num_objects=1, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
                  z_grasp_accuracy=0.2):
 
         self.kImageSize = {'width': 480, 'height': 480}
@@ -34,20 +35,22 @@ class Arm_env(gym.Env):
         self.ik_low = [-1.57, -1.57, -1.57, -1.57, -1.57, -10, -10]
         self.ik_high = [1.57, 1.57, 1.57, 1.57, 1.57, 10, 10]
 
-        self.x_low_obs = 0.05
-        self.x_high_obs = 0.3
-        self.y_low_obs = -0.15
-        self.y_high_obs = 0.15
-        self.z_low_obs = 0.005
-        self.z_high_obs = 0.05
+        self.low_scale = np.array([0.05, -0.15, 0.005, - np.pi / 2, 0])
+        self.high_scale = np.array([0.3, 0.15, 0.05, np.pi / 2, 0.4])
+        self.low_act = -np.ones(5)
+        self.high_act = np.ones(5)
+        self.x_low_obs = self.low_scale[0]
+        self.x_high_obs = self.high_scale[0]
+        self.y_low_obs = self.low_scale[1]
+        self.y_high_obs = self.high_scale[1]
+        self.z_low_obs = self.low_scale[2]
+        self.z_high_obs = self.high_scale[2]
+
+
         self.x_grasp_interval = (self.x_high_obs - self.x_low_obs) * x_grasp_accuracy
         self.y_grasp_interval = (self.y_high_obs - self.y_low_obs) * y_grasp_accuracy
         self.z_grasp_interval = (self.z_high_obs - self.z_low_obs) * z_grasp_accuracy
 
-        self.yaw_low_obs = - np.pi / 2.1
-        self.yaw_high_obs = np.pi / 2.1
-        self.gripper_low_obs = 0
-        self.gripper_high_obs = 0.4
         self.obs = np.zeros(19)
         self.table_boundary = 0.05
         self.max_step = max_step
@@ -104,14 +107,13 @@ class Arm_env(gym.Env):
                                      cameraTargetPosition=[0.1, 0, 0.4])
         p.setAdditionalSearchPath(pd.getDataPath())
 
-        self.action_space = spaces.Box(
-            low=np.array([self.x_low_obs, self.y_low_obs, self.z_low_obs, self.yaw_low_obs, self.gripper_low_obs]),
-            high=np.array(
-                [self.x_high_obs, self.y_high_obs, self.z_high_obs, self.yaw_high_obs, self.gripper_high_obs]),
-            dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.ones(19) * np.inf,
-                                            high=np.ones(19) * np.inf,
-                                            dtype=np.float32)
+        # self.action_space = spaces.Box(
+        #     low=np.array([self.x_low_obs, self.y_low_obs, self.z_low_obs, self.yaw_low_obs, self.gripper_low_obs]),
+        #     high=np.array(
+        #         [self.x_high_obs, self.y_high_obs, self.z_high_obs, self.yaw_high_obs, self.gripper_high_obs]),
+        #     dtype=np.float32)
+        self.action_space = spaces.Box(low=self.low_act, high=self.high_act, dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.ones(19) * np.inf, high=np.ones(19) * np.inf, dtype=np.float32)
         self.seed()
 
     def seed(self, seed=None):
@@ -174,17 +176,18 @@ class Arm_env(gym.Env):
             p.stepSimulation()
         return self.get_obs()
 
-    def act(self, action):
-        # print(self.step_counter, action)
-        self.ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=3000,
+    def act(self, action_):
+        # print(self.step_counter, action_)
+        action_ = (action_ - self.low_act) / (self.high_act - self.low_act) * (self.high_scale - self.low_scale) + self.low_scale
+        self.ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action_[:3], maxNumIterations=3000,
                                                      lowerLimits=self.ik_low, upperLimits=self.ik_high,
                                                      jointRanges=[3.14, 3.14, 3.14, 3.14, 3.14, 20, 20],
                                                      restPoses=[0, -0.48627556248779596, 1.1546790099090924,
                                                                 0.7016159753143177, 0, 0, 0],
-                                                     targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
-        # self.ik_angle_2 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action[:3], maxNumIterations=3000,
+                                                     targetOrientation=p.getQuaternionFromEuler([0, 1.57, action_[3]]))
+        # self.ik_angle_2 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=action_[:3], maxNumIterations=3000,
         #                                         lowerLimits=self.ik_low, upperLimits=self.ik_high, 
-        #                                         targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
+        #                                         targetOrientation=p.getQuaternionFromEuler([0, 1.57, action_[3]]))
         # self.ik_angle = np.asarray(self.ik_angle)
         # self.ik_angle_2 = np.asarray(self.ik_angle_2)
         # if np.sum(self.ik_angle - self.ik_angle) > 0.01:
@@ -201,7 +204,7 @@ class Arm_env(gym.Env):
         for i in range(40):
             # self.images = self.get_image()
             p.stepSimulation()
-            # time.sleep(0.02)
+            time.sleep(0.02)
             if self.is_render:
                 time.sleep(self.slep_t)
 
@@ -271,17 +274,17 @@ class Arm_env(gym.Env):
 
         return flag
 
-    def step(self, action):
-        # action: 4 xyzyaw + gripper [0,1]
+    def step(self, action_):
+        # action_: 4 xyzyaw + gripper [0,1]
 
         # current_pos = obs[:3]# from obs
         # current_yaw = obs[5]# from obs
         # current_pos, current_yaw = np.asarray(current_pos), np.asarray(current_yaw)
         # current_state = np.append(current_pos, current_yaw)
-        # action[:4] = action[:4] * self.dv + current_state
+        # action_[:4] = action_[:4] * self.dv + current_state
 
-        self.act(action)
-        # print(f'the action is {action}')
+        self.act(action_)
+        # print(f'the action_ is {action_}')
 
         obs = self.get_obs()
         # print(f'the ee is {obs[:3]}')
@@ -290,7 +293,7 @@ class Arm_env(gym.Env):
 
         # ! determine whether the distance is appropriate
 
-        r, done = self.reward_func(obs, action)
+        r, done = self.reward_func(obs, action_)
 
         self.step_counter += 1
         if self.step_counter >= self.max_step:
@@ -298,7 +301,7 @@ class Arm_env(gym.Env):
 
         return obs, r, done, {}
 
-    def reward_func(self, obs, action):
+    def reward_func(self, obs, action_):
 
         reward_ = 0
         x, y, z = obs[:3]
@@ -308,7 +311,7 @@ class Arm_env(gym.Env):
         # box_yaw = obs[5 + self.num_objects * 3 + 3]
         obj_yaw = obs[5 + 3 + 3]
 
-        gripper_a = action[4]
+        gripper_a = action_[4]
         gripper_a //= 0.5001
 
         # get_objects = None
@@ -318,7 +321,7 @@ class Arm_env(gym.Env):
         #     test_distance = 0.03
         #     test_pos = [x, y, z + test_distance]
         #     ik_angle = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=test_pos, maxNumIterations=2000,
-        #                                         targetOrientation=p.getQuaternionFromEuler([0, 1.57, action[3]]))
+        #                                         targetOrientation=p.getQuaternionFromEuler([0, 1.57, action_[3]]))
         #     for i in [0, 2, 3]:
         #         p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=ik_angle[i], force=4.1,
         #                                 maxVelocity=4.8)
@@ -434,7 +437,7 @@ class Arm_env(gym.Env):
 
         cube_pos = np.copy(obs[6:9])
         cube_pos[2] += 0.03 # cube height: 0.03 m
-        reward_ = 0.40 - np.linalg.norm(obs[:3] - cube_pos)
+        reward_ = np.linalg.norm(obs[:3] - cube_pos)
         print("step reward", reward_)
 
         return reward_, self.terminated
@@ -491,7 +494,7 @@ class Arm_env(gym.Env):
 
 if __name__ == '__main__':
 
-    env = Arm_env(max_step=3, is_render=False, num_objects=1)
+    env = Arm_env(max_step=3, is_render=True, num_objects=1)
 
     mode = 2
 
@@ -525,7 +528,7 @@ if __name__ == '__main__':
 
                 # epoch_r += r
 
-    elif mode == 2:  # ! use the random action
+    elif mode == 2:  # ! use the random action_
         obs = env.reset()
         for _ in range(10000):
             a = env.action_space.sample()
