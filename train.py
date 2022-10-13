@@ -13,7 +13,7 @@ def run():
 if __name__ == '__main__':
     MAX_STEP = 6
 
-    mode = 1
+    mode = 0
     if mode == 0:
 
         current_file_name = pathlib.Path(__file__).stem
@@ -24,7 +24,7 @@ if __name__ == '__main__':
         env.slep_t = 0
 
         # model = PPO.load(pre_trained_model_path + "best_model", env)
-        model = PPO("MlpPolicy", env,n_steps=256, verbose = 0)
+        model = PPO("MlpPolicy", env, n_steps=256, verbose = 0)
 
         num_epoch = 10000
         num_steps = MAX_STEP * 100
@@ -77,7 +77,3 @@ if __name__ == '__main__':
                 print("fail")
                 obs = env.reset()
                 # break
-
-
-
-
