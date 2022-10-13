@@ -15,12 +15,13 @@ if __name__ == '__main__':
 
     mode = 0
     if mode == 0:
-
+        # ID 1: no ori, ID 2: with ori reward
+        N_ID = 2
         current_file_name = pathlib.Path(__file__).stem
         log_dir = "models/" + current_file_name
         os.makedirs(log_dir, exist_ok=True)
 
-        env = Arm_env(max_step = MAX_STEP, is_render=True)
+        env = Arm_env(max_step = MAX_STEP, is_render=False)
         env.slep_t = 0
 
         # model = PPO.load(pre_trained_model_path + "best_model", env)
@@ -32,7 +33,7 @@ if __name__ == '__main__':
 
         mean_reward_list = []
         std_reward_list = []
-        N_ID = 1
+
         model_save_path = log_dir+"run%d"%N_ID
         try:
             os.mkdir(model_save_path)
@@ -51,8 +52,8 @@ if __name__ == '__main__':
                 best_r = mean_reward
                 model.save(model_save_path + "/best_model")
 
-                np.savetxt(model_save_path+'mean_r.csv',np.asarray(mean_reward_list))
-                np.savetxt(model_save_path+'std_r.csv',np.asarray(std_reward_list))
+                np.savetxt(model_save_path+'/mean_r.csv',np.asarray(mean_reward_list))
+                np.savetxt(model_save_path+'/std_r.csv',np.asarray(std_reward_list))
 
         print('finished')
 
@@ -73,7 +74,7 @@ if __name__ == '__main__':
             # print(f'box_pos {obs[6:9]}')
             print(reward)
 
-            if done == True:
+            if done == True or i%MAX_STEP == 0:
                 print("fail")
                 obs = env.reset()
                 # break

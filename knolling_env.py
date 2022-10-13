@@ -204,7 +204,7 @@ class Arm_env(gym.Env):
         for i in range(40):
             # self.images = self.get_image()
             p.stepSimulation()
-            time.sleep(0.02)
+
             if self.is_render:
                 time.sleep(self.slep_t)
 
@@ -435,10 +435,12 @@ class Arm_env(gym.Env):
         else:
             r = 0
 
-        cube_pos = np.copy(obs[6:9])
-        cube_pos[2] += 0.03 # cube height: 0.03 m
-        reward_ = np.linalg.norm(obs[:3] - cube_pos)
-        print("step reward", reward_)
+        cube_state = np.copy(obs[[6,7,8,11]])
+        ee_state = np.copy(obs[[0,1,2,5]])
+        cube_state[2] += 0.03 # cube height: 0.03 m
+
+        reward_ = 0.4 - np.linalg.norm(cube_state - ee_state)
+        # print("step reward", reward_)
 
         return reward_, self.terminated
 
