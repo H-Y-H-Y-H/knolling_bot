@@ -247,20 +247,20 @@
     </inertial>
   </link>
   <link
-    name="g_bar">
+    name="gripper_bar">
     <inertial>
       <origin
-        xyz="-0.00054849 -0.011792 0.002321"
+        xyz="0.0077886 -0.00065929 0.0023098"
         rpy="0 0 0" />
       <mass
         value="0.030878" />
       <inertia
-        ixx="3.2974E-06"
-        ixy="-2.8032E-07"
-        ixz="-3.8438E-07"
-        iyy="2.432E-05"
-        iyz="-8.7854E-09"
-        izz="2.2575E-05" />
+        ixx="2.4324E-05"
+        ixy="-9.6408E-12"
+        ixz="6.6763E-18"
+        iyy="3.286E-06"
+        iyz="4.8256E-12"
+        izz="2.2583E-05" />
     </inertial>
     <visual>
       <origin
@@ -268,7 +268,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="meshes/g_bar.STL" />
+          filename="meshes/gripper_bar.STL" />
       </geometry>
       <material
         name="">
@@ -282,31 +282,38 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="meshes/g_bar.STL" />
+          filename="meshes/gripper_bar.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="g_bar2grlink" type="fixed">
-    <axis xyz="1 0 0"/>
-    <origin rpy="0 0 1.570796325" xyz="0.043 0 0"/>
-    <parent link="gripper_link"/>
-    <child link="g_bar"/>
+  <joint
+    name="g_par2motor"
+    type="fixed">
+    <origin
+      xyz="0.004 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="ee_arm_link" />
+    <child
+      link="gripper_bar" />
+    <axis
+      xyz="0 0 0" />
   </joint>
   <link
     name="left_gripper">
     <inertial>
       <origin
-        xyz="0 0 0"
+        xyz="-0.01704 0.009464 0"
         rpy="0 0 0" />
       <mass
-        value="0.010894" />
+        value="0.013875" />
       <inertia
-        ixx="2.4557E-06"
-        ixy="-2.6243E-09"
-        ixz="8.6127E-10"
-        iyy="1.0261E-06"
-        iyz="4.701E-07"
-        izz="2.9214E-06" />
+        ixx="1.3505E-06"
+        ixy="3.4242E-07"
+        ixz="-3.1339E-11"
+        iyy="3.7791E-06"
+        iyz="-6.4052E-12"
+        izz="2.9221E-06" />
     </inertial>
     <visual>
       <origin
@@ -321,6 +328,11 @@
         <color
           rgba="0.3 0.3 0.3 1" />
       </material>
+      <material
+        name="">
+        <color
+          rgba="0.3 0.3 0.3 1" />
+      </material>
     </visual>
     <collision>
       <origin
@@ -330,41 +342,46 @@
         <mesh
           filename="meshes/left_gripper.STL" />
       </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.3 0.3 0.3 1" />
+      </material>
     </collision>
   </link>
   <joint
-    name="left_base"
+    name="left_gripper2bar"
     type="prismatic">
     <origin
-      xyz="-0.051912 -0.022694 -0.00099436"
-      rpy="-0.013332 1.5509 0" />
+      xyz="0.018 0.054842 0"
+      rpy="0 -1.570796325 1.570796325" />
     <parent
-      link="g_bar" />
+      link="gripper_bar" />
     <child
       link="left_gripper" />
     <axis
       xyz="0 0 1" />
     <limit
       lower="0"
-      upper="0.032"
-      effort="10"
+      upper="0.03202"
+      effort="5"
       velocity="1" />
   </joint>
   <link
     name="right_gripper">
     <inertial>
       <origin
-        xyz="0 0 0"
+        xyz="0.01704 0.009464 0"
         rpy="0 0 0" />
       <mass
-        value="0.010894" />
+        value="0.013875" />
       <inertia
-        ixx="2.4557E-06"
-        ixy="-2.6243E-09"
-        ixz="8.6127E-10"
-        iyy="1.0261E-06"
-        iyz="4.701E-07"
-        izz="2.9214E-06" />
+        ixx="1.3505E-06"
+        ixy="-3.4242E-07"
+        ixz="-3.1213E-11"
+        iyy="3.7791E-06"
+        iyz="6.4326E-12"
+        izz="2.9221E-06" />
     </inertial>
     <visual>
       <origin
@@ -391,27 +408,27 @@
     </collision>
   </link>
   <joint
-    name="right_base"
+    name="right_gripper2bar"
     type="prismatic">
     <origin
-      xyz="0.053123 -0.021293 0.0010993"
-      rpy="-3.1283 -1.5509 3.1416" />
+      xyz="0.018 -0.054991 0"
+      rpy="0 1.570796325 1.570796325" />
     <parent
-      link="g_bar" />
+      link="gripper_bar" />
     <child
       link="right_gripper" />
     <axis
       xyz="0 0 1" />
     <limit
       lower="0"
-      upper="0.032"
-      effort="10"
+      upper="0.03202"
+      effort="5"
       velocity="1" />
   </joint>
-    <joint name="ee_gripper" type="fixed">
+  <joint name="ee_gripper" type="fixed">
     <axis xyz="1 0 0"/>
-    <origin rpy="0 0 0" xyz="0 -0.06615 0"/>
-    <parent link="g_bar"/>
+    <origin rpy="0 0 0" xyz="0.06615 0 0"/>
+    <parent link="gripper_bar"/>
     <child link="ee_gripper_link"/>
   </joint>
   <link name="ee_gripper_link">
