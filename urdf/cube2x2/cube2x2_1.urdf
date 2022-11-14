@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="2x2">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="0 0.0054525 0"
+        rpy="0 0 0" />
+      <mass
+        value="0.0024405" />
+      <inertia
+        ixx="7.0324E-08"
+        ixy="1.0097E-25"
+        ixz="-2.0195E-25"
+        iyy="9.1175E-08"
+        iyz="6.6943E-26"
+        izz="7.0301E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://cube2x2_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0 1 0 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://cube2x2_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+</robot>
