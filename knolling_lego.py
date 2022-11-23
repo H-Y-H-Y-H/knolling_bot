@@ -6,6 +6,8 @@ import pybullet_data as pd
 import os
 import numpy as np
 import random
+random.seed(22345)
+np.random.seed(2022)
 import math
 import cv2
 import logging
@@ -20,8 +22,7 @@ logger = EasyLog(log_level=logging.INFO)
 
 class Arm_env():
     
-    def __init__(self, is_render=True, num_2x2=0, num_2x3=0, num_2x4=0, num_pencil=0, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
-                 z_grasp_accuracy=0.2, order_flag = 'center', kinds = 4):
+    def __init__(self, is_render=True, num_2x2=0, num_2x3=0, num_2x4=0, num_pencil=0, order_flag='center', kinds=4, grasp_order=None):
 
         self.kImageSize = {'width': 480, 'height': 480}
         self.urdf_path = 'urdf'
@@ -30,8 +31,9 @@ class Arm_env():
 
         self.ik_low = [-1.57, -1.57, -1.57, -1.57, -1.57, -10, -10]
         self.ik_high = [1.57, 1.57, 1.57, 1.57, 1.57, 10, 10]
+        self.num_motor = 5
 
-        self.low_scale = np.array([0.05, -0.15, 0.005, - np.pi / 2, 0])
+        self.low_scale = np.array([0.05, -0.15, 0.006, - np.pi / 2, 0])
         self.high_scale = np.array([0.3, 0.15, 0.05, np.pi / 2, 0.4])
         self.low_act = -np.ones(5)
         self.high_act = np.ones(5)
@@ -42,28 +44,23 @@ class Arm_env():
         self.z_low_obs = self.low_scale[2]
         self.z_high_obs = self.high_scale[2]
 
-        self.x_grasp_interval = (self.x_high_obs - self.x_low_obs) * x_grasp_accuracy
-        self.y_grasp_interval = (self.y_high_obs - self.y_low_obs) * y_grasp_accuracy
-        self.z_grasp_interval = (self.z_high_obs - self.z_low_obs) * z_grasp_accuracy
-
         self.table_boundary = 0.05
 
-        self.friction = 0.99
+        self.lateral_friction = 1
+        self.spinning_friction = 1
+        self.rolling_friction = 0
         self.num_2x2 = num_2x2
         self.num_2x3 = num_2x3
         self.num_2x4 = num_2x4
         self.num_pencil = num_pencil
         self.order_flag = order_flag
         self.kinds = kinds
-        # self.action_space = np.asarray([np.pi/3, np.pi / 6, np.pi / 4, np.pi / 2, np.pi])
-        # self.shift = np.asarray([-np.pi/6, -np.pi/12, 0, 0, 0])
-        self.ik_space = np.asarray([0.3, 0.4, 0.06, np.pi])  # x, y, z, yaw
-        self.ik_space_shift = np.asarray([0, -0.2, 0, -np.pi / 2])
-
-        self.slep_t = 1 / 50
-        self.joints_index = [0, 1, 2, 3, 4, 7, 8]
+        self.grasp_order = grasp_order
         # 5 6 9不用管，固定的！
-        self.init_joint_positions = [0, 0, -1.57, 0, 0, 0, 0, 0, 0, 0]
+
+        #! the parameters of reorder
+        self.gap_item = 0.03
+        self.gap_block = 0.02
 
         if self.is_render:
             p.connect(p.GUI)
@@ -85,7 +82,7 @@ class Arm_env():
             ],  # the direction is from the light source position to the origin of the world frame.
         }
         self.view_matrix = p.computeViewMatrixFromYawPitchRoll(
-            cameraTargetPosition=[0.16, 0, 0],
+            cameraTargetPosition=[0.15, 0, 0],
             distance=0.4,
             yaw=90,
             pitch=-90,
@@ -107,8 +104,8 @@ class Arm_env():
 
     def get_image(self, gray_flag=False, resize_flag=False):
         # reset camera
-        (width, length, image, _, _) = p.getCameraImage(width=960,
-                                                        height=720,
+        (width, length, image, _, _) = p.getCameraImage(width=640,
+                                                        height=480,
                                                         viewMatrix=self.view_matrix,
                                                         projectionMatrix=self.projection_matrix,
                                                         renderer=p.ER_BULLET_HARDWARE_OPENGL)
@@ -120,10 +117,11 @@ class Arm_env():
 
         return image
 
-    def reset(self):
+    def reset(self, random_flag):
+        
 
         p.resetSimulation()
-        p.setGravity(0, 0, -10)
+        p.setGravity(0, 0, -9.8)
 
         # Draw workspace lines
         p.addUserDebugLine(
@@ -146,46 +144,92 @@ class Arm_env():
                                  flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
         textureId = p.loadTexture(os.path.join(self.urdf_path, "table/table.png"))
-        p.changeDynamics(baseid, -1, lateralFriction=self.friction)
-        p.changeDynamics(self.arm_id, 7, lateralFriction=self.friction)
-        p.changeDynamics(self.arm_id, 8, lateralFriction=self.friction)
+        p.changeDynamics(baseid, -1)
+        p.changeDynamics(self.arm_id, 7, 
+                        lateralFriction=self.lateral_friction, 
+                        spinningFriction=self.spinning_friction, 
+                        rollingFriction=self.rolling_friction, 
+                        # restitution=0.9,
+                        # linearDamping=0, 
+                        # angularDamping=0, 
+                        frictionAnchor=True)
+        p.changeDynamics(self.arm_id, 8, 
+                        lateralFriction=self.lateral_friction, 
+                        spinningFriction=self.spinning_friction, 
+                        rollingFriction=self.rolling_friction, 
+                        # restitution=0.9,
+                        linearDamping=0, 
+                        angularDamping=0, 
+                        frictionAnchor=True)
         p.changeVisualShape(baseid, -1, rgbaColor=[1, 1, 1, 1], textureUniqueId=textureId)
 
         #! there are pos and ori before processing.
         items_sort = sort(self.num_2x2, self.num_2x3, self.num_2x4, self.num_pencil)
-        self.xyz_list, self.pos_list, self.ori_list, self.all_index = items_sort.get_data(self.kinds)
-        print(f'this is chaotic xyz list\n {self.xyz_list}')
-        print(f'this is chaotic index list\n {self.all_index}')
-        restrict = np.max(self.xyz_list)
 
-        num_list = np.array([self.num_2x2, self.num_2x3, self.num_2x4, self.num_pencil])
-        # self.all_index = np.asarray(self.all_index)
+        if random_flag == False: #! use the pos and ori from real world
 
-        self.obj_idx = []
-        last_pos = np.array([[0, 0, 1]])
-        for i in range(len(num_list)):
+            self.xyz_list, self.pos_list, self.ori_list, self.all_index = items_sort.get_data(self.kinds)
 
-            for j in range(num_list[i]):
+        elif random_flag == True: #! use the pos and ori from the simulator
 
-                rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs), 0.01])
-                check_list = np.zeros(last_pos.shape[0])
-                while 0 in check_list:
-                    rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs), 0.01]
-                    for z in range(last_pos.shape[0]):
-                        if np.linalg.norm(last_pos[z] - rdm_pos) < restrict:
-                            check_list[z] = 0
-                        else:
-                            check_list[z] = 1
+            self.xyz_list, _, _, self.all_index = items_sort.get_data(self.kinds)
+            self.pos_list = []
+            self.ori_list = []
 
-                last_pos = np.append(last_pos, [rdm_pos], axis= 0)
-                ori = [0, 0, random.uniform(-math.pi / 2, math.pi / 2)]
+            restrict = np.max(self.xyz_list)
+            num_list = np.array([self.num_2x2, self.num_2x3, self.num_2x4, self.num_pencil])
+            # self.all_index = np.asarray(self.all_index)
 
-                self.obj_idx.append(p.loadURDF(os.path.join(self.urdf_path, f"item_{i}/{j}.urdf"), basePosition=rdm_pos,
-                                        baseOrientation=p.getQuaternionFromEuler(ori), useFixedBase=False,
-                                        flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-        self.images = self.get_image()
-        # while 1:
-        #     p.stepSimulation()
+            self.obj_idx = []
+            last_pos = np.array([[0, 0, 1]])
+            for i in range(len(num_list)):
+
+                for j in range(num_list[i]):
+
+                    rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs), 0.006])
+                    ori = [0, 0, random.uniform(-math.pi / 2, math.pi / 2)]
+                    
+                    check_list = np.zeros(last_pos.shape[0])
+
+                    while 0 in check_list:
+                        rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs), random.uniform(self.y_low_obs, self.y_high_obs), 0.006]
+                        for z in range(last_pos.shape[0]):
+                            if np.linalg.norm(last_pos[z] - rdm_pos) < restrict:
+                                check_list[z] = 0
+                            else:
+                                check_list[z] = 1
+
+                    last_pos = np.append(last_pos, [rdm_pos], axis= 0)
+
+                    self.obj_idx.append(p.loadURDF(os.path.join(self.urdf_path, f"item_{i}/{j}.urdf"), basePosition=rdm_pos,
+                                            baseOrientation=p.getQuaternionFromEuler(ori), useFixedBase=False,
+                                            flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+                    
+                    self.pos_list.append(rdm_pos)
+                    self.ori_list.append(ori)
+                    
+            self.pos_list = np.asarray(self.pos_list)
+            self.ori_list = np.asarray(self.ori_list)
+            print(self.obj_idx)
+            for i in range(len(self.obj_idx)):
+                p.changeDynamics(self.obj_idx[i], -1, 
+                                lateralFriction=self.lateral_friction, 
+                                spinningFriction=self.spinning_friction,
+                                rollingFriction=self.rolling_friction, 
+                                # restitution=0.5,
+                                # linearDamping=0, 
+                                # angularDamping=0, 
+                                frictionAnchor=True)
+
+        #! set the initial pos of the arm
+        ik_angles0 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=[0.05, 0, 0.066],
+                                                maxNumIterations=200,
+                                                targetOrientation=p.getQuaternionFromEuler([0, math.pi/2, 0]))
+        for motor_index in range(self.num_motor):
+            p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL, targetPosition = ik_angles0[motor_index], maxVelocity=7)
+        for i in range(60):
+            p.stepSimulation()
+        # self.images = self.get_image()
 
         return self.images
 
@@ -215,9 +259,9 @@ class Arm_env():
                                  flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
         textureId = p.loadTexture(os.path.join(self.urdf_path, "table/table.png"))
-        p.changeDynamics(baseid, -1, lateralFriction=self.friction)
-        p.changeDynamics(self.arm_id, 7, lateralFriction=self.friction)
-        p.changeDynamics(self.arm_id, 8, lateralFriction=self.friction)
+        p.changeDynamics(baseid, -1, lateralFriction=self.lateral_friction, frictionAnchor=True)
+        p.changeDynamics(self.arm_id, 7, lateralFriction=self.lateral_friction, frictionAnchor=True)
+        p.changeDynamics(self.arm_id, 8, lateralFriction=self.lateral_friction, frictionAnchor=True)
         p.changeVisualShape(baseid, -1, rgbaColor=[1, 1, 1, 1], textureUniqueId=textureId)
 
         items_sort = sort(self.num_2x2, self.num_2x3, self.num_2x4, self.num_pencil)
@@ -228,13 +272,13 @@ class Arm_env():
         #! the tidy configuration
         self.items_pos_list, self.items_ori_list = self.reorder_items()
         # print(self.items_pos_list) 
+        
         print(self.items_ori_list)
 
         if self.order_flag == 'center':
 
-            # print(self.all_index)
-
-            trans_pos = [0.1, 0, 0.01]
+            bias_pos = [0.1, 0, 0.006]
+            self.items_pos_list = self.items_pos_list + bias_pos
             # none_list = np.array([[0]])
             num_list = np.array([self.num_2x2, self.num_2x3, self.num_2x4, self.num_pencil])
             # self.all_index = np.asarray(self.all_index)
@@ -247,7 +291,7 @@ class Arm_env():
                     continue
                 items_names[f'index_{i}'] = self.all_index[i]
                 items_names[f'num_{i}'] = len(items_names[f'index_{i}'])
-                items_names[f'pos_{i}'] = self.items_pos_list[items_names[f'index_{i}'], :] + trans_pos
+                items_names[f'pos_{i}'] = self.items_pos_list[items_names[f'index_{i}'], :]
                 items_names[f'ori_{i}'] = self.items_ori_list[items_names[f'index_{i}'], :]
                 # print(items_names[f'pos_{i}'])
                 for j in range(num_list[i]):
@@ -261,7 +305,7 @@ class Arm_env():
 
         return self.images
 
-    def manipulator_operation(self):
+    def manipulator_operation_actual(self):
     
         print(f'*********************************')
         print(f'this is the input pos before calculation\n {self.pos_list}')
@@ -394,7 +438,7 @@ class Arm_env():
 
                         for _ in range(200):
                             p.stepSimulation()
-                            time.sleep(1/48)
+                            # time.sleep(1/48)
 
                         real_pos = conn.recv(1024)
                         real_pos = np.frombuffer(real_pos, dtype=np.float32)
@@ -403,10 +447,424 @@ class Arm_env():
                         if Save_real_pos == True:
                             real_pos_list.append(real_pos)
 
+    def check_desk(self, manipulator_pos_before, manipulator_ori_before, manipulator_pos_after, manipulator_ori_after):
+
+        clean_flag = False
+        restrict = np.max(self.xyz_list)
+        gripper_width = 0.03
+        barricade_pos = []
+        barricade_index = []
+
+        for i in range(len(manipulator_pos_before)):
+            for j in range(len(manipulator_pos_after)):
+                if np.linalg.norm(manipulator_pos_after[j] - manipulator_pos_before[i]) < restrict:
+                    if i not in barricade_index:
+                        print('We need to clean the desktop to provide an enough space')
+                        barricade_pos.append(manipulator_pos_before[i])
+                        barricade_index.append(i)
+                    clean_flag = True
+        barricade_pos = np.asarray(barricade_pos)
+        print('this is the barricade pos', barricade_pos)
+
+        x_high = np.max(manipulator_pos_after[:, 0])
+        x_low = np.min(manipulator_pos_after[:, 0])
+        y_high = np.max(manipulator_pos_after[:, 1])
+        y_low = np.min(manipulator_pos_after[:, 1])
+        p.addUserDebugLine(lineFromXYZ=[x_low, y_low, 0.006], lineToXYZ=[x_high, y_low, 0.006])
+        p.addUserDebugLine(lineFromXYZ=[x_low, y_low, 0.006], lineToXYZ=[x_low, y_high, 0.006])
+        p.addUserDebugLine(lineFromXYZ=[x_high, y_high, 0.006], lineToXYZ=[x_high, y_low, 0.006])
+        p.addUserDebugLine(lineFromXYZ=[x_high, y_high, 0.006], lineToXYZ=[x_low, y_high, 0.006])
+
+        if clean_flag == True:
+            
+            #! pos
+            offset_low = np.array([0, 0, -0.004])
+            offset_high = np.array([0, 0, 0.06])
+            #! ori
+            rest_ori = np.array([0, 1.57, 0])
+            offset_right = np.array([0, 0, math.pi/4])
+            offset_left = np.array([0, 0, -math.pi/4])
+            #! direction
+            if y_high - y_low > x_high - x_low:
+                offset_horizontal = np.array([np.max(self.xyz_list) - 0.01, 0, 0])
+                offset_rectangle = np.array([0, 0, math.pi/2])
+                direction = 'x'
+            else:
+                offset_horizontal = np.array([0, np.max(self.xyz_list) - 0.01, 0])
+                offset_rectangle = np.array([0, 0, 0])
+                direction = 'y'
+
+            trajectory_pos_list = []
+            trajectory_ori_list = []
+            for i in range(len(barricade_index)):
+                if direction == 'x':
+                    terminate = np.array([x_high, barricade_pos[i][1], barricade_pos[i][2]])
+                elif direction == 'y':
+                    terminate = np.array([barricade_pos[i][0], y_high, barricade_pos[i][2]])
+                trajectory_pos_list.append(np.array([0.032, 0.032]))
+                trajectory_ori_list.append(rest_ori + offset_rectangle)
+                trajectory_pos_list.append(barricade_pos[i] + offset_high - offset_horizontal)
+                trajectory_ori_list.append(rest_ori + offset_rectangle)
+                trajectory_pos_list.append(barricade_pos[i] + offset_low - offset_horizontal)
+                trajectory_ori_list.append(rest_ori + offset_rectangle)
+                trajectory_pos_list.append(offset_low + offset_horizontal + terminate)
+                trajectory_ori_list.append(rest_ori + offset_rectangle)
+                trajectory_pos_list.append(offset_high + offset_horizontal + terminate)
+                trajectory_ori_list.append(rest_ori + offset_rectangle)
+                trajectory_pos_list.append(np.array([0.025, 0.025]))
+                trajectory_ori_list.append(rest_ori + offset_rectangle)
+
+            last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
+            last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
+            new_pos_before = []
+            new_ori_before = []
+            for j in range(len(trajectory_pos_list)):
+
+                if len(trajectory_pos_list[j]) == 3:
+                    if trajectory_pos_list[j][0] == last_pos[0] and trajectory_pos_list[j][1] == last_pos[1]:
+                        self.trajectory_vertical(last_pos, trajectory_pos_list[j], trajectory_ori_list[j])
+                    else:
+                        # print('test', trajectory_pos_list[j])
+                        self.trajectory_horizontal(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
+                    last_pos = np.copy(trajectory_pos_list[j])
+                    last_ori = np.copy(trajectory_ori_list[j])
+
+                elif len(trajectory_pos_list[j]) == 2:
+                    self.gripper_control(trajectory_pos_list[j])
+            
+            for i in range(len(manipulator_pos_before)):
+                new_pos_before.append(p.getBasePositionAndOrientation(self.obj_idx[i])[0])
+                new_ori_before.append(p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.obj_idx[i])[1]))
+            
+            manipulator_pos_before = []
+            manipulator_ori_before = []
+            for i in self.grasp_order:
+                for j in range(len(self.all_index[i])):
+                    manipulator_pos_before.append(new_pos_before[self.all_index[i][j]])
+                    manipulator_ori_before.append(new_ori_before[self.all_index[i][j]])
+            manipulator_pos_before = np.asarray(manipulator_pos_before)
+            manipulator_ori_before = np.asarray(manipulator_ori_before)
+        else:
+            pass
+
+        return manipulator_pos_before, manipulator_ori_before
+
+    def check_crowded(self, manipulator_pos_before, manipulator_ori_before, manipulator_pos_after, manipulator_ori_after, new_xyz_list):
+
+        clean_flag = False
+        restrict = np.max(self.xyz_list) - 0.01
+        gripper_width = 0.033
+        gripper_height = 0.023
+        crowded_pos = []
+        crowded_ori = []
+        crowded_index = []
+
+        for i in range(len(manipulator_pos_before)):
+            for j in range(i+1, len(manipulator_pos_before)):
+                if np.linalg.norm(manipulator_pos_before[j] - manipulator_pos_before[i]) < restrict:
+                    if i not in crowded_index:
+                        print('We need to clean the items surrounding it to provide an enough space')
+                        crowded_pos.append(manipulator_pos_before[i])
+                        crowded_ori.append(manipulator_ori_before[i])
+                        crowded_index.append(i)
+                    clean_flag = True
+        crowded_pos = np.asarray(crowded_pos)
+        print(crowded_pos)
+
+        if clean_flag == True:
+            
+            #! pos
+            offset_low = np.array([0, 0, -0.004])
+            offset_high = np.array([0, 0, 0.06])
+            #! ori
+            rest_ori = np.array([0, 1.57, 0])
+            # offset_right = np.array([0, 0, math.pi/4])
+            # offset_left = np.array([0, 0, -math.pi/4])
+
+            trajectory_pos_list = []
+            trajectory_ori_list = []
+            for i in range(len(crowded_pos)):
+
+                print(new_xyz_list[crowded_index[i]])
+                x = new_xyz_list[crowded_index[i]][0] / 2
+                y = new_xyz_list[crowded_index[i]][1] / 2
+                print(manipulator_ori_before[crowded_index[i]])
+                theta = manipulator_ori_before[crowded_index[i]]
+                vertex_1 = np.array([(x*math.cos(theta)) - (y*math.sin(theta)), (x*math.sin(theta)) + (y*math.cos(theta)), 0])
+                vertex_2 = np.array([(-x*math.cos(theta)) - (y*math.sin(theta)), (-x*math.sin(theta)) + (y*math.cos(theta)), 0])
+                vertex_3 = np.array([(-x*math.cos(theta)) - (-y*math.sin(theta)), (-x*math.sin(theta)) + (-y*math.cos(theta)), 0])
+                vertex_4 = np.array([(x*math.cos(theta)) - (-y*math.sin(theta)), (x*math.sin(theta)) + (-y*math.cos(theta)), 0])
+                point_1 = vertex_1 + np.array([(gripper_width*math.cos(theta)) - (gripper_height*math.sin(theta)), (gripper_width*math.sin(theta)) + (gripper_height*math.cos(theta)), 0])
+                point_2 = vertex_2 + np.array([(-gripper_width*math.cos(theta)) - (gripper_height*math.sin(theta)), (-gripper_width*math.sin(theta)) + (gripper_height*math.cos(theta)), 0])
+                point_3 = vertex_3 + np.array([(-gripper_width*math.cos(theta)) - (-gripper_height*math.sin(theta)), (-gripper_width*math.sin(theta)) + (-gripper_height*math.cos(theta)), 0])
+                point_4 = vertex_4 + np.array([(gripper_width*math.cos(theta)) - (-gripper_height*math.sin(theta)), (gripper_width*math.sin(theta)) + (-gripper_height*math.cos(theta)), 0])
+
+                trajectory_pos_list.append(np.array([0.032, 0.032]))
+                trajectory_ori_list.append(rest_ori)
+                trajectory_pos_list.append(crowded_pos[i] + offset_high + point_1)
+                trajectory_ori_list.append(rest_ori + crowded_ori[i])
+                trajectory_pos_list.append(crowded_pos[i] + offset_low + point_1)
+                trajectory_ori_list.append(rest_ori + crowded_ori[i])
+                trajectory_pos_list.append(crowded_pos[i] + offset_low + point_2)
+                trajectory_ori_list.append(rest_ori + crowded_ori[i])
+                trajectory_pos_list.append(crowded_pos[i] + offset_low + point_3)
+                trajectory_ori_list.append(rest_ori + crowded_ori[i])
+                trajectory_pos_list.append(crowded_pos[i] + offset_low + point_4)
+                trajectory_ori_list.append(rest_ori + crowded_ori[i])
+                trajectory_pos_list.append(crowded_pos[i] + offset_high + point_4)
+                trajectory_ori_list.append(rest_ori + crowded_ori[i])
+                trajectory_pos_list.append(np.array([0.025, 0.025]))
+                trajectory_ori_list.append(rest_ori)
+
+            last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
+            last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
+            new_pos_before = []
+            new_ori_before = []
+            for j in range(len(trajectory_pos_list)):
+
+                if len(trajectory_pos_list[j]) == 3:
+                    if trajectory_pos_list[j][0] == last_pos[0] and trajectory_pos_list[j][1] == last_pos[1]:
+                        self.trajectory_vertical(last_pos, trajectory_pos_list[j], trajectory_ori_list[j])
+                    else:
+                        # print('test', trajectory_pos_list[j])
+                        self.trajectory_horizontal(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
+                    last_pos = np.copy(trajectory_pos_list[j])
+                    last_ori = np.copy(trajectory_ori_list[j])
+
+                elif len(trajectory_pos_list[j]) == 2:
+                    if trajectory_pos_list[j][0] == 1:
+                        self.gripper_control()
+            
+            for i in range(len(manipulator_pos_before)):
+                new_pos_before.append(p.getBasePositionAndOrientation(self.obj_idx[i])[0])
+                new_ori_before.append(p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.obj_idx[i])[1]))
+            
+            manipulator_pos_before = []
+            manipulator_ori_before = []
+            for i in self.grasp_order:
+                for j in range(len(self.all_index[i])):
+                    manipulator_pos_before.append(new_pos_before[self.all_index[i][j]])
+                    manipulator_ori_before.append(new_ori_before[self.all_index[i][j]])
+            manipulator_pos_before = np.asarray(manipulator_pos_before)
+            manipulator_ori_before = np.asarray(manipulator_ori_before)
+        else:
+            pass
+
+        return manipulator_pos_before, manipulator_ori_before
+
+    def gripper_control(self, tar):
+
+        tar = np.array(tar)
+        offset = tar - np.asarray(p.getJointStates(self.arm_id, [7, 8]), dtype=object)[:, 0]
+        print('this is offset', offset)
+        if offset[0] > 0:
+            velocity = [0.01, 0.01]
+            step = [0.032 / 60, 0.032 / 60]
+        elif offset[0] < 0:
+            velocity = [-0.0005, -0.0005]
+            step = [-0.032 / 50, -0.032 / 50]
+
+        while True:
+            cur_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]), dtype=object)[:, 0]
+            # print(cur_pos)
+            tar_pos = np.add(cur_pos, step)
+
+            for i in [7, 8]:
+                p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=tar_pos[0], force=1000)
+            # p.setJointMotorControlArray(self.arm_id, [7, 8], p.POSITION_CONTROL, targetPositions=tar_pos, forces=[1000, 1000])
+            # p.setJointMotorControlArray(self.arm_id, [7, 8], p.VELOCITY_CONTROL, targetVelocities=velocity, forces=[1, 1])
+
+            for i in range(20):
+                p.stepSimulation()
+                # time.sleep(1/960)
+
+            obs_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]), dtype=object)[:, 0]
+            print('this is obs', obs_pos)
+            if abs(obs_pos[0] - obs_pos[1]) > 0.00008:
+                print('there is a gap')
+                for i in [7, 8]:
+                    p.setJointMotorControl2(self.arm_id, i, p.POSITION_CONTROL, targetPosition=obs_pos[0], force=10)
+                for i in range(20):
+                    p.stepSimulation()
+                obs_pos = np.asarray(p.getJointStates(self.arm_id, [7, 8]), dtype=object)[:, 0]
+                print('this is the fixed obs', obs_pos)
+                # time.sleep(1/480)
+
+            if abs(tar[0] - obs_pos[0]) <= 0.001 or abs(tar[1] - obs_pos[1]) <= 0.001:
+                print('this is end obs', obs_pos)
+                print('over1, reach')
+                break
+            # elif obs_pos[0] > 0.02915 and obs_pos[1] > 0.02915:
+            #     print('this is end obs', obs_pos)
+            elif abs(obs_pos[1] - tar_pos[1]) > 0.0004 or abs(obs_pos[0] - tar_pos[0]) > 0.0004:
+                print('this is end obs', obs_pos)
+                print('over2, get')
+                break
+        
+        
+    def trajectory_vertical(self, cur_pos, tar_pos, tar_ori):
+
+        target_pos = np.copy(tar_pos)
+        step = (tar_pos - cur_pos) / 25
+
+        while True:
+            tar_pos = cur_pos + step
+            ik_angles0 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
+                                                    maxNumIterations=200,
+                                                    targetOrientation=p.getQuaternionFromEuler(tar_ori))
+            for motor_index in range(self.num_motor):
+                p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL, targetPosition = ik_angles0[motor_index], maxVelocity=3)
+
+            for i in range(20):
+                p.stepSimulation()
+                # time.sleep(1/480)
+
+            if abs(target_pos[2] - tar_pos[2]) < 0.0001:
+                break
+            cur_pos = tar_pos
+
+    def trajectory_horizontal(self, cur_pos, cur_ori, tar_pos, tar_ori):
+
+        target_pos = np.copy(tar_pos)
+        target_ori = np.copy(tar_ori)
+        step_pos = (tar_pos - cur_pos) / 50
+        step_ori = (tar_ori - cur_ori) / 50
+
+        while True:
+            tar_pos = cur_pos + step_pos
+            tar_ori = cur_ori + step_ori
+            ik_angles0 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
+                                                    maxNumIterations=200,
+                                                    targetOrientation=p.getQuaternionFromEuler(tar_ori))
+            for motor_index in range(self.num_motor):
+                p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL, targetPosition = ik_angles0[motor_index], maxVelocity=3)
+
+            for i in range(20):
+                p.stepSimulation()
+                time.sleep(1/480)
+            if abs(target_pos[0] - tar_pos[0]) < 0.001 and abs(target_pos[1] - tar_pos[1]) < 0.001 and abs(target_ori[2] - tar_ori[2]) < 0.001:
+                break
+            cur_pos = tar_pos
+            cur_ori = tar_ori
+
+    def manipulator_operation_virtual(self):
+
+        manipulator_pos_before = []
+        manipulator_ori_before = []
+        manipulator_pos_after = []
+        manipulator_ori_after = []
+        new_pos_before = []
+        new_ori_before = []
+        new_xyz_list = []
+
+        # print(f'*********************************')
+        # print(f'this is the input pos before calculation\n {self.pos_list}')
+        # print(f'this is the input ori before calculation\n {self.ori_list}')
+        # print(f'this is the input pos after calculation\n {self.items_pos_list}')
+        # print(f'this is the input ori after calculation\n {self.items_ori_list}')
+        # print(f'this is the index of all items based on the order defined above\n {self.all_index}')
+        # print(f'*********************************')
+
+        # for i in range(len(self.all_index)):
+        #     for j in range(len(self.all_index[i])):
+        #         manipulator_pos_after.append(self.items_pos_list[self.all_index[i][j]])
+        #         manipulator_ori_after.append(self.items_ori_list[self.all_index[i][j]])
+
+        # manipulator_pos_after = self.items_pos_list
+        # manipulator_ori_after = self.items_ori_list
+
+        # for i in range(len(self.all_index)):
+        #     for j in range(len(self.all_index[i])):
+        #         manipulator_pos_before.append(self.pos_list[self.all_index[i][j]])
+        #         manipulator_ori_before.append(self.ori_list[self.all_index[i][j]])
+        # print(np.asarray(manipulator_pos_before1))
+
+        for i in range(len(self.obj_idx)):
+            new_pos_before.append(p.getBasePositionAndOrientation(self.obj_idx[i])[0])
+            new_ori_before.append(p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.obj_idx[i])[1]))
+        print(np.asarray(new_pos_before))
+        # for i in range(len(self.all_index)):
+
+        #! change the order of grasping (2x3,2x2,2x4)
+        for i in self.grasp_order:
+            for j in range(len(self.all_index[i])):
+                manipulator_pos_before.append(new_pos_before[self.all_index[i][j]])
+                manipulator_ori_before.append(new_ori_before[self.all_index[i][j]])
+                manipulator_pos_after.append(self.items_pos_list[self.all_index[i][j]])
+                manipulator_ori_after.append(self.items_ori_list[self.all_index[i][j]])
+                new_xyz_list.append(self.xyz_list[self.all_index[i][j]])
+        print(np.asarray(manipulator_pos_before))
+        manipulator_pos_before = np.asarray(manipulator_pos_before)
+        manipulator_ori_before = np.asarray(manipulator_ori_before)
+        manipulator_pos_after = np.asarray(manipulator_pos_after)
+        manipulator_ori_after = np.asarray(manipulator_ori_after)
+        new_xyz_list = np.asarray(new_xyz_list)
+        print(new_xyz_list)
+
+        manipulator_pos_before, manipulator_ori_before = self.check_desk(manipulator_pos_before, manipulator_ori_before, manipulator_pos_after, manipulator_ori_after)
+        # manipulator_pos_before, manipulator_ori_before = self.check_crowded(manipulator_pos_before, manipulator_ori_before, manipulator_pos_after, manipulator_ori_after, new_xyz_list)
+
+        print(f'*********************************')
+        print(f'this is the pos before operation\n {manipulator_pos_before}')
+        print(f'this is the ori before operation\n {manipulator_ori_before}')
+        print(f'this is the pos after operation\n {manipulator_pos_after}')
+        print(f'this is the ori after operation\n {manipulator_ori_after}')
+        print(f'this is the index of all items based on the order defined above\n {self.all_index}')
+        print(f'*********************************')
+
+        rest_pos = np.array([0, 0, 0.05])
+        rest_ori = np.array([0, 1.57, 0])
+        offset_low = np.array([0, 0, -0.008])
+        offset_high = np.array([0, 0, 0.06])
+
+        for i in range(len(self.obj_idx)):
+
+            trajectory_pos_list = [offset_high+manipulator_pos_before[i],
+                                    offset_low+manipulator_pos_before[i],
+                                    [0.032, 0.032],
+                                    offset_high+manipulator_pos_before[i],
+                                    offset_high+manipulator_pos_after[i],
+                                    offset_high+manipulator_pos_after[i],
+                                    offset_low+manipulator_pos_after[i],
+                                    [0.024, 0.024],
+                                    offset_high+manipulator_pos_after[i]]
+
+            trajectory_ori_list = [rest_ori+manipulator_ori_before[i],
+                                    rest_ori+manipulator_ori_before[i],
+                                    [0.032, 0.032],
+                                    rest_ori+manipulator_ori_before[i],
+                                    rest_ori+manipulator_ori_after[i],
+                                    rest_ori+manipulator_ori_after[i],
+                                    rest_ori+manipulator_ori_after[i],
+                                    [0.024, 0.024],
+                                    rest_ori+manipulator_ori_after[i]]
+            last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
+            last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
+
+            for j in range(len(trajectory_pos_list)):
+
+                if len(trajectory_pos_list[j]) == 3:
+                    if trajectory_pos_list[j][0] == last_pos[0] and trajectory_pos_list[j][1] == last_pos[1]:
+                        # print('this is the vertical operation')
+                        self.trajectory_vertical(last_pos, trajectory_pos_list[j], trajectory_ori_list[j])
+                    else:
+                        # print('test', trajectory_pos_list[j])
+                        self.trajectory_horizontal(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
+                    last_pos = np.copy(trajectory_pos_list[j])
+                    last_ori = np.copy(trajectory_ori_list[j])
+
+                elif len(trajectory_pos_list[j]) == 2:
+                    self.gripper_control(trajectory_pos_list[j])
+
+            for _ in range(20):
+                p.stepSimulation()
+                # self.images = self.get_image()
+                time.sleep(1/480)
+        while 1:
+            p.stepSimulation()
 
     def calculate_items(self, item_num, item_xyz):
 
-        self.gap_item = 0.01
         min_xy = np.ones(2) * 100
         best_item_config = []
 
@@ -444,8 +902,6 @@ class Arm_env():
         return min_xy, best_item_config
 
     def reorder_items(self):
-
-        self.gap_item = 0.01
 
         min_result = []
         best_config = []
@@ -587,14 +1043,13 @@ class Arm_env():
         start_y = [0]
         previous_start_x = 0
         previous_start_y = 0
-        gap_block = 0.03
 
         for m in range(num_all_row):
             new_row = min_xy[best_all_config[m, :]]
             # print(new_row)
             # print(np.max(new_row, axis=0)[0])
-            start_x.append((previous_start_x + np.max(new_row, axis=0)[0] + gap_block))
-            previous_start_x = (previous_start_x + np.max(new_row, axis=0)[0] + gap_block)
+            start_x.append((previous_start_x + np.max(new_row, axis=0)[0] + self.gap_block))
+            previous_start_x = (previous_start_x + np.max(new_row, axis=0)[0] + self.gap_block)
         start_x = np.delete(start_x, -1)
         # print(f'this is start_x {start_x}')
 
@@ -602,8 +1057,8 @@ class Arm_env():
             new_column = min_xy[best_all_config[:, n]]
             # print(new_column)
             # print(np.max(new_column, axis=0)[1])
-            start_y.append((previous_start_y + np.max(new_column, axis=0)[1] + gap_block))
-            previous_start_y = (previous_start_y + np.max(new_column, axis=0)[1] + gap_block)
+            start_y.append((previous_start_y + np.max(new_column, axis=0)[1] + self.gap_block))
+            previous_start_y = (previous_start_y + np.max(new_column, axis=0)[1] + self.gap_block)
         start_y = np.delete(start_y, -1)
         # print(f'this is start_y {start_y}')
 
@@ -636,27 +1091,24 @@ class Arm_env():
 
 if __name__ == '__main__':
 
-    times = 1
-    move_flag = True
+    random_flag = True
 
-    for i in range(times):
+    command = 'virtual' #! image virtual real
+
+    if command == 'image':
 
         env = Arm_env(is_render=True, num_2x2=2, num_2x3=3, num_2x4=4, num_pencil=0, order_flag = 'center', kinds = 3)
         
+        image_chaotic = env.reset(True)
+        temp = np.copy(image_chaotic[:, :, 0])
+        image_chaotic[:, :, 0] = np.copy(image_chaotic[:, :, 2])
+        image_chaotic[:, :, 2] = temp
+        # print(f'this is {image_chaotic}')
         image_trim = env.change_config()
         temp = np.copy(image_trim[:, :, 0])
         image_trim[:, :, 0] = np.copy(image_trim[:, :, 2])
         image_trim[:, :, 2] = temp
         # print(image_trim.shape)
-        image_chaotic = env.reset()
-        temp = np.copy(image_chaotic[:, :, 0])
-        image_chaotic[:, :, 0] = np.copy(image_chaotic[:, :, 2])
-        image_chaotic[:, :, 2] = temp
-        # print(f'this is {image_chaotic}')
-
-        if move_flag == True:
-            # env.manipulator_operation()
-            pass
 
         new_img = np.concatenate((image_chaotic, image_trim), axis=1)
         # print(new_img)
@@ -665,3 +1117,22 @@ if __name__ == '__main__':
         cv2.imshow("Comparison between Chaotic Configuration and Trim Configuration", new_img)
         cv2.waitKey()
         cv2.destroyAllWindows()
+
+    if command == 'real':
+
+        env = Arm_env(is_render=True, num_2x2=2, num_2x3=3, num_2x4=4, num_pencil=0, order_flag = 'center', kinds = 3)
+        
+        _ = env.reset(random_flag)
+        _ = env.change_config()
+
+        env.manipulator_operation_actual()
+
+    if command == 'virtual':
+
+        grasp_order = [1, 0, 2]
+        env = Arm_env(is_render=True, num_2x2=2, num_2x3=1, num_2x4=1, num_pencil=0, order_flag = 'center', kinds = 3, grasp_order=grasp_order)
+
+        _ = env.change_config()
+        _ = env.reset(random_flag)
+        
+        env.manipulator_operation_virtual()
