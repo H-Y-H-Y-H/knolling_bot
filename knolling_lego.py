@@ -6,7 +6,7 @@ import pybullet_data as pd
 import os
 import numpy as np
 import random
-random.seed(22345)
+random.seed(223)
 np.random.seed(2022)
 import math
 import cv2
