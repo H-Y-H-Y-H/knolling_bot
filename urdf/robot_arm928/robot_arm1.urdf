@@ -321,7 +321,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="meshes/left_gripper.STL" />
+          filename="meshes/left_finger.STL" />
       </geometry>
       <material
         name="">
@@ -340,7 +340,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="meshes/left_gripper.STL" />
+          filename="meshes/left_finger.STL" />
       </geometry>
       <material
         name="">
@@ -353,7 +353,7 @@
     name="left_gripper2bar"
     type="prismatic">
     <origin
-      xyz="0.018 0.054842 0"
+      xyz="0.018 0.036991 0"
       rpy="0 0 -3.1416" />
     <parent
       link="gripper_bar" />
@@ -363,7 +363,7 @@
       xyz="0 1 0" />
     <limit
       lower="0"
-      upper="0.032"
+      upper="0.03202"
       effort="5"
       velocity="1" />
   </joint>
@@ -389,7 +389,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="meshes/right_gripper.STL" />
+          filename="meshes/right_finger.STL" />
       </geometry>
       <material
         name="">
@@ -403,7 +403,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="meshes/right_gripper.STL" />
+          filename="meshes/right_finger.STL" />
       </geometry>
     </collision>
   </link>
@@ -411,8 +411,8 @@
     name="right_gripper2bar"
     type="prismatic">
     <origin
-      xyz="0.018 -0.054991 0"
-      rpy="0 0 0" />
+      xyz="0.018 -0.036991 0"
+      rpy="0 3.1416 0" />
     <parent
       link="gripper_bar" />
     <child
@@ -421,7 +421,7 @@
       xyz="0 1 0" />
     <limit
       lower="0"
-      upper="0.032"
+      upper="0.03202"
       effort="5"
       velocity="1" />
   </joint>
