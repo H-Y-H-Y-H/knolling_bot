@@ -8,7 +8,7 @@
     name="base_link">
     <inertial>
       <origin
-        xyz="0 0.0054525 0"
+        xyz="0 0 0"
         rpy="0 0 0" />
       <mass
         value="0.0024405" />
@@ -39,8 +39,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://5.STL" />
+          <box size="0.015 0.015 0.012"/>
       </geometry>
     </collision>
   </link>
