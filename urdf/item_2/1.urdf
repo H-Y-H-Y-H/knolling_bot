@@ -4,6 +4,12 @@
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot
   name="2x4">
+  <contact>
+      <lateral_friction value="1.0"/>
+      <rolling_friction value="0.0"/>
+      <contact_cfm value="0.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
   <link
     name="base_link">
     <inertial>
@@ -11,14 +17,14 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <mass
-        value="0.0053446" />
+        value="0.01" />
       <inertia
-        ixx="1.5347E-07"
-        ixy="5.5233E-24"
-        ixz="-5.4728E-23"
-        iyy="5.8262E-07"
-        iyz="-4.1748E-24"
-        izz="5.3632E-07" />
+        ixx="0.1"
+        ixy="0"
+        ixz="0"
+        iyy="0.1"
+        iyz="0"
+        izz="0.1" />
     </inertial>
     <visual>
       <origin
