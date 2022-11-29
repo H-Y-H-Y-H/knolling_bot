@@ -128,7 +128,7 @@ class Arm:
                                  flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
         textureid = p.loadTexture(os.path.join(self.urdf_path, "table/table.png"))
-        p.changeDynamics(baseid, -1, lateralFriction=1, spinningFriction=1, rollingFriction=1, linearDamping=0.5, angularDamping=0.5)
+        p.changeDynamics(baseid, -1, lateralFriction=1, spinningFriction=1, rollingFriction=0.002, linearDamping=0.5, angularDamping=0.5)
         p.changeDynamics(self.arm_id, 7,
                          lateralFriction=1,
                          spinningFriction=1,
@@ -557,7 +557,7 @@ class Arm:
                 start_end.append([manipulator_before[i][0], manipulator_before[i][1], z, roll, pitch, manipulator_before[i][5],
                                   self.manipulator_after[i][0], self.manipulator_after[i][1], z, roll, pitch, self.manipulator_after[i][5]])
             start_end = np.asarray((start_end))
-            print(start_end)
+            # print(start_end)
 
             return start_end
 
@@ -565,8 +565,8 @@ class Arm:
 
             target_pos = np.copy(tar_pos)
             target_ori = np.copy(tar_ori)
-            print(target_pos)
-            print(target_ori)
+            # print(target_pos)
+            # print(target_ori)
             step_pos = (tar_pos - cur_pos) / move_slice
             step_ori = (tar_ori - cur_ori) / move_slice
 
@@ -585,10 +585,10 @@ class Arm:
                     # time.sleep(1 / 480)
                 if abs(target_pos[0] - tar_pos[0]) < 0.001 and abs(target_pos[1] - tar_pos[1]) < 0.001 and abs(target_pos[2] - tar_pos[2]) < 0.001 and \
                         abs(target_ori[0] - tar_ori[0]) < 0.001 and abs(target_ori[1] - tar_ori[1]) < 0.001 and abs(target_ori[2] - tar_ori[2]) < 0.001:
-                    print(abs(target_pos[0] - tar_pos[0]))
-                    print(abs(target_pos[1] - tar_pos[1]))
-                    print(abs(target_pos[2] - tar_pos[2]))
-                    print('correct')
+                    # print(abs(target_pos[0] - tar_pos[0]))
+                    # print(abs(target_pos[1] - tar_pos[1]))
+                    # print(abs(target_pos[2] - tar_pos[2]))
+                    # print('correct')
                     break
                 cur_pos = tar_pos
                 cur_ori = tar_ori
@@ -611,8 +611,8 @@ class Arm:
             barricade_pos = []
             barricade_index = []
             manipulator_before, new_xyz_list = self.get_obs('obj')
-            print(manipulator_before)
-            print(self.manipulator_after)
+            # print(manipulator_before)
+            # print(self.manipulator_after)
 
             for i in range(len(manipulator_before)):
                 for j in range(len(self.manipulator_after)):
@@ -640,25 +640,38 @@ class Arm:
                 offset_high = np.array([0, 0, 0.06])
                 # ori
                 rest_ori = np.array([0, 1.57, 0])
-                offset_right = np.array([0, 0, math.pi / 4])
-                offset_left = np.array([0, 0, -math.pi / 4])
-                # direction
+                # axis and direction
                 if y_high - y_low > x_high - x_low:
-                    offset_horizontal = np.array([np.max(self.xyz_list) - 0.01, 0, 0])
+                    offset_horizontal = np.array([np.max(self.xyz_list), 0, 0])
                     offset_rectangle = np.array([0, 0, math.pi / 2])
-                    direction = 'x'
+                    axis = 'x_axis'
+                    if (x_high - x_low) / 2 > (self.x_high_obs - self.x_low_obs) / 2:
+                        direction = 'negative'
+                    else:
+                        direction = 'positive'
                 else:
-                    offset_horizontal = np.array([0, np.max(self.xyz_list) - 0.01, 0])
+                    offset_horizontal = np.array([0, np.max(self.xyz_list), 0])
                     offset_rectangle = np.array([0, 0, 0])
-                    direction = 'y'
+                    axis = 'y_axis'
+                    if (y_high - y_low) / 2 > (self.y_high_obs - self.y_low_obs) / 2:
+                        direction = 'negative'
+                    else:
+                        direction = 'positive'
 
                 trajectory_pos_list = []
                 trajectory_ori_list = []
                 for i in range(len(barricade_index)):
-                    if direction == 'x':
-                        terminate = np.array([x_high, barricade_pos[i][1], barricade_pos[i][2]])
-                    elif direction == 'y':
+                    if axis == 'x_axis':
+                        if direction == 'positive':
+                            terminate = np.array([x_high, barricade_pos[i][1], barricade_pos[i][2]])
+                        elif direction == 'negative':
+                            terminate = np.array([x_low, barricade_pos[i][1], barricade_pos[i][2]])
+                    elif axis == 'y_axis':
                         terminate = np.array([barricade_pos[i][0], y_high, barricade_pos[i][2]])
+                        if direction == 'positive':
+                            terminate = np.array([barricade_pos[i][0], y_high, barricade_pos[i][2]])
+                        elif direction == 'negative':
+                            terminate = np.array([barricade_pos[i][0], y_low, barricade_pos[i][2]])
                     trajectory_pos_list.append(np.array([0.02959]))
                     trajectory_ori_list.append(rest_ori + offset_rectangle)
                     trajectory_pos_list.append(barricade_pos[i] + offset_high - offset_horizontal)
@@ -669,8 +682,8 @@ class Arm:
                     trajectory_ori_list.append(rest_ori + offset_rectangle)
                     trajectory_pos_list.append(offset_high + offset_horizontal + terminate)
                     trajectory_ori_list.append(rest_ori + offset_rectangle)
-                    # trajectory_pos_list.append(np.array([0.025]))
-                    # trajectory_ori_list.append(rest_ori + offset_rectangle)
+                    trajectory_pos_list.append(np.array([0.025]))
+                    trajectory_ori_list.append(rest_ori + offset_rectangle)
 
                 last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
                 last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
@@ -702,8 +715,8 @@ class Arm:
             crowded_ori = []
             crowded_index = []
             manipulator_before, new_xyz_list = self.get_obs('obj')
-            print(manipulator_before)
-            print(self.manipulator_after)
+            # print(manipulator_before)
+            # print(self.manipulator_after)
 
             for i in range(len(manipulator_before)):
                 for j in range(i + 1, len(manipulator_before)):
@@ -715,7 +728,7 @@ class Arm:
                             crowded_index.append(i)
                         clean_flag = True
             crowded_pos = np.asarray(crowded_pos)
-            print(crowded_pos)
+            # print(crowded_pos)
 
             if clean_flag == True:
 
@@ -895,7 +908,7 @@ if __name__ == '__main__':
         num_2x3 = 3
         num_2x4 = 4
         num_pencil = 0
-        total_offset = [0.1, 0, 0.006]
+        total_offset = [0.1, -0.1, 0.006]
         kinds = 3
         grasp_order = [1, 0, 2]
         gap_item = 0.03
