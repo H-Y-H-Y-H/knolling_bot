@@ -4,7 +4,8 @@ import math
 from turdf import *
 import socket
 import cv2
-
+# np.random.seed(201)
+# random.seed(201)
 
 class Arm:
 
@@ -15,7 +16,7 @@ class Arm:
         self.pybullet_path = pd.getDataPath()
         self.is_render = is_render
         if self.is_render:
-            p.connect(p.GUI)
+            p.connect(p.GUI, options="--width=1280 --height=720")
         else:
             p.connect(p.DIRECT)
 
@@ -65,16 +66,16 @@ class Arm:
                                     farVal=self.camera_parameters['far'])
 
         p.configureDebugVisualizer(lightPosition=[5, 0, 5])
-        p.resetDebugVisualizerCamera(cameraDistance=0.7,
+        p.resetDebugVisualizerCamera(cameraDistance=0.5,
                                      cameraYaw=45,
                                      cameraPitch=-45,
-                                     cameraTargetPosition=[0.1, 0, 0.4])
+                                     cameraTargetPosition=[0.1, 0, 0])
         p.setAdditionalSearchPath(pd.getDataPath())
 
     def get_parameters(self, num_2x2=0, num_2x3=0, num_2x4=0, num_pencil=0, kinds=4,
-                       total_offset = None, grasp_order=None,
-                       gap_item=None, gap_block=None,
-                       from_virtual=None):
+                       total_offset=[0.1, 0, 0.006], grasp_order=[1, 0, 2],
+                       gap_item=0.03, gap_block=0.02,
+                       from_virtual=True):
 
         self.num_2x2 = num_2x2
         self.num_2x3 = num_2x3
@@ -199,7 +200,7 @@ class Arm:
                                     targetPosition=ik_angles0[motor_index], maxVelocity=7)
         for i in range(60):
             p.stepSimulation()
-        # self.images = self.get_image()
+        self.images = self.get_image()
 
         return self.images
 
@@ -467,9 +468,6 @@ class Arm:
 
         # the tidy configuration
         self.items_pos_list, self.items_ori_list = reorder_items()
-
-        # print('type of after', self.items_ori_list.dtype)
-
         self.items_pos_list = self.items_pos_list + self.total_offset
         num_list = np.array([self.num_2x2, self.num_2x3, self.num_2x4, self.num_pencil])
         self.manipulator_after = []
@@ -547,10 +545,7 @@ class Arm:
             z = 0
             roll = 0
             pitch = 0
-
             manipulator_before, new_xyz_list = self.get_obs('obj')
-            # print(manipulator_before)
-            # print(self.manipulator_after)
 
             start_end = []
             for i in range(len(self.obj_idx)):
@@ -565,8 +560,6 @@ class Arm:
 
             target_pos = np.copy(tar_pos)
             target_ori = np.copy(tar_ori)
-            # print(target_pos)
-            # print(target_ori)
             step_pos = (tar_pos - cur_pos) / move_slice
             step_ori = (tar_ori - cur_ori) / move_slice
 
@@ -605,14 +598,11 @@ class Arm:
 
         def clean_desk():
 
-            clean_flag = False
+            break_flag = False
             restrict = np.max(self.xyz_list)
-            gripper_width = 0.03
             barricade_pos = []
             barricade_index = []
             manipulator_before, new_xyz_list = self.get_obs('obj')
-            # print(manipulator_before)
-            # print(self.manipulator_after)
 
             for i in range(len(manipulator_before)):
                 for j in range(len(self.manipulator_after)):
@@ -621,9 +611,11 @@ class Arm:
                             print('We need to clean the desktop to provide an enough space')
                             barricade_pos.append(manipulator_before[i][:3])
                             barricade_index.append(i)
-                        clean_flag = True
+                            break_flag = True
+                            break
+                if break_flag == True:
+                    break
             barricade_pos = np.asarray(barricade_pos)
-            print('this is the barricade pos', barricade_pos)
 
             x_high = np.max(self.manipulator_after[:, 0])
             x_low = np.min(self.manipulator_after[:, 0])
@@ -633,7 +625,8 @@ class Arm:
             p.addUserDebugLine(lineFromXYZ=[x_low, y_low, 0.006], lineToXYZ=[x_low, y_high, 0.006])
             p.addUserDebugLine(lineFromXYZ=[x_high, y_high, 0.006], lineToXYZ=[x_high, y_low, 0.006])
             p.addUserDebugLine(lineFromXYZ=[x_high, y_high, 0.006], lineToXYZ=[x_low, y_high, 0.006])
-            if clean_flag == True:
+
+            while len(barricade_index) > 0:
 
                 # pos
                 offset_low = np.array([0, 0, -0.004])
@@ -642,47 +635,52 @@ class Arm:
                 rest_ori = np.array([0, 1.57, 0])
                 # axis and direction
                 if y_high - y_low > x_high - x_low:
-                    offset_horizontal = np.array([np.max(self.xyz_list), 0, 0])
+
                     offset_rectangle = np.array([0, 0, math.pi / 2])
                     axis = 'x_axis'
-                    if (x_high - x_low) / 2 > (self.x_high_obs - self.x_low_obs) / 2:
+                    if (x_high + x_low) / 2 > (self.x_high_obs + self.x_low_obs) / 2:
                         direction = 'negative'
+                        offset_horizontal = np.array([np.max(self.xyz_list) - 0.005, 0, 0])
                     else:
                         direction = 'positive'
+                        offset_horizontal = np.array([-(np.max(self.xyz_list) - 0.005), 0, 0])
                 else:
-                    offset_horizontal = np.array([0, np.max(self.xyz_list), 0])
+
                     offset_rectangle = np.array([0, 0, 0])
                     axis = 'y_axis'
-                    if (y_high - y_low) / 2 > (self.y_high_obs - self.y_low_obs) / 2:
+                    if (y_high + y_low) / 2 > (self.y_high_obs + self.y_low_obs) / 2:
                         direction = 'negative'
+                        offset_horizontal = np.array([0, np.max(self.xyz_list) - 0.005, 0])
                     else:
                         direction = 'positive'
+                        offset_horizontal = np.array([0, -(np.max(self.xyz_list) - 0.005), 0])
 
                 trajectory_pos_list = []
                 trajectory_ori_list = []
                 for i in range(len(barricade_index)):
                     if axis == 'x_axis':
                         if direction == 'positive':
+                            print('x,p')
                             terminate = np.array([x_high, barricade_pos[i][1], barricade_pos[i][2]])
                         elif direction == 'negative':
+                            print('x,n')
                             terminate = np.array([x_low, barricade_pos[i][1], barricade_pos[i][2]])
                     elif axis == 'y_axis':
-                        terminate = np.array([barricade_pos[i][0], y_high, barricade_pos[i][2]])
                         if direction == 'positive':
+                            print('y,p')
                             terminate = np.array([barricade_pos[i][0], y_high, barricade_pos[i][2]])
                         elif direction == 'negative':
+                            print('y,n')
                             terminate = np.array([barricade_pos[i][0], y_low, barricade_pos[i][2]])
                     trajectory_pos_list.append(np.array([0.02959]))
                     trajectory_ori_list.append(rest_ori + offset_rectangle)
-                    trajectory_pos_list.append(barricade_pos[i] + offset_high - offset_horizontal)
+                    trajectory_pos_list.append(barricade_pos[i] + offset_high + offset_horizontal)
                     trajectory_ori_list.append(rest_ori + offset_rectangle)
-                    trajectory_pos_list.append(barricade_pos[i] + offset_low - offset_horizontal)
+                    trajectory_pos_list.append(barricade_pos[i] + offset_low + offset_horizontal)
                     trajectory_ori_list.append(rest_ori + offset_rectangle)
-                    trajectory_pos_list.append(offset_low + offset_horizontal + terminate)
+                    trajectory_pos_list.append(offset_low - offset_horizontal + terminate)
                     trajectory_ori_list.append(rest_ori + offset_rectangle)
-                    trajectory_pos_list.append(offset_high + offset_horizontal + terminate)
-                    trajectory_ori_list.append(rest_ori + offset_rectangle)
-                    trajectory_pos_list.append(np.array([0.025]))
+                    trajectory_pos_list.append(offset_high - offset_horizontal + terminate)
                     trajectory_ori_list.append(rest_ori + offset_rectangle)
 
                 last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
@@ -699,6 +697,24 @@ class Arm:
                     elif len(trajectory_pos_list[j]) == 1:
                         gripper(trajectory_pos_list[j])
 
+                break_flag = False
+                barricade_pos = []
+                barricade_index = []
+                manipulator_before, new_xyz_list = self.get_obs('obj')
+
+                for i in range(len(manipulator_before)):
+                    for j in range(len(self.manipulator_after)):
+                        if np.linalg.norm(self.manipulator_after[j][:3] - manipulator_before[i][:3]) < restrict:
+                            if i not in barricade_index:
+                                print('We need to clean the desktop to provide an enough space')
+                                barricade_pos.append(manipulator_before[i][:3])
+                                barricade_index.append(i)
+                                break_flag = True
+                                break
+                    if break_flag == True:
+                        break
+                barricade_pos = np.asarray(barricade_pos)
+
             else:
                 print('nothing to clean')
                 pass
@@ -707,16 +723,16 @@ class Arm:
 
         def clean_item():
 
-            clean_flag = False
-            restrict = np.max(self.xyz_list) - 0.01
             gripper_width = 0.0165
-            gripper_height = 0.015
+            gripper_height = 0.012
+            break_flag = False
+            restrict = np.max(self.xyz_list) - 0.01
             crowded_pos = []
             crowded_ori = []
             crowded_index = []
             manipulator_before, new_xyz_list = self.get_obs('obj')
-            # print(manipulator_before)
-            # print(self.manipulator_after)
+            print('this is the clean item')
+            print(manipulator_before)
 
             for i in range(len(manipulator_before)):
                 for j in range(i + 1, len(manipulator_before)):
@@ -726,19 +742,18 @@ class Arm:
                             crowded_pos.append(manipulator_before[i][:3])
                             crowded_ori.append(manipulator_before[i][3:6])
                             crowded_index.append(i)
-                        clean_flag = True
+                            break_flag = True
+                            break
+                if break_flag == True:
+                    break
             crowded_pos = np.asarray(crowded_pos)
-            # print(crowded_pos)
 
-            if clean_flag == True:
-
+            while len(crowded_index) > 0:
                 # pos
                 offset_low = np.array([0, 0, -0.004])
                 offset_high = np.array([0, 0, 0.06])
                 # ori
                 rest_ori = np.array([0, 1.57, 0])
-                # offset_right = np.array([0, 0, math.pi/4])
-                # offset_left = np.array([0, 0, -math.pi/4])
 
                 trajectory_pos_list = []
                 trajectory_ori_list = []
@@ -781,6 +796,8 @@ class Arm:
                     trajectory_ori_list.append(rest_ori + crowded_ori[i])
                     trajectory_pos_list.append(crowded_pos[i] + offset_high + point_4)
                     trajectory_ori_list.append(rest_ori + crowded_ori[i])
+                    trajectory_pos_list.append(np.array([0.025]))
+                    trajectory_ori_list.append(rest_ori + crowded_ori[i])
 
                 last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
                 last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
@@ -794,6 +811,28 @@ class Arm:
 
                     elif len(trajectory_pos_list[j]) == 1:
                         gripper(trajectory_pos_list[j])
+
+                break_flag = False
+                crowded_pos = []
+                crowded_ori = []
+                crowded_index = []
+                manipulator_before, new_xyz_list = self.get_obs('obj')
+                print('this is the clean item')
+                print(manipulator_before)
+
+                for i in range(len(manipulator_before)):
+                    for j in range(i + 1, len(manipulator_before)):
+                        if np.linalg.norm(manipulator_before[j][:3] - manipulator_before[i][:3]) < restrict:
+                            if i not in crowded_index:
+                                print('We need to clean the items surrounding it to provide an enough space')
+                                crowded_pos.append(manipulator_before[i][:3])
+                                crowded_ori.append(manipulator_before[i][3:6])
+                                crowded_index.append(i)
+                                break_flag = True
+                                break
+                    if break_flag == True:
+                        break
+                crowded_pos = np.asarray(crowded_pos)
 
             else:
                 print('nothing around the item')
@@ -820,24 +859,26 @@ class Arm:
 
             for i in range(len(self.obj_idx)):
 
-                trajectory_pos_list = [offset_high + start_end[i][:3],
+                trajectory_pos_list = [[0.025],
+                                        offset_high + start_end[i][:3],
                                        offset_low + start_end[i][:3],
                                        [0.0273],
                                        offset_high + start_end[i][:3],
                                        offset_high + start_end[i][6:9],
                                        offset_high + start_end[i][6:9],
                                        offset_low + start_end[i][6:9],
-                                       [0.024],
+                                       [0.025],
                                        offset_high + start_end[i][6:9]]
 
                 trajectory_ori_list = [rest_ori + start_end[i][3:6],
+                                        rest_ori + start_end[i][3:6],
                                        rest_ori + start_end[i][3:6],
                                        [0.0273],
                                        rest_ori + start_end[i][3:6],
                                        rest_ori + start_end[i][9:12],
                                        rest_ori + start_end[i][9:12],
                                        rest_ori + start_end[i][9:12],
-                                       [0.024],
+                                       [0.025],
                                        rest_ori + start_end[i][9:12]]
                 last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
                 last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
@@ -872,27 +913,41 @@ if __name__ == '__main__':
     random_flag = True
     command = 'virtual'  # image virtual real
 
-    # if command == 'image':
-    #     env = Arm(is_render=True, num_2x2=2, num_2x3=3, num_2x4=4, num_pencil=0, order_flag='center', kinds=3)
-    #
-    #     image_chaotic = env.reset(True)
-    #     temp = np.copy(image_chaotic[:, :, 0])
-    #     image_chaotic[:, :, 0] = np.copy(image_chaotic[:, :, 2])
-    #     image_chaotic[:, :, 2] = temp
-    #     # print(f'this is {image_chaotic}')
-    #     image_trim = env.change_config()
-    #     temp = np.copy(image_trim[:, :, 0])
-    #     image_trim[:, :, 0] = np.copy(image_trim[:, :, 2])
-    #     image_trim[:, :, 2] = temp
-    #     # print(image_trim.shape)
-    #
-    #     new_img = np.concatenate((image_chaotic, image_trim), axis=1)
-    #     # print(new_img)
-    #
-    #     cv2.line(new_img, (int(new_img.shape[1] / 2), 0), (int(new_img.shape[1] / 2), new_img.shape[0]), (0, 0, 0), 20)
-    #     cv2.imshow("Comparison between Chaotic Configuration and Trim Configuration", new_img)
-    #     cv2.waitKey()
-    #     cv2.destroyAllWindows()
+    if command == 'image':
+        num_2x2 = 2
+        num_2x3 = 4
+        num_2x4 = 2
+        num_pencil = 0
+        total_offset = [0.05, -0.18, 0.006]
+        kinds = 3
+        grasp_order = [0, 1, 2]
+        gap_item = 0.01
+        gap_block = 0.03
+        from_virtual = True
+
+        env = Arm(is_render=True)
+        env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4, kinds=kinds,
+                           total_offset=total_offset, grasp_order=grasp_order,
+                           gap_item=gap_item, gap_block=gap_block, from_virtual=from_virtual)
+
+        image_chaotic = env.reset()
+        temp = np.copy(image_chaotic[:, :, 0])
+        image_chaotic[:, :, 0] = np.copy(image_chaotic[:, :, 2])
+        image_chaotic[:, :, 2] = temp
+        # print(f'this is {image_chaotic}')
+        image_trim = env.change_config()
+        temp = np.copy(image_trim[:, :, 0])
+        image_trim[:, :, 0] = np.copy(image_trim[:, :, 2])
+        image_trim[:, :, 2] = temp
+        # print(image_trim.shape)
+
+        new_img = np.concatenate((image_chaotic, image_trim), axis=1)
+        # print(new_img)
+
+        cv2.line(new_img, (int(new_img.shape[1] / 2), 0), (int(new_img.shape[1] / 2), new_img.shape[0]), (0, 0, 0), 20)
+        cv2.imshow("Comparison between Chaotic Configuration and Trim Configuration", new_img)
+        cv2.waitKey()
+        cv2.destroyAllWindows()
     #
     # if command == 'real':
     #     env = Arm(is_render=True, num_2x2=2, num_2x3=3, num_2x4=4, num_pencil=0, order_flag='center', kinds=3)
@@ -904,11 +959,11 @@ if __name__ == '__main__':
 
     if command == 'virtual':
 
-        num_2x2 = 2
+        num_2x2 = 4
         num_2x3 = 3
-        num_2x4 = 4
+        num_2x4 = 2
         num_pencil = 0
-        total_offset = [0.1, -0.1, 0.006]
+        total_offset = [0.1, 0, 0.006]
         kinds = 3
         grasp_order = [1, 0, 2]
         gap_item = 0.03
