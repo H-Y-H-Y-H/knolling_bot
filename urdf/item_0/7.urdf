@@ -3,7 +3,7 @@
      Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot
-  name="2x4">
+  name="2x2">
   <contact>
       <lateral_friction value="1.0"/>
       <rolling_friction value="0.0"/>
@@ -32,12 +32,12 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://2x4.STL" />
+          filename="package://2x2.STL" />
       </geometry>
       <material
         name="">
         <color
-          rgba="1 1 1 1" />
+          rgba="0.4 1 0.4 1" />
       </material>
     </visual>
     <collision>
@@ -45,7 +45,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <box size="0.033 0.015 0.012"/>
+          <box size="0.015 0.015 0.012"/>
       </geometry>
     </collision>
   </link>

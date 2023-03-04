@@ -32,7 +32,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://3.STL" />
+          filename="package://2x2.STL" />
       </geometry>
       <material
         name="">
