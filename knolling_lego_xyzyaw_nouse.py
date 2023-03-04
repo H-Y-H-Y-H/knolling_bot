@@ -26,15 +26,14 @@ import math
 from turdf import *
 import socket
 import cv2
-from cam_obs import *
+from cam_obs_xyzyaw import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.preprocessing import MinMaxScaler
-from shapely.geometry import Polygon
 
 torch.manual_seed(42)
-# np.random.seed(100)
+np.random.seed(100)
 random.seed(100)
 
 class Net(nn.Module):
@@ -91,9 +90,9 @@ class Arm:
         self.spinning_friction = 1
         self.rolling_friction = 0
 
-        self.correct = np.array([[0.016, 0.016, 0.012],
-                                [0.024, 0.016, 0.012],
-                                [0.032, 0.016, 0.012],
+        self.correct = np.array([[0.015, 0.015, 0.012],
+                                [0.023, 0.015, 0.012],
+                                [0.033, 0.015, 0.012],
                                 [0.01518, 0.09144, 0.01524]])
 
         self.camera_parameters = {
@@ -160,7 +159,7 @@ class Arm:
             pass
 
 
-    def get_obs(self, order, evaluation):
+    def get_obs(self, order):
 
         def get_joints_obs():
 
@@ -177,6 +176,9 @@ class Arm:
 
         def get_sim_image_obs():
 
+            z = 0
+            roll = 0
+            pitch = 0
             (width, length, image, _, _) = p.getCameraImage(width=640,
                                                             height=480,
                                                             viewMatrix=self.view_matrix,
@@ -193,219 +195,39 @@ class Arm:
 
             img = image[:, :,:3]
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+            cv2.imshow("Comparison between Chaotic Configuration and Trim Configuration", img)
+            cv2.waitKey()
+            cv2.destroyAllWindows()
+
             add = int((640-480)/2)
             img = cv2.copyMakeBorder(img, add, add, 0, 0,cv2.BORDER_CONSTANT, None, value = 0)
-
-            ############### order the ground truth depend on x, y in the world coordinate system ###############
-            new_xyz_list = self.xyz_list
-            ground_truth_xyyaw = np.concatenate((self.check_pos, self.check_ori.reshape((-1, 1))), axis=1)
-            order_ground_truth = np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0]))
-            print('this is the ground truth order', order_ground_truth)
-            print('this is the ground truth before changing the order\n', ground_truth_xyyaw)
-            # for i in range(len(order_ground_truth)):
-            #     ground_truth_xyyaw_true.append(ground_truth_xyyaw[order_ground_truth[i]])
-            #     new_xyz_list_true.append(new_xyz_list[order_ground_truth[i]])
-            # ground_truth_xyyaw = np.asarray(ground_truth_xyyaw_true)
-            # new_xyz_list = np.asarray(new_xyz_list_true)
-
-            ground_truth_xyyaw = ground_truth_xyyaw[order_ground_truth, :]
-            new_xyz_list = new_xyz_list[order_ground_truth, :]
-            ############### order the ground truth depend on x, y in the world coordinate system ###############
-
-            target = []
-            for i in range(len(new_xyz_list)):
-                rot_z = np.array([[np.cos(ground_truth_xyyaw[i, 2]), -np.sin(ground_truth_xyyaw[i, 2])],
-                                  [np.sin(ground_truth_xyyaw[i, 2]), np.cos(ground_truth_xyyaw[i, 2])]])
-                grasp_point = np.array([[0, 0.016 / 2],
-                                        [0, -0.016 / 2]])
-                grasp_point_rotate = (rot_z.dot(grasp_point.T)).T
-
-                element = []
-                if grasp_point_rotate[0][0] > grasp_point_rotate[1][0]:
-                    element.append(grasp_point_rotate[0][0])
-                    element.append(grasp_point_rotate[0][1])
-                    element.append(grasp_point_rotate[1][0])
-                    element.append(grasp_point_rotate[1][1])
-                else:
-                    element.append(grasp_point_rotate[1][0])
-                    element.append(grasp_point_rotate[1][1])
-                    element.append(grasp_point_rotate[0][0])
-                    element.append(grasp_point_rotate[0][1])
-                element.append(new_xyz_list[i, 0])
-                target.append(element)
-            target = np.asarray(target)
-
-
-
-            results = np.asarray(detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target))
-            # results = np.asarray(results[:,:5]).astype(np.float32)
+            results = np.asarray(detect(img))
+            results = np.asarray(results[:,:5]).astype(np.float32)
             # # structure: x,y,yaw,length,width
-            results = np.asarray(results[:, :8]).astype(np.float32)
+            # results = np.asarray(results[:, :8]).astype(np.float32)
             # structure: x,y,x1,y1,x2,y2,length,width
-            ############### order the results depend on x, y in the world coordinate system ###############
-            print('this is the order', np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0])))
-            order_results = np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0]))
-            results = results[order_results, :]
-            print('this is the result of detection\n', results)
-            ############### order the results depend on x, y in the world coordinate system ###############
 
-            # index = []
-            # correct = []
-            # for i in range(len(self.grasp_order)):
-            #     correct.append(self.xyz_list[self.all_index[i][0]])
-            # correct = np.asarray(correct)
-            # for i in range(len(correct)):
-            #     for j in range(len(results)):
-            #         if np.linalg.norm(correct[i][:2] - results[j][3:5]) < 0.001:
-            #             index.append(j)
-            # manipulator_before = []
-            # for i in index:
-            #     manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, results[i][2]])
-            # manipulator_before = np.asarray(manipulator_before)
-            # new_xyz_list = self.xyz_list
+            index = []
+            correct = []
+            for i in range(len(self.grasp_order)):
+                correct.append(self.xyz_list[self.all_index[i][0]])
+            correct = np.asarray(correct)
+            for i in range(len(correct)):
+                for j in range(len(results)):
+                    if np.linalg.norm(correct[i][:2] - results[j][3:5]) < 0.005:
+                        index.append(j)
+            print(index)
+            manipulator_before = []
+            for i in index:
+                manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, results[i][2]])
+            manipulator_before = np.asarray(manipulator_before)
+            new_xyz_list = self.xyz_list
 
-            # print(results)
-            point_1 = np.array([results[:, 2], results[:, 3]]).T
-            point_2 = np.array([results[:, 4], results[:, 5]]).T
-
-            ###############################fix the angle gap###############################
-            ori = np.arctan2(point_1[:, 1] - point_2[:, 1], point_1[:, 0] - point_2[:, 0]) - np.pi / 2
-            ###############################fix the angle gap###############################
-
-            ###################### check the error of the ResNet ######################
-            scaler = MinMaxScaler()
-            scaler.fit([[0.008, 0.008, 0, 0.008, 0.032],
-                        [0, -0.008, 0.008, -0.008, 0.016]])
-            pred_origin = results[:, 2:7]
-            target_origin = np.copy(target)
-
-            target_2 = np.copy(target)
-            for i in range(len(target_2)):
-                if target_2[i, 4] < 0.017:
-                    ori_2 = np.arctan2(target_2[i, 1] - target_2[i, 3], target_2[i, 0] - target_2[i, 2])
-                    # print('this is ori', ori_2)
-                    # print('this is target_2', target_2[i])
-                    grasp_point_2 = np.array([[target_2[i, 0], target_2[i, 1]],
-                                            [target_2[i, 2], target_2[i, 3]]])
-                    if ori_2 < 0:
-                        rotate = 3.1415926 / 2
-                        matrix = np.array([[np.cos(rotate), -np.sin(rotate)],
-                                               [np.sin(rotate), np.cos(rotate)]])
-                        # print(matrix.mm(torch.t(grasp_point_2)))
-                        target_2[i, :4] = (matrix.dot(grasp_point_2.T)).T.reshape(-1,)
-                        # target_2[i, :4] = torch.reshape(torch.t((matrix.mm(torch.t(grasp_point_2)))), (-1,))
-                    elif ori_2 > 0:
-                        rotate = -3.1415926 / 2
-                        matrix = np.array([[np.cos(rotate), -np.sin(rotate)],
-                                               [np.sin(rotate), np.cos(rotate)]])
-                        target_2[i, :4] = (matrix.dot(grasp_point_2.T)).T.reshape(-1, )
-                        # target_2[i, :4] = torch.reshape(torch.t((matrix.mm(torch.t(grasp_point_2)))), (-1,))
-                    else:
-                        pass
-            for i in range(len(target)):
-                if np.mean((pred_origin[i] - target[i]) ** 2) > np.mean((pred_origin[i] - target_2[i]) ** 2):
-                    # value.append(torch.mean((pred[i] - target_2[i]) ** 2))
-                    target[i] = np.copy(target_2[i])
-                    # print('loss changed!')
-                else:
-                    pass
-
-            ################################### IOU loss #####################################
-            total_iou = []
-            print(target)
-            for i in range(len(results)):
-                if pred_origin[i][4] <= 0:
-                    iou = 0.0001
-                else:
-                    yaw_1 = np.arctan2(pred_origin[i, 1] - pred_origin[i, 3], pred_origin[i, 0] - pred_origin[i, 2])
-                    yaw_2 = np.arctan2(target[i, 1] - target[i, 3], target[i, 0] - target[i, 2])
-                    pred_width = np.linalg.norm(np.array([pred_origin[i][0], pred_origin[i][1]]) - np.array(
-                        [pred_origin[i][2], pred_origin[i][3]]))
-                    target_width = np.linalg.norm(np.array([target[i][0], target[i][1]]) - np.array([target[i][2], target[i][3]]))
-                    # yaw_1 = pred_IoU[i][0]
-                    # yaw_2 = target_IoU[i][0]
-                    matrix_1 = np.array([[np.cos(yaw_1), -np.sin(yaw_1)],
-                                         [np.sin(yaw_1), np.cos(yaw_1)]])
-                    matrix_2 = np.array([[np.cos(yaw_2), -np.sin(yaw_2)],
-                                         [np.sin(yaw_2), np.cos(yaw_2)]])
-                    corner_1 = np.array([[pred_width / 2, pred_origin[i][4] / 2],
-                                         [-pred_width / 2, pred_origin[i][4] / 2],
-                                         [-pred_width / 2, -pred_origin[i][4] / 2],
-                                         [pred_width / 2, -pred_origin[i][4] / 2]])
-                    corner_2 = np.array([[target_width / 2, target[i][4] / 2],
-                                         [-target_width / 2, target[i][4] / 2],
-                                         [-target_width / 2, -target[i][4] / 2],
-                                         [target_width / 2, -target[i][4] / 2]])
-                    corner_1_rotate = (matrix_1.dot(corner_1.T)).T
-                    corner_2_rotate = (matrix_2.dot(corner_2.T)).T
-                    poly_1 = Polygon(corner_1_rotate)
-                    poly_2 = Polygon(corner_2_rotate)
-                    iou = poly_1.intersection(poly_2).area / poly_1.union(poly_2).area
-                # if iou > 0.8:
-                #     print(iou)
-                #     print(pred_IoU[i][4:6])
-                #     print(target_IoU[i][4:6])
-                #     print(corner_1_rotate)
-                #     print(corner_2_rotate)
-                #     print(yaw_1)
-                #     print(yaw_2)
-                #     print('***************************')
-                # if i == 0:
-                #     print('pred', pred_IoU[i])
-                #     print('tar', target_IoU[i])
-                #     print('iou', iou)
-                total_iou.append(iou)
-
-            total_iou = -np.log(np.asarray(total_iou, dtype=np.float32)).reshape((-1, 1))
-            # total_iou.requires_grad_()
-            ################################### IOU loss #####################################
-
-            print('this is pred origin\n', pred_origin)
-            print('this is target origin\n', target_origin)
-            print('this is target origin changed\n', target)
-
-            pred_compare = scaler.transform(pred_origin)
-            target_compare = scaler.transform(target)
-
-            # pred_compare = scaler.inverse_transform(np.asarray(pred_compare))
-            print('this is pred compare\n', pred_compare)
-            print('this is target compare\n', target_compare)
-
-            # print((pred - target) ** 2)
-            mse_loss = (pred_compare - target_compare) ** 2
-            error = np.mean(mse_loss * total_iou)
-            print('this is the mean error of detection', error)
             print('this is the result of detection \n', results)
-            ###################### check the error of the ResNet ######################
-
-            # # arange the sequence based on categories of cubes
-            # print('zzz ori', ori)
-            # index = []
-            # correct = []
-            # for i in range(len(self.grasp_order)):
-            #     correct.append(self.xyz_list[self.all_index[i][0]])
-            # correct = np.asarray(correct)
-            # for i in range(len(correct)):
-            #     for j in range(len(results)):
-            #         if np.linalg.norm(correct[i][0] - results[j][6]) < 0.005 and 0.012 < np.linalg.norm(point_1[j] - point_2[j]) < 0.018:
-            #             index.append(j)
-            # manipulator_before = []
-            # for i in index:
-            #     manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, ori[i]])
-            # manipulator_before = np.asarray(manipulator_before)
-            # print('this is manipulator before after the detection \n', manipulator_before)
-
-            z = np.zeros(len(results)).reshape(-1, 1)
-            roll = np.zeros(len(results)).reshape(-1, 1)
-            pitch = np.zeros(len(results)).reshape(-1, 1)
-            ori = ori.reshape(-1, 1)
-            manipulator_before = np.concatenate((results[:, :2], z, roll, pitch, ori), axis=1)
             print('this is manipulator before after the detection \n', manipulator_before)
 
-            if self.obs_order == 'sim_image_obj_evaluate':
-                return manipulator_before, new_xyz_list, error
-            else:
-                return manipulator_before, new_xyz_list
+            return manipulator_before, new_xyz_list
 
         def get_lego_obs():
 
@@ -476,8 +298,8 @@ class Arm:
             # manipulator_before = [i for i in range(len(self.manipulator_after) + 1)]
             # while len(manipulator_before) != len(self.manipulator_after):
             #     print('we need to detect the num and kinds of lego bricks')
-            results = np.asarray(detect(img, real_operate=self.real_operate))
-            results = np.asarray(results[:, :8]).astype(np.float32)
+            results = np.asarray(detect(img))
+            results = np.asarray(results[:, :5]).astype(np.float32)
             # results[:, 2] = results[:, 2] * math.pi / 180
             # structure: x,y,yaw,length,width
 
@@ -485,7 +307,6 @@ class Arm:
             new_xyz_list = []
             kind = []
             new_results = []
-            ori_index = []
             z = 0
             roll = 0
             pitch = 0
@@ -493,8 +314,7 @@ class Arm:
             for i in range(len(self.correct)):
                 kind_index = []
                 for j in range(len(results)):
-                    # if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
-                    if np.linalg.norm(self.correct[i][0] - results[j][6]) < 0.003:
+                    if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
                         kind_index.append(num)
                         new_xyz_list.append(self.correct[i])
                         num += 1
@@ -502,40 +322,24 @@ class Arm:
                             pass
                         else:
                             kind.append(i)
-                        ori_index.append(j)
                         new_results.append(results[j])
                     else:
                         pass
-                        print('detect failed!!!')
+                        # print('detect failed!!!')
                 if len(kind_index) != 0:
                     all_index.append(kind_index)
             new_xyz_list = np.asarray(new_xyz_list)
-            ori_index = np.asarray(ori_index)
             new_results = np.asarray(new_results)
             print(new_results)
             print(all_index)
 
-            point_1 = np.array([new_results[:, 2], new_results[:, 3]]).T
-            point_2 = np.array([new_results[:, 4], new_results[:, 5]]).T
-            # print(point_1)
-            # print(point_2)
-            # print(point_1[:, 1] - point_2[:, 1])
-            # print(point_1[:, 0] - point_2[:, 0])
-
-            ###############################fix the angle gap###############################
-            ori = np.arctan2(point_1[:, 1] - point_2[:, 1], point_1[:, 0] - point_2[:, 0]) + np.pi / 2
-            ###############################fix the angle gap###############################
-
             manipulator_before = []
             for i in range(len(all_index)):
                 for j in range(len(all_index[i])):
-                    manipulator_before.append(
-                        [new_results[all_index[i][j]][0], new_results[all_index[i][j]][1], z, roll, pitch,
-                         ori[all_index[i][j]]])
-                    # manipulator_before.append([new_results[all_index[i][j]][0], new_results[all_index[i][j]][1], z, roll, pitch, new_results[all_index[i][j]][2]])
+                    manipulator_before.append([new_results[all_index[i][j]][0], new_results[all_index[i][j]][1], z, roll, pitch, new_results[all_index[i][j]][2]])
             manipulator_before = np.asarray(manipulator_before)
 
-            print('this is the result of dectection before changing the sequence\n', results)
+            print('this is the result of dectection \n', results)
             print('this is manipulator before after the detection \n', manipulator_before)
 
             return manipulator_before, new_xyz_list
@@ -554,9 +358,6 @@ class Arm:
         elif order == 'real_image_obj':
             manipulator_before, new_xyz_list = get_real_image_obs()
             return manipulator_before, new_xyz_list
-        elif order == 'sim_image_obj_evaluate':
-            manipulator_before, new_xyz_list, error = get_sim_image_obs()
-            return manipulator_before, new_xyz_list, error
 
     def reset(self):
 
@@ -600,17 +401,13 @@ class Arm:
             gripper_height = 0.012
             last_pos = np.array([[0, 0, 1]])
 
-            ############## collect ori and pos to calculate the error of detection ##############
             collect_ori = []
-            collect_pos = []
-            ############## collect ori and pos to calculate the error of detection ##############
             for i in range(len(self.grasp_order)):
                 for j in range(self.num_list[self.grasp_order[i]]):
 
                     rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
                                         random.uniform(self.y_low_obs, self.y_high_obs), 0.006])
-                    # ori = [0, 0, random.uniform(-math.pi / 2, math.pi / 2)]
-                    ori = [0, 0, 0]
+                    ori = [0, 0, random.uniform(-math.pi / 2, math.pi / 2)]
                     collect_ori.append(ori)
                     check_list = np.zeros(last_pos.shape[0])
 
@@ -622,7 +419,6 @@ class Arm:
                                 check_list[z] = 0
                             else:
                                 check_list[z] = 1
-                    collect_pos.append(rdm_pos)
 
                     last_pos = np.append(last_pos, [rdm_pos], axis=0)
                     self.obj_idx.append(
@@ -637,13 +433,10 @@ class Arm:
                     p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
 
             collect_ori = np.asarray(collect_ori)
-            collect_pos = np.asarray(collect_pos)
             # check the error of the ResNet
             self.check_ori = collect_ori[:, 2]
-            self.check_pos = collect_pos[:, :2]
             # check the error of the ResNet
             print('this is random ori when reset the environment', collect_ori)
-            print('this is random pos when reset the environment', collect_pos)
         else:
             self.xyz_list, pos_before, ori_before, self.all_index, self.kind = items_sort.get_data_real()
             for i in range(len(self.kind)):
@@ -671,7 +464,7 @@ class Arm:
                                     targetPosition=ik_angles0[motor_index], maxVelocity=7)
         for i in range(60):
             p.stepSimulation()
-        return self.get_obs('images', None)
+        return self.get_obs('images')
 
     def change_config(self):  # this is main function!!!!!!!!!
 
@@ -991,7 +784,7 @@ class Arm:
             p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
         # while 1:
         #     p.stepSimulation()
-        return self.get_obs('images', _)
+        return self.get_obs('images')
 
     def planning(self, order, conn, real_height, sim_height, evaluation):
 
@@ -999,11 +792,7 @@ class Arm:
             z = 0
             roll = 0
             pitch = 0
-            if self.obs_order == 'sim_image_obj_evaluate':
-                manipulator_before, new_xyz_list, error = self.get_obs(self.obs_order, evaluation)
-                return error
-            else:
-                manipulator_before, new_xyz_list = self.get_obs(self.obs_order, evaluation)
+            manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
 
             # sequence pos_before, ori_before, pos_after, ori_after
             start_end = []
@@ -1011,7 +800,6 @@ class Arm:
                 start_end.append([manipulator_before[i][0], manipulator_before[i][1], z, roll, pitch, manipulator_before[i][5],
                                   self.manipulator_after[i][0], self.manipulator_after[i][1], z, roll, pitch, self.manipulator_after[i][5]])
             start_end = np.asarray((start_end))
-            print('get start and end')
             return start_end
 
         def Cartesian_offset_step(cur, tar):
@@ -1107,12 +895,9 @@ class Arm:
             if self.real_operate == True:
 
                 # automatically add bias
-                R = np.array([0, 0.10, 0.185, 0.225, 0.27])
-                x_bias = np.array([0.001, 0.004, 0.0055, 0.007, 0.01])
-                y_bias = np.array([0, -0.0005, -0.002, 0, +0.001])
-                # R = np.array([0.15, 0.185, 0.225, 0.27])
-                # x_bias = np.array([0.003, 0.006, 0.010, 0.014])
-                # y_bias = np.array([0.002, 0.003, 0.006, 0.008])
+                R = np.array([0.15, 0.185, 0.225, 0.27])
+                x_bias = np.array([0.003, 0.006, 0.010, 0.014])
+                y_bias = np.array([0.002, 0.003, 0.006, 0.008])
                 x_parameters = np.polyfit(R, x_bias, 3)
                 y_parameters = np.polyfit(R, y_bias, 3)
                 new_x_formula = np.poly1d(x_parameters)
@@ -1124,6 +909,48 @@ class Arm:
                     tar_pos[1] = tar_pos[1] - new_y_formula(distance)
                 else:
                     tar_pos[1] = tar_pos[1] + new_y_formula(distance)
+
+
+                # # manually add bias
+                # if np.linalg.norm(tar_pos - np.array([0, 0, tar_pos[2]])) > 0.25:
+                #     tar_pos[0] = tar_pos[0] + 0.014
+                #     # cur_pos[0] = cur_pos[0] + 0.012
+                #     if tar_pos[1] < 0:
+                #         tar_pos[1] = tar_pos[1] - 0.008
+                #         # cur_pos[1] = cur_pos[1] - 0.008
+                #     else:
+                #         tar_pos[1] = tar_pos[1] + 0.008
+                #         # cur_pos[1] = cur_pos[1] + 0.008
+                #     print('add far')
+                # elif 0.20 < np.linalg.norm(tar_pos - np.array([0, 0, tar_pos[2]])) <= 0.25:
+                #     tar_pos[0] = tar_pos[0] + 0.010
+                #     # cur_pos[0] = cur_pos[0] + 0.008
+                #     if tar_pos[1] < 0:
+                #         tar_pos[1] = tar_pos[1] - 0.006
+                #         # cur_pos[1] = cur_pos[1] - 0.003
+                #     else:
+                #         tar_pos[1] = tar_pos[1] + 0.006
+                #         # cur_pos[1] = cur_pos[1] + 0.003
+                #     print('add medium far')
+                # elif 0.17 < np.linalg.norm(tar_pos - np.array([0, 0, tar_pos[2]])) <= 0.20:
+                #     tar_pos[0] = tar_pos[0] + 0.006
+                #     # cur_pos[0] = cur_pos[0] + 0.008
+                #     if tar_pos[1] < 0:
+                #         tar_pos[1] = tar_pos[1] - 0.003
+                #         # cur_pos[1] = cur_pos[1] - 0.003
+                #     else:
+                #         tar_pos[1] = tar_pos[1] + 0.003
+                #         # cur_pos[1] = cur_pos[1] + 0.003
+                #     print('add medium')
+                # elif 0.12 < np.linalg.norm(tar_pos - np.array([0, 0, tar_pos[2]])) <= 0.17:
+                #     tar_pos[0] = tar_pos[0] + 0.003
+                #     # cur_pos[0] = cur_pos[0] - 0.003
+                #     if tar_pos[1] < 0:
+                #         tar_pos[1] = tar_pos[1] - 0.002
+                #         # cur_pos[1] = cur_pos[1] - 0.003
+                #     else:
+                #         tar_pos[1] = tar_pos[1] + 0.002
+                #     print('add close')
 
             if tar_ori[2] > 1.58:
                 tar_ori[2] = tar_ori[2] - np.pi
@@ -1193,13 +1020,12 @@ class Arm:
                 #     new_cmd_xyz[:, 0] = cmd_xyz[:, 0]
                 print('this is tar', target_pos)
                 print('this is cur', current_pos)
-                print('this is tar ori', target_ori)
                 if abs(target_pos[2] - current_pos[2]) > 0.02 and abs(target_pos[0] - current_pos[0]) < 0.0005 and abs(target_pos[1] - current_pos[1]) < 0.0005:
                     new_cmd_xyz[:, :2] = cmd_xyz[:, :2]
-                    # print('vertical grasp!!!')
+                    print('vertical grasp!!!')
                 else:
                     new_cmd_xyz[:, 0] = cmd_xyz[:, 0]
-                    # print('horizontal grasp!!!')
+                    print('horizontal grasp!!!')
                 ######################### nn offset #######################
 
                 for i in range(len(new_cmd_xyz)):
@@ -1259,7 +1085,7 @@ class Arm:
                                                 targetPosition=ik_angles0[motor_index], maxVelocity=2.5)
                     for i in range(30):
                         p.stepSimulation()
-                        # time.sleep(1 / 240)
+                        time.sleep(1 / 240)
                     if abs(target_pos[0] - tar_pos[0]) < 0.001 and abs(target_pos[1] - tar_pos[1]) < 0.001 and abs(
                             target_pos[2] - tar_pos[2]) < 0.001 and \
                             abs(target_ori[0] - tar_ori[0]) < 0.001 and abs(target_ori[1] - tar_ori[1]) < 0.001 and abs(
@@ -1299,7 +1125,7 @@ class Arm:
             restrict_gripper_diagonal = np.sqrt(gripper_width ** 2 + gripper_height ** 2)
             barricade_pos = []
             barricade_index = []
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+            manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
             print('this is test obs xyz', new_xyz_list)
             for i in range(len(manipulator_before)):
                 for j in range(len(self.manipulator_after)):
@@ -1402,7 +1228,7 @@ class Arm:
                 break_flag = False
                 barricade_pos = []
                 barricade_index = []
-                manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+                manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
                 for i in range(len(manipulator_before)):
                     for j in range(len(self.manipulator_after)):
                         # 这里会因为漏检的bug而报错！
@@ -1431,7 +1257,7 @@ class Arm:
             crowded_pos = []
             crowded_ori = []
             crowded_index = []
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+            manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
             # print(manipulator_before)
 
             # define the cube which is crowded
@@ -1594,7 +1420,7 @@ class Arm:
                 crowded_pos = []
                 crowded_ori = []
                 crowded_index = []
-                manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+                manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
                 for i in range(len(manipulator_before)):
                     for j in range(len(manipulator_before)):
                         restrict_item_i = np.sqrt((new_xyz_list[i][0]) ** 2 + (new_xyz_list[i][1]) ** 2)
@@ -1622,9 +1448,6 @@ class Arm:
         def knolling():
 
             start_end = get_start_end()
-
-            if self.obs_order == 'sim_image_obj_evaluate':
-                return start_end
 
             rest_pos = np.array([0, 0, 0.05])
             rest_ori = np.array([0, 1.57, 0])
@@ -1657,7 +1480,6 @@ class Arm:
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
-                        # print('ready to move', trajectory_ori_list[j])
                         move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
                         last_pos = np.copy(trajectory_pos_list[j])
                         last_ori = np.copy(trajectory_ori_list[j])
@@ -1679,7 +1501,7 @@ class Arm:
                 # time.sleep(1 / 120)
 
         def check_accuracy_sim():
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+            manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
             print('this is before', manipulator_before)
             print('this is after', self.manipulator_after)
             print('this is new xyz', new_xyz_list)
@@ -1714,7 +1536,7 @@ class Arm:
             print('this is all distance between messy and neat in simulation environment', all_distance_sim)
 
         def check_accuracy_real():
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+            manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
             all_distance_real = 0
             for i in range(len(manipulator_before)):
                 all_distance_real += np.linalg.norm(manipulator_before[i][:3] - self.manipulator_after[i][:3])
@@ -1740,11 +1562,7 @@ class Arm:
         elif order == 2:
             clean_item()
         elif order == 3:
-            if self.obs_order == 'sim_image_obj_evaluate':
-                error = knolling()
-                return error
-            else:
-                knolling()
+            knolling()
         elif order == 4:
             if self.real_operate == True:
                 check_accuracy_real()
@@ -1799,12 +1617,9 @@ class Arm:
         #######################################################################################
         # self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(2, conn, table_surface_height, sim_table_surface_height, evaluation)
-        error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
+        self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
         #######################################################################################
-
-        if self.obs_order == 'sim_image_obj_evaluate':
-            return error
 
         if self.real_operate == True:
             end = np.array([0], dtype=np.float32)
@@ -1869,11 +1684,11 @@ if __name__ == '__main__':
 
     if command == 'knolling':
 
-        num_2x2 = 3
+        num_2x2 = 4
         num_2x3 = 2
-        num_2x4 = 2
+        num_2x4 = 4
         total_offset = [0.15, 0, 0.006]
-        grasp_order = [1, 0, 2]
+        grasp_order = [0, 1, 2]
         gap_item = 0.015
         gap_block = 0.02
         random_offset = True
@@ -1881,8 +1696,7 @@ if __name__ == '__main__':
         obs_order = 'sim_image_obj'
         check_obs_error = False
 
-
-        env = Arm(is_render=False)
+        env = Arm(is_render=True)
         env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4,
                            total_offset=total_offset, grasp_order=grasp_order,
                            gap_item=gap_item, gap_block=gap_block,
@@ -1894,38 +1708,3 @@ if __name__ == '__main__':
             image_trim = env.change_config()
             _ = env.reset()
             env.step(i)
-
-    if command == 'evaluate_object_detection':
-
-        evaluations = 20
-        error_min = 100
-        evaluation_min = 0
-        for i in range(evaluations):
-            num_2x2 = np.random.randint(1, 6)
-            num_2x3 = np.random.randint(1, 6)
-            num_2x4 = np.random.randint(1, 6)
-            total_offset = [0.15, 0, 0.006]
-            grasp_order = [1, 0, 2]
-            gap_item = 0.015
-            gap_block = 0.02
-            random_offset = True
-            real_operate = False
-            obs_order = 'sim_image_obj_evaluate'
-            check_obs_error = False
-
-            env = Arm(is_render=False)
-            env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4,
-                               total_offset=total_offset, grasp_order=grasp_order,
-                               gap_item=gap_item, gap_block=gap_block,
-                               real_operate=real_operate, obs_order=obs_order,
-                               random_offset=random_offset, check_obs_error=check_obs_error)
-            image_trim = env.change_config()
-            _ = env.reset()
-            error = env.step(i)
-            if error_min > error:
-                print(error)
-                evaluation_min = i
-                # print(evaluation_max)
-                error_min = error
-        print(evaluation_min)
-        print(error_min)
