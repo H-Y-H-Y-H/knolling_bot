@@ -1,5 +1,4 @@
 import sys
-sys.path.append('/home/zhizhuo/Create Machine Lab/knolling_bot-main/yolov7')
 
 import argparse
 import time
@@ -15,7 +14,8 @@ from torch.utils.data import Dataset, DataLoader
 import torch.backends.cudnn as cudnn
 import matplotlib.pyplot as plt
 import sys
-sys.path.append('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot-main/yolov7')
+sys.path.append('/home/ubuntu/Desktop/knolling_bot-main_zzz/yolov7')
+from utils.plots import my_plot_one_box_lwcossin
 from numpy import random
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages, LoadImages2
@@ -30,7 +30,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 torch.manual_seed(42)
-
+criterion = 'lwcossin'
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 class block(nn.Module):
@@ -134,8 +134,8 @@ class ResNet(nn.Module):
         self.fc6_2 = nn.Linear(128, 64)
         self.fc7_1 = nn.Linear(80, 32)
         self.fc7_2 = nn.Linear(64, 16)
-        self.fc8_1 = nn.Linear(32, output_size - 1)
-        self.fc8_2 = nn.Linear(16, 1)
+        self.fc8_1 = nn.Linear(32, output_size - 2)
+        self.fc8_2 = nn.Linear(16, 2)
 
         # # 226_combine structure
         # self.fc0 = nn.Linear(512 * 4, 512 * 6)
@@ -346,88 +346,173 @@ def eval_img4Batch(img_array, num_obj):
         device = 'cpu'
     print("Device:", device)
 
-    model = ResNet50(img_channel=3, output_size=5).to(device)
-    # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    model.load_state_dict(torch.load('Model/best_model_302_combine_6.pt', map_location='cuda:0'))
-    # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
-    model.eval()
+    if criterion == 'lwcossin':
+        model = ResNet50(img_channel=3, output_size=4).to(device)
+        # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        model.load_state_dict(torch.load('Model/best_model_304_combine.pt', map_location='cuda:0'))
+        # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
+        model.eval()
 
-    data_num = 60000
-    data_4_train = int(data_num * 0.8)
-    ratio = 0.5  # close3, normal7
-    close_num_test = int((data_num - data_4_train) * ratio)
-    normal_num_test = int((data_num - data_4_train) - close_num_test)
-    close_index = int(data_4_train * ratio)
-    normal_index = int(data_4_train * (1 - ratio))
+        data_num = 60000
+        data_4_train = int(data_num * 0.8)
+        ratio = 0.5  # close3, normal7
+        close_num_test = int((data_num - data_4_train) * ratio)
+        normal_num_test = int((data_num - data_4_train) - close_num_test)
+        close_index = int(data_4_train * ratio)
+        normal_index = int(data_4_train * (1 - ratio))
 
-    close_label = np.loadtxt('./Dataset/label/label_301_close_2.csv')[:, :5]
-    normal_label = np.loadtxt('./Dataset/label/label_301_normal_2.csv')[:, :5]
-    test_label = []
+        close_label = np.loadtxt('./Dataset/label/label_301_close_3.csv')[:, :4]
+        normal_label = np.loadtxt('./Dataset/label/label_301_normal_3.csv')[:, :4]
+        test_label = []
 
-    for i in range(close_num_test):
-        test_label.append(close_label[close_index])
-        close_index += 1
-    for i in range(normal_num_test):
-        test_label.append(normal_label[normal_index])
-        normal_index += 1
+        for i in range(close_num_test):
+            test_label.append(close_label[close_index])
+            close_index += 1
+        for i in range(normal_num_test):
+            test_label.append(normal_label[normal_index])
+            normal_index += 1
 
-    scaler = MinMaxScaler()
-    scaler.fit(test_label)
-    print(scaler.data_max_)
-    print(scaler.data_min_)
+        scaler = MinMaxScaler()
+        scaler.fit(test_label)
+        print(scaler.data_max_)
+        print(scaler.data_min_)
 
-    test_data = []
-    # mm_sc = [[0, 14 / 1000, 14 / 1000], [np.pi, 34 / 1000, 16 / 1000]]
-    for i in range(num_obj):
-        img_array1 = img_array[i].astype(np.float32)/255
-        img_array1[0], img_array1[2] = img_array1[2], img_array1[0]
-        image2 = img_array1
-        # image = plt.imread('real_test/img%s.png' %i)
-        # print(image)
-        # print(image2)
+        test_data = []
+        # mm_sc = [[0, 14 / 1000, 14 / 1000], [np.pi, 34 / 1000, 16 / 1000]]
+        for i in range(num_obj):
+            img_array1 = img_array[i].astype(np.float32) / 255
+            img_array1[0], img_array1[2] = img_array1[2], img_array1[0]
+            image2 = img_array1
+            # image = plt.imread('real_test/img%s.png' %i)
+            # print(image)
+            # print(image2)
 
-        # if (image == image2).all():
-        #     print('!')
+            # if (image == image2).all():
+            #     print('!')
 
-        # print('shape',image.shape)
-        # print('shape', image2.shape)
-        test_data.append(image2)
+            # print('shape',image.shape)
+            # print('shape', image2.shape)
+            test_data.append(image2)
 
-    test_dataset = VD_Data(
-        img_data=test_data, label_data = test_label, transform=ToTensor())
+        test_dataset = VD_Data(
+            img_data=test_data, label_data=test_label, transform=ToTensor())
 
-    BATCH_SIZE = 32
+        BATCH_SIZE = 32
 
-    test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
-                             shuffle=False, num_workers=0)
+        test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
+                                 shuffle=False, num_workers=0)
 
-    with torch.no_grad():
+        with torch.no_grad():
 
-        for batch in test_loader:
-            img = batch["image"]
+            for batch in test_loader:
+                img = batch["image"]
 
-            # ############################## test the shape of img ##############################
-            # img_show = img.cpu().detach().numpy()
-            # print(img_show[0].shape)
-            # temp = img_show[0]
-            # temp_shape = temp.shape
-            # temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
-            # print(temp.shape)
-            # cv2.namedWindow("well",0)
-            # cv2.imshow('well', temp)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            # ############################## test the shape of img ##############################
+                # ############################## test the shape of img ##############################
+                # img_show = img.cpu().detach().numpy()
+                # print(img_show[0].shape)
+                # temp = img_show[0]
+                # temp_shape = temp.shape
+                # temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
+                # print(temp.shape)
+                # cv2.namedWindow("well",0)
+                # cv2.imshow('well', temp)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
+                # ############################## test the shape of img ##############################
 
-            img = img.to(device)
-            pred_x1y1x2y2l = model.forward(img)
-            pred_x1y1x2y2l = pred_x1y1x2y2l.cpu().detach().numpy()
-            # print('this is', pred_x1y1x2y2l)
-            pred_x1y1x2y2l = scaler.inverse_transform(pred_x1y1x2y2l)
-            # print('this is', pred_x1y1x2y2l)
-            # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
+                img = img.to(device)
+                pred_lwcossin = model.forward(img)
+                pred_lwcossin = pred_lwcossin.cpu().detach().numpy()
+                # print('this is', pred_x1y1x2y2l)
+                pred_lwcossin = scaler.inverse_transform(pred_lwcossin)
+                # print('this is', pred_x1y1x2y2l)
+                # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
 
-            return pred_x1y1x2y2l
+                return pred_lwcossin
+
+    if criterion == 'x1y1x2y2':
+        model = ResNet50(img_channel=3, output_size=4).to(device)
+        # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        model.load_state_dict(torch.load('Model/best_model_302_combine_**2.pt', map_location='cuda:0'))
+        # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
+        model.eval()
+
+        data_num = 60000
+        data_4_train = int(data_num * 0.8)
+        ratio = 0.5  # close3, normal7
+        close_num_test = int((data_num - data_4_train) * ratio)
+        normal_num_test = int((data_num - data_4_train) - close_num_test)
+        close_index = int(data_4_train * ratio)
+        normal_index = int(data_4_train * (1 - ratio))
+
+        close_label = np.loadtxt('./Dataset/label/label_301_close_2.csv')[:, :5]
+        normal_label = np.loadtxt('./Dataset/label/label_301_normal_2.csv')[:, :5]
+        test_label = []
+
+        for i in range(close_num_test):
+            test_label.append(close_label[close_index])
+            close_index += 1
+        for i in range(normal_num_test):
+            test_label.append(normal_label[normal_index])
+            normal_index += 1
+
+        scaler = MinMaxScaler()
+        scaler.fit(test_label)
+        print(scaler.data_max_)
+        print(scaler.data_min_)
+
+        test_data = []
+        # mm_sc = [[0, 14 / 1000, 14 / 1000], [np.pi, 34 / 1000, 16 / 1000]]
+        for i in range(num_obj):
+            img_array1 = img_array[i].astype(np.float32)/255
+            img_array1[0], img_array1[2] = img_array1[2], img_array1[0]
+            image2 = img_array1
+            # image = plt.imread('real_test/img%s.png' %i)
+            # print(image)
+            # print(image2)
+
+            # if (image == image2).all():
+            #     print('!')
+
+            # print('shape',image.shape)
+            # print('shape', image2.shape)
+            test_data.append(image2)
+
+        test_dataset = VD_Data(
+            img_data=test_data, label_data = test_label, transform=ToTensor())
+
+        BATCH_SIZE = 32
+
+        test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
+                                 shuffle=False, num_workers=0)
+
+        with torch.no_grad():
+
+            for batch in test_loader:
+                img = batch["image"]
+
+                # ############################## test the shape of img ##############################
+                # img_show = img.cpu().detach().numpy()
+                # print(img_show[0].shape)
+                # temp = img_show[0]
+                # temp_shape = temp.shape
+                # temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
+                # print(temp.shape)
+                # cv2.namedWindow("well",0)
+                # cv2.imshow('well', temp)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
+                # ############################## test the shape of img ##############################
+
+                img = img.to(device)
+                pred_x1y1x2y2l = model.forward(img)
+                pred_x1y1x2y2l = pred_x1y1x2y2l.cpu().detach().numpy()
+                # print('this is', pred_x1y1x2y2l)
+                pred_x1y1x2y2l = scaler.inverse_transform(pred_x1y1x2y2l)
+                # print('this is', pred_x1y1x2y2l)
+                # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
+
+                return pred_x1y1x2y2l
 
 def color_define(obj_hsv):
     # obj_HSV = [H,S,V]
@@ -489,37 +574,73 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
     xy_list = xy_list[order_yolo, :]
     ############### order yolo output depend on x, y in the world coordinate system ###############
 
-    # print(all_pred)
-    to_arm = []
-    print('this is number of obj', obj_num)
-    for i in range(obj_num):
-        xy = xy_list[i]
-        # my_yaw, my_length, my_width = all_pred[i][0], all_pred[i][1], all_pred[i][2]
-        x1, y1, x2, y2, my_length = all_pred[i][0], all_pred[i][1], all_pred[i][2], all_pred[i][3], all_pred[i][4]
-        my_width = np.linalg.norm(np.array([x1, y1]) - np.array([x2, y2]))
-        # pred_label = [xy[0], xy[1], my_yaw, my_length, my_width]
+    if criterion == 'lwcossin':
+        to_arm = []
+        print('this is number of obj', obj_num)
+        for i in range(obj_num):
+            xy = xy_list[i]
+            # my_yaw, my_length, my_width = all_pred[i][0], all_pred[i][1], all_pred[i][2]
+            my_length, my_width, my_cos, my_sin = all_pred[i][0], all_pred[i][1], all_pred[i][2], all_pred[i][3]
+            my_ori = np.arctan2(my_sin, my_cos) / 2
+            # pred_label = [xy[0], xy[1], my_yaw, my_length, my_width]
 
-        info1 = f'x1: {x1:.3f} y1: {y1:.3f} x2: {x2:.3f} y2: {y2:.3f}'
-        info2 = f'length: {my_length * 1000:.3f} width: {my_width * 1000:.3f}'
-        # plot_one_box(xyxy, im0, label=label,
-        #              color=colors[int(cls)], line_thickness=1)
-        color_pos = f'color: {color_label[i]} x_pos: {xy[0]:.4f} y_pos: {xy[1]:.4f}'
-        # my_plot_one_box(xyxy_list[i], img, my_yaw, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
-        #                 color=[0, 0, 0], line_thickness=1)
-        check_flag = False
-        my_plot_one_box(xyxy_list[i], img, x1, y1, x2, y2, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
-                        color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
-        my_to_arm = [xy[0], xy[1], x1, y1, x2, y2, my_length, my_width, color_label[i]]
-        to_arm.append(my_to_arm)
-        ############################### plot the ground truth ################################
-        x1_truth, y1_truth, x2_truth, y2_truth, length_truth = all_truth[i][0], all_truth[i][1], all_truth[i][2], all_truth[i][3], all_truth[i][4]
-        width_truth = np.linalg.norm(np.array([x1_truth, y1_truth]) - np.array([x2_truth, y2_truth]))
-        message = 'the ground truth is shown below'
-        info2 = f'x1: {x1_truth:.3f} y1: {y1_truth:.3f} x2: {x2_truth:.3f} y2: {y2_truth:.3f}'
-        check_flag = True
-        my_plot_one_box(xyxy_list[i], img, x1_truth, y1_truth, x2_truth, y2_truth, length_truth, width_truth,
-                        label1=message, label2=info2, label3=None, color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
-        ############################### plot the ground truth ################################
+            info1 = f'cos: {my_cos:.3f} sin: {my_sin:.3f}, ori: {my_ori}'
+            info2 = f'length: {my_length * 1000:.3f} width: {my_width * 1000:.3f}'
+            # plot_one_box(xyxy, im0, label=label,
+            #              color=colors[int(cls)], line_thickness=1)
+            color_pos = f'color: {color_label[i]} x_pos: {xy[0]:.4f} y_pos: {xy[1]:.4f}'
+            # my_plot_one_box(xyxy_list[i], img, my_yaw, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
+            #                 color=[0, 0, 0], line_thickness=1)
+            check_flag = False
+            my_plot_one_box_lwcossin(xyxy_list[i], img, my_length, my_width, my_ori, label1=info1, label2=color_pos,
+                            label3=info2,
+                            color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
+            my_to_arm = [xy[0], xy[1], my_length, my_width, my_ori, color_label[i]]
+            to_arm.append(my_to_arm)
+            ############################### plot the ground truth ################################
+            length_truth, width_truth, cos_truth, sin_truth, x_truth, y_truth = all_truth[i][:6]
+            ori_truth = np.arctan2(sin_truth, cos_truth) / 2
+            # message = 'the ground truth is shown below'
+            info1 = f'cos: {cos_truth:.3f} sin: {sin_truth:.3f}, ori: {ori_truth:.3f}'
+            info2 = f'length: {length_truth * 1000:.3f} width: {width_truth * 1000:.3f}'
+            info3 = f'x: {x_truth:.3f} y: {y_truth:.3f}'
+            check_flag = True
+            my_plot_one_box_lwcossin(xyxy_list[i], img, length_truth, width_truth, ori_truth,
+                            label1=info1, label2=info2, label3=info3, color=[0, 0, 0], line_thickness=1,
+                            check_flag=check_flag)
+            ############################### plot the ground truth ################################
+
+    if criterion == 'x1y1x2y2lw':
+        to_arm = []
+        print('this is number of obj', obj_num)
+        for i in range(obj_num):
+            xy = xy_list[i]
+            # my_yaw, my_length, my_width = all_pred[i][0], all_pred[i][1], all_pred[i][2]
+            x1, y1, x2, y2, my_length = all_pred[i][0], all_pred[i][1], all_pred[i][2], all_pred[i][3], all_pred[i][4]
+            my_width = np.linalg.norm(np.array([x1, y1]) - np.array([x2, y2]))
+            # pred_label = [xy[0], xy[1], my_yaw, my_length, my_width]
+
+            info1 = f'x1: {x1:.3f} y1: {y1:.3f} x2: {x2:.3f} y2: {y2:.3f}'
+            info2 = f'length: {my_length * 1000:.3f} width: {my_width * 1000:.3f}'
+            # plot_one_box(xyxy, im0, label=label,
+            #              color=colors[int(cls)], line_thickness=1)
+            color_pos = f'color: {color_label[i]} x_pos: {xy[0]:.4f} y_pos: {xy[1]:.4f}'
+            # my_plot_one_box(xyxy_list[i], img, my_yaw, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
+            #                 color=[0, 0, 0], line_thickness=1)
+            check_flag = False
+            my_plot_one_box(xyxy_list[i], img, x1, y1, x2, y2, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
+                            color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
+            my_to_arm = [xy[0], xy[1], x1, y1, x2, y2, my_length, my_width, color_label[i]]
+            to_arm.append(my_to_arm)
+            ############################### plot the ground truth ################################
+            x1_truth, y1_truth, x2_truth, y2_truth, length_truth = all_truth[i][0], all_truth[i][1], all_truth[i][2], all_truth[i][3], all_truth[i][4]
+            width_truth = np.linalg.norm(np.array([x1_truth, y1_truth]) - np.array([x2_truth, y2_truth]))
+            message = 'the ground truth is shown below'
+            info2 = f'x1: {x1_truth:.3f} y1: {y1_truth:.3f} x2: {x2_truth:.3f} y2: {y2_truth:.3f}'
+            check_flag = True
+            my_plot_one_box(xyxy_list[i], img, x1_truth, y1_truth, x2_truth, y2_truth, length_truth, width_truth,
+                            label1=message, label2=info2, label3=None, color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
+            ############################### plot the ground truth ################################
 
 
     return img, to_arm
@@ -968,14 +1089,15 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
 
                 # print(box_number)
                 im0, to_arm = Plot4Batch(im0, xyxy_list, xy_list, img_label, color_label, box_number, all_truth)
+                cv2.namedWindow('123', 0)
                 cv2.imshow('123', im0)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./test_226_combine_{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./test_302_combine_real_6.png', im0)
+                    cv2.imwrite(f'./Test_images/test_304_combine_real', im0)
                 else:
-                    cv2.imwrite(f'./test_302_combine_sim_6.png', im0)
+                    cv2.imwrite(f'./Test_images/test_304_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:

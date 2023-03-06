@@ -202,205 +202,244 @@ class Arm:
             order_ground_truth = np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0]))
             print('this is the ground truth order', order_ground_truth)
             print('this is the ground truth before changing the order\n', ground_truth_xyyaw)
-            # for i in range(len(order_ground_truth)):
-            #     ground_truth_xyyaw_true.append(ground_truth_xyyaw[order_ground_truth[i]])
-            #     new_xyz_list_true.append(new_xyz_list[order_ground_truth[i]])
-            # ground_truth_xyyaw = np.asarray(ground_truth_xyyaw_true)
-            # new_xyz_list = np.asarray(new_xyz_list_true)
 
             ground_truth_xyyaw = ground_truth_xyyaw[order_ground_truth, :]
             new_xyz_list = new_xyz_list[order_ground_truth, :]
             ############### order the ground truth depend on x, y in the world coordinate system ###############
 
-            target = []
-            for i in range(len(new_xyz_list)):
-                rot_z = np.array([[np.cos(ground_truth_xyyaw[i, 2]), -np.sin(ground_truth_xyyaw[i, 2])],
-                                  [np.sin(ground_truth_xyyaw[i, 2]), np.cos(ground_truth_xyyaw[i, 2])]])
-                grasp_point = np.array([[0, 0.016 / 2],
-                                        [0, -0.016 / 2]])
-                grasp_point_rotate = (rot_z.dot(grasp_point.T)).T
+            criterion = 'lwcossin'
 
-                element = []
-                if grasp_point_rotate[0][0] > grasp_point_rotate[1][0]:
-                    element.append(grasp_point_rotate[0][0])
-                    element.append(grasp_point_rotate[0][1])
-                    element.append(grasp_point_rotate[1][0])
-                    element.append(grasp_point_rotate[1][1])
-                else:
-                    element.append(grasp_point_rotate[1][0])
-                    element.append(grasp_point_rotate[1][1])
-                    element.append(grasp_point_rotate[0][0])
-                    element.append(grasp_point_rotate[0][1])
-                element.append(new_xyz_list[i, 0])
-                target.append(element)
-            target = np.asarray(target)
+            if criterion == 'lwcossin':
+
+                demo = np.array([[0.032, 0.016, 1, 1],
+                                 [0.016, 0.016, -1, -1]])
+                scaler = MinMaxScaler()
+                scaler.fit(demo)
+
+                # this is lwyaw ground truth
+                target_cos = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+                target_sin = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+                target = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin, ground_truth_xyyaw[:, :2]), axis=1)
+                # structure: length, width, cos(2 * ori), sin(2 * ori)
+                target_compare = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin), axis=1)
+                target_compare_scaled = scaler.transform(target_compare)
+
+                # structure: x, y, length, width, ori
+                results = np.asarray(
+                    detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target))
+                results = np.asarray(results[:, :5]).astype(np.float32)
+                pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
+                pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
+                pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
+                pred_compare_2 = np.concatenate((results[:, 2:4], -pred_cos, -pred_sin), axis=1)
+                for i in range(len(pred_compare)):
+                    if np.mean((pred_compare[i] - target_compare[i]) ** 2) > np.mean((pred_compare_2[i] - target_compare[i]) ** 2):
+                        pred_compare[i] = np.copy(pred_compare_2[i])
+                        print('pred changed!')
+                pred_compare_scaled = scaler.transform(pred_compare)
+
+                error = np.mean((pred_compare_scaled - target_compare_scaled) ** 2)
+                print('this is the error between the target and the pred', error)
 
 
+                # arange the sequence based on categories of cubes
+                z = 0
+                roll = 0
+                pitch = 0
+                index = []
+                correct = []
+                for i in range(len(self.grasp_order)):
+                    correct.append(self.xyz_list[self.all_index[i][0]])
+                correct = np.asarray(correct)
+                for i in range(len(correct)):
+                    for j in range(len(results)):
+                        if np.linalg.norm(correct[i][0] - results[j][2]) < 0.003:
+                            index.append(j)
+                manipulator_before = []
+                for i in index:
+                    manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, results[i][4]])
+                manipulator_before = np.asarray(manipulator_before)
+                new_xyz_list = self.xyz_list
+                print('this is manipulator before after the detection \n', manipulator_before)
 
-            results = np.asarray(detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target))
-            # results = np.asarray(results[:,:5]).astype(np.float32)
-            # # structure: x,y,yaw,length,width
-            results = np.asarray(results[:, :8]).astype(np.float32)
-            # structure: x,y,x1,y1,x2,y2,length,width
-            ############### order the results depend on x, y in the world coordinate system ###############
-            print('this is the order', np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0])))
-            order_results = np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0]))
-            results = results[order_results, :]
-            print('this is the result of detection\n', results)
-            ############### order the results depend on x, y in the world coordinate system ###############
+                # # arange the sequence based on the coordinate system (no use)
+                # z = np.zeros(len(results)).reshape(-1, 1)
+                # roll = np.zeros(len(results)).reshape(-1, 1)
+                # pitch = np.zeros(len(results)).reshape(-1, 1)
+                # manipulator_before = np.concatenate((results[:, :2], z, roll, pitch, results[:, 2].reshape((-1, 1))), axis=1)
+                # print('this is manipulator before after the detection \n', manipulator_before)
 
-            # index = []
-            # correct = []
-            # for i in range(len(self.grasp_order)):
-            #     correct.append(self.xyz_list[self.all_index[i][0]])
-            # correct = np.asarray(correct)
-            # for i in range(len(correct)):
-            #     for j in range(len(results)):
-            #         if np.linalg.norm(correct[i][:2] - results[j][3:5]) < 0.001:
-            #             index.append(j)
-            # manipulator_before = []
-            # for i in index:
-            #     manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, results[i][2]])
-            # manipulator_before = np.asarray(manipulator_before)
-            # new_xyz_list = self.xyz_list
+            if criterion == 'x1y1x2y2':
+                target = []
+                for i in range(len(new_xyz_list)):
+                    rot_z = np.array([[np.cos(ground_truth_xyyaw[i, 2]), -np.sin(ground_truth_xyyaw[i, 2])],
+                                      [np.sin(ground_truth_xyyaw[i, 2]), np.cos(ground_truth_xyyaw[i, 2])]])
+                    grasp_point = np.array([[0, 0.016 / 2],
+                                            [0, -0.016 / 2]])
+                    grasp_point_rotate = (rot_z.dot(grasp_point.T)).T
 
-            # print(results)
-            point_1 = np.array([results[:, 2], results[:, 3]]).T
-            point_2 = np.array([results[:, 4], results[:, 5]]).T
+                    element = []
+                    if grasp_point_rotate[0][0] > grasp_point_rotate[1][0]:
+                        element.append(grasp_point_rotate[0][0])
+                        element.append(grasp_point_rotate[0][1])
+                        element.append(grasp_point_rotate[1][0])
+                        element.append(grasp_point_rotate[1][1])
+                    else:
+                        element.append(grasp_point_rotate[1][0])
+                        element.append(grasp_point_rotate[1][1])
+                        element.append(grasp_point_rotate[0][0])
+                        element.append(grasp_point_rotate[0][1])
+                    element.append(new_xyz_list[i, 0])
+                    target.append(element)
+                target = np.asarray(target)
 
-            ###############################fix the angle gap###############################
-            ori = np.arctan2(point_1[:, 1] - point_2[:, 1], point_1[:, 0] - point_2[:, 0]) - np.pi / 2
-            ###############################fix the angle gap###############################
+                # structure: x,y,x1,y1,x2,y2,length,width
+                results = np.asarray(detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target))
+                results = np.asarray(results[:, :8]).astype(np.float32)
+                ############### order the results depend on x, y in the world coordinate system ###############
+                print('this is the order', np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0])))
+                order_results = np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0]))
+                results = results[order_results, :]
+                print('this is the result of detection\n', results)
+                ############### order the results depend on x, y in the world coordinate system ###############
 
-            ###################### check the error of the ResNet ######################
-            scaler = MinMaxScaler()
-            scaler.fit([[0.008, 0.008, 0, 0.008, 0.032],
-                        [0, -0.008, 0.008, -0.008, 0.016]])
-            pred_origin = results[:, 2:7]
-            target_origin = np.copy(target)
+                # print(results)
+                point_1 = np.array([results[:, 2], results[:, 3]]).T
+                point_2 = np.array([results[:, 4], results[:, 5]]).T
 
-            target_2 = np.copy(target)
-            for i in range(len(target_2)):
-                if target_2[i, 4] < 0.017:
-                    ori_2 = np.arctan2(target_2[i, 1] - target_2[i, 3], target_2[i, 0] - target_2[i, 2])
-                    # print('this is ori', ori_2)
-                    # print('this is target_2', target_2[i])
-                    grasp_point_2 = np.array([[target_2[i, 0], target_2[i, 1]],
-                                            [target_2[i, 2], target_2[i, 3]]])
-                    if ori_2 < 0:
-                        rotate = 3.1415926 / 2
-                        matrix = np.array([[np.cos(rotate), -np.sin(rotate)],
-                                               [np.sin(rotate), np.cos(rotate)]])
-                        # print(matrix.mm(torch.t(grasp_point_2)))
-                        target_2[i, :4] = (matrix.dot(grasp_point_2.T)).T.reshape(-1,)
-                        # target_2[i, :4] = torch.reshape(torch.t((matrix.mm(torch.t(grasp_point_2)))), (-1,))
-                    elif ori_2 > 0:
-                        rotate = -3.1415926 / 2
-                        matrix = np.array([[np.cos(rotate), -np.sin(rotate)],
-                                               [np.sin(rotate), np.cos(rotate)]])
-                        target_2[i, :4] = (matrix.dot(grasp_point_2.T)).T.reshape(-1, )
-                        # target_2[i, :4] = torch.reshape(torch.t((matrix.mm(torch.t(grasp_point_2)))), (-1,))
+                ###############################fix the angle gap###############################
+                ori = np.arctan2(point_1[:, 1] - point_2[:, 1], point_1[:, 0] - point_2[:, 0]) - np.pi / 2
+                ###############################fix the angle gap###############################
+
+                ###################### check the error of the ResNet ######################
+                scaler = MinMaxScaler()
+                scaler.fit([[0.008, 0.008, 0, 0.008, 0.032],
+                            [0, -0.008, 0.008, -0.008, 0.016]])
+                pred_origin = results[:, 2:7]
+                target_origin = np.copy(target)
+
+                target_2 = np.copy(target)
+                for i in range(len(target_2)):
+                    if target_2[i, 4] < 0.017:
+                        ori_2 = np.arctan2(target_2[i, 1] - target_2[i, 3], target_2[i, 0] - target_2[i, 2])
+                        # print('this is ori', ori_2)
+                        # print('this is target_2', target_2[i])
+                        grasp_point_2 = np.array([[target_2[i, 0], target_2[i, 1]],
+                                                [target_2[i, 2], target_2[i, 3]]])
+                        if ori_2 < 0:
+                            rotate = 3.1415926 / 2
+                            matrix = np.array([[np.cos(rotate), -np.sin(rotate)],
+                                                   [np.sin(rotate), np.cos(rotate)]])
+                            # print(matrix.mm(torch.t(grasp_point_2)))
+                            target_2[i, :4] = (matrix.dot(grasp_point_2.T)).T.reshape(-1,)
+                            # target_2[i, :4] = torch.reshape(torch.t((matrix.mm(torch.t(grasp_point_2)))), (-1,))
+                        elif ori_2 > 0:
+                            rotate = -3.1415926 / 2
+                            matrix = np.array([[np.cos(rotate), -np.sin(rotate)],
+                                                   [np.sin(rotate), np.cos(rotate)]])
+                            target_2[i, :4] = (matrix.dot(grasp_point_2.T)).T.reshape(-1, )
+                            # target_2[i, :4] = torch.reshape(torch.t((matrix.mm(torch.t(grasp_point_2)))), (-1,))
+                        else:
+                            pass
+                for i in range(len(target)):
+                    if np.mean((pred_origin[i] - target[i]) ** 2) > np.mean((pred_origin[i] - target_2[i]) ** 2):
+                        # value.append(torch.mean((pred[i] - target_2[i]) ** 2))
+                        target[i] = np.copy(target_2[i])
+                        # print('loss changed!')
                     else:
                         pass
-            for i in range(len(target)):
-                if np.mean((pred_origin[i] - target[i]) ** 2) > np.mean((pred_origin[i] - target_2[i]) ** 2):
-                    # value.append(torch.mean((pred[i] - target_2[i]) ** 2))
-                    target[i] = np.copy(target_2[i])
-                    # print('loss changed!')
-                else:
-                    pass
 
-            ################################### IOU loss #####################################
-            total_iou = []
-            print(target)
-            for i in range(len(results)):
-                if pred_origin[i][4] <= 0:
-                    iou = 0.0001
-                else:
-                    yaw_1 = np.arctan2(pred_origin[i, 1] - pred_origin[i, 3], pred_origin[i, 0] - pred_origin[i, 2])
-                    yaw_2 = np.arctan2(target[i, 1] - target[i, 3], target[i, 0] - target[i, 2])
-                    pred_width = np.linalg.norm(np.array([pred_origin[i][0], pred_origin[i][1]]) - np.array(
-                        [pred_origin[i][2], pred_origin[i][3]]))
-                    target_width = np.linalg.norm(np.array([target[i][0], target[i][1]]) - np.array([target[i][2], target[i][3]]))
-                    # yaw_1 = pred_IoU[i][0]
-                    # yaw_2 = target_IoU[i][0]
-                    matrix_1 = np.array([[np.cos(yaw_1), -np.sin(yaw_1)],
-                                         [np.sin(yaw_1), np.cos(yaw_1)]])
-                    matrix_2 = np.array([[np.cos(yaw_2), -np.sin(yaw_2)],
-                                         [np.sin(yaw_2), np.cos(yaw_2)]])
-                    corner_1 = np.array([[pred_width / 2, pred_origin[i][4] / 2],
-                                         [-pred_width / 2, pred_origin[i][4] / 2],
-                                         [-pred_width / 2, -pred_origin[i][4] / 2],
-                                         [pred_width / 2, -pred_origin[i][4] / 2]])
-                    corner_2 = np.array([[target_width / 2, target[i][4] / 2],
-                                         [-target_width / 2, target[i][4] / 2],
-                                         [-target_width / 2, -target[i][4] / 2],
-                                         [target_width / 2, -target[i][4] / 2]])
-                    corner_1_rotate = (matrix_1.dot(corner_1.T)).T
-                    corner_2_rotate = (matrix_2.dot(corner_2.T)).T
-                    poly_1 = Polygon(corner_1_rotate)
-                    poly_2 = Polygon(corner_2_rotate)
-                    iou = poly_1.intersection(poly_2).area / poly_1.union(poly_2).area
-                # if iou > 0.8:
-                #     print(iou)
-                #     print(pred_IoU[i][4:6])
-                #     print(target_IoU[i][4:6])
-                #     print(corner_1_rotate)
-                #     print(corner_2_rotate)
-                #     print(yaw_1)
-                #     print(yaw_2)
-                #     print('***************************')
-                # if i == 0:
-                #     print('pred', pred_IoU[i])
-                #     print('tar', target_IoU[i])
-                #     print('iou', iou)
-                total_iou.append(iou)
+                ################################### IOU loss #####################################
+                total_iou = []
+                print(target)
+                for i in range(len(results)):
+                    if pred_origin[i][4] <= 0:
+                        iou = 0.0001
+                    else:
+                        yaw_1 = np.arctan2(pred_origin[i, 1] - pred_origin[i, 3], pred_origin[i, 0] - pred_origin[i, 2])
+                        yaw_2 = np.arctan2(target[i, 1] - target[i, 3], target[i, 0] - target[i, 2])
+                        pred_width = np.linalg.norm(np.array([pred_origin[i][0], pred_origin[i][1]]) - np.array(
+                            [pred_origin[i][2], pred_origin[i][3]]))
+                        target_width = np.linalg.norm(np.array([target[i][0], target[i][1]]) - np.array([target[i][2], target[i][3]]))
+                        # yaw_1 = pred_IoU[i][0]
+                        # yaw_2 = target_IoU[i][0]
+                        matrix_1 = np.array([[np.cos(yaw_1), -np.sin(yaw_1)],
+                                             [np.sin(yaw_1), np.cos(yaw_1)]])
+                        matrix_2 = np.array([[np.cos(yaw_2), -np.sin(yaw_2)],
+                                             [np.sin(yaw_2), np.cos(yaw_2)]])
+                        corner_1 = np.array([[pred_width / 2, pred_origin[i][4] / 2],
+                                             [-pred_width / 2, pred_origin[i][4] / 2],
+                                             [-pred_width / 2, -pred_origin[i][4] / 2],
+                                             [pred_width / 2, -pred_origin[i][4] / 2]])
+                        corner_2 = np.array([[target_width / 2, target[i][4] / 2],
+                                             [-target_width / 2, target[i][4] / 2],
+                                             [-target_width / 2, -target[i][4] / 2],
+                                             [target_width / 2, -target[i][4] / 2]])
+                        corner_1_rotate = (matrix_1.dot(corner_1.T)).T
+                        corner_2_rotate = (matrix_2.dot(corner_2.T)).T
+                        poly_1 = Polygon(corner_1_rotate)
+                        poly_2 = Polygon(corner_2_rotate)
+                        iou = poly_1.intersection(poly_2).area / poly_1.union(poly_2).area
+                    # if iou > 0.8:
+                    #     print(iou)
+                    #     print(pred_IoU[i][4:6])
+                    #     print(target_IoU[i][4:6])
+                    #     print(corner_1_rotate)
+                    #     print(corner_2_rotate)
+                    #     print(yaw_1)
+                    #     print(yaw_2)
+                    #     print('***************************')
+                    # if i == 0:
+                    #     print('pred', pred_IoU[i])
+                    #     print('tar', target_IoU[i])
+                    #     print('iou', iou)
+                    total_iou.append(iou)
 
-            total_iou = -np.log(np.asarray(total_iou, dtype=np.float32)).reshape((-1, 1))
-            # total_iou.requires_grad_()
-            ################################### IOU loss #####################################
+                total_iou = -np.log(np.asarray(total_iou, dtype=np.float32)).reshape((-1, 1))
+                # total_iou.requires_grad_()
+                ################################### IOU loss #####################################
 
-            print('this is pred origin\n', pred_origin)
-            print('this is target origin\n', target_origin)
-            print('this is target origin changed\n', target)
+                print('this is pred origin\n', pred_origin)
+                print('this is target origin\n', target_origin)
+                print('this is target origin changed\n', target)
 
-            pred_compare = scaler.transform(pred_origin)
-            target_compare = scaler.transform(target)
+                pred_compare = scaler.transform(pred_origin)
+                target_compare = scaler.transform(target)
 
-            # pred_compare = scaler.inverse_transform(np.asarray(pred_compare))
-            print('this is pred compare\n', pred_compare)
-            print('this is target compare\n', target_compare)
+                # pred_compare = scaler.inverse_transform(np.asarray(pred_compare))
+                print('this is pred compare\n', pred_compare)
+                print('this is target compare\n', target_compare)
 
-            # print((pred - target) ** 2)
-            mse_loss = (pred_compare - target_compare) ** 2
-            error = np.mean(mse_loss * total_iou)
-            print('this is the mean error of detection', error)
-            print('this is the result of detection \n', results)
-            ###################### check the error of the ResNet ######################
+                # print((pred - target) ** 2)
+                mse_loss = (pred_compare - target_compare) ** 2
+                error = np.mean(mse_loss * total_iou)
+                print('this is the mean error of detection', error)
+                print('this is the result of detection \n', results)
+                ###################### check the error of the ResNet ######################
 
-            # # arange the sequence based on categories of cubes
-            # print('zzz ori', ori)
-            # index = []
-            # correct = []
-            # for i in range(len(self.grasp_order)):
-            #     correct.append(self.xyz_list[self.all_index[i][0]])
-            # correct = np.asarray(correct)
-            # for i in range(len(correct)):
-            #     for j in range(len(results)):
-            #         if np.linalg.norm(correct[i][0] - results[j][6]) < 0.005 and 0.012 < np.linalg.norm(point_1[j] - point_2[j]) < 0.018:
-            #             index.append(j)
-            # manipulator_before = []
-            # for i in index:
-            #     manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, ori[i]])
-            # manipulator_before = np.asarray(manipulator_before)
-            # print('this is manipulator before after the detection \n', manipulator_before)
+                # # arange the sequence based on categories of cubes
+                # print('zzz ori', ori)
+                # index = []
+                # correct = []
+                # for i in range(len(self.grasp_order)):
+                #     correct.append(self.xyz_list[self.all_index[i][0]])
+                # correct = np.asarray(correct)
+                # for i in range(len(correct)):
+                #     for j in range(len(results)):
+                #         if np.linalg.norm(correct[i][0] - results[j][6]) < 0.005 and 0.012 < np.linalg.norm(point_1[j] - point_2[j]) < 0.018:
+                #             index.append(j)
+                # manipulator_before = []
+                # for i in index:
+                #     manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, ori[i]])
+                # manipulator_before = np.asarray(manipulator_before)
+                # print('this is manipulator before after the detection \n', manipulator_before)
 
-            z = np.zeros(len(results)).reshape(-1, 1)
-            roll = np.zeros(len(results)).reshape(-1, 1)
-            pitch = np.zeros(len(results)).reshape(-1, 1)
-            ori = ori.reshape(-1, 1)
-            manipulator_before = np.concatenate((results[:, :2], z, roll, pitch, ori), axis=1)
-            print('this is manipulator before after the detection \n', manipulator_before)
+                z = np.zeros(len(results)).reshape(-1, 1)
+                roll = np.zeros(len(results)).reshape(-1, 1)
+                pitch = np.zeros(len(results)).reshape(-1, 1)
+                ori = ori.reshape(-1, 1)
+                manipulator_before = np.concatenate((results[:, :2], z, roll, pitch, ori), axis=1)
+                print('this is manipulator before after the detection \n', manipulator_before)
 
             if self.obs_order == 'sim_image_obj_evaluate':
                 return manipulator_before, new_xyz_list, error
@@ -477,7 +516,7 @@ class Arm:
             # while len(manipulator_before) != len(self.manipulator_after):
             #     print('we need to detect the num and kinds of lego bricks')
             results = np.asarray(detect(img, real_operate=self.real_operate))
-            results = np.asarray(results[:, :8]).astype(np.float32)
+            results = np.asarray(results[:, :5]).astype(np.float32)
             # results[:, 2] = results[:, 2] * math.pi / 180
             # structure: x,y,yaw,length,width
 
@@ -494,7 +533,7 @@ class Arm:
                 kind_index = []
                 for j in range(len(results)):
                     # if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
-                    if np.linalg.norm(self.correct[i][0] - results[j][6]) < 0.003:
+                    if np.linalg.norm(self.correct[i][0] - results[j][2]) < 0.003:
                         kind_index.append(num)
                         new_xyz_list.append(self.correct[i])
                         num += 1
@@ -515,24 +554,23 @@ class Arm:
             print(new_results)
             print(all_index)
 
-            point_1 = np.array([new_results[:, 2], new_results[:, 3]]).T
-            point_2 = np.array([new_results[:, 4], new_results[:, 5]]).T
-            # print(point_1)
-            # print(point_2)
-            # print(point_1[:, 1] - point_2[:, 1])
-            # print(point_1[:, 0] - point_2[:, 0])
+            # point_1 = np.array([new_results[:, 2], new_results[:, 3]]).T
+            # point_2 = np.array([new_results[:, 4], new_results[:, 5]]).T
+            # # print(point_1)
+            # # print(point_2)
+            # # print(point_1[:, 1] - point_2[:, 1])
+            # # print(point_1[:, 0] - point_2[:, 0])
 
-            ###############################fix the angle gap###############################
-            ori = np.arctan2(point_1[:, 1] - point_2[:, 1], point_1[:, 0] - point_2[:, 0]) + np.pi / 2
-            ###############################fix the angle gap###############################
+            # ###############################fix the angle gap###############################
+            # ori = np.arctan2(point_1[:, 1] - point_2[:, 1], point_1[:, 0] - point_2[:, 0]) + np.pi / 2
+            # ###############################fix the angle gap###############################
 
             manipulator_before = []
             for i in range(len(all_index)):
                 for j in range(len(all_index[i])):
                     manipulator_before.append(
                         [new_results[all_index[i][j]][0], new_results[all_index[i][j]][1], z, roll, pitch,
-                         ori[all_index[i][j]]])
-                    # manipulator_before.append([new_results[all_index[i][j]][0], new_results[all_index[i][j]][1], z, roll, pitch, new_results[all_index[i][j]][2]])
+                         new_results[all_index[i][j], 4]])
             manipulator_before = np.asarray(manipulator_before)
 
             print('this is the result of dectection before changing the sequence\n', results)
@@ -609,8 +647,8 @@ class Arm:
 
                     rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
                                         random.uniform(self.y_low_obs, self.y_high_obs), 0.006])
-                    # ori = [0, 0, random.uniform(-math.pi / 2, math.pi / 2)]
-                    ori = [0, 0, 0]
+                    ori = [0, 0, random.uniform(0, math.pi)]
+                    # ori = [0, 0, 0]
                     collect_ori.append(ori)
                     check_list = np.zeros(last_pos.shape[0])
 
@@ -1821,10 +1859,10 @@ if __name__ == '__main__':
     else:
         device = 'cpu'
     print("Device:", device)
-    model = Net().to(device)
-    model.load_state_dict(torch.load("Test_and_Calibration/nn_calibration/model_pt_xyz/combine_all_free_001005_far_free_001005_flank_free_001005_useful.pt"))
-    # print(model)
-    model.eval()
+    # model = Net().to(device)
+    # model.load_state_dict(torch.load("Test_and_Calibration/nn_calibration/model_pt_xyz/combine_all_free_001005_far_free_001005_flank_free_001005_useful.pt"))
+    # # print(model)
+    # model.eval()
 
     if command == 'image':
         num_2x2 = 2
