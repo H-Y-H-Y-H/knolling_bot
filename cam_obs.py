@@ -14,7 +14,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.backends.cudnn as cudnn
 import matplotlib.pyplot as plt
 import sys
-sys.path.append('/home/ubuntu/Desktop/knolling_bot-main_zzz/yolov7')
+sys.path.append('/home/ubuntu/Desktop/knolling_bot/yolov7')
 from utils.plots import my_plot_one_box_lwcossin
 from numpy import random
 from models.experimental import attempt_load
@@ -349,7 +349,7 @@ def eval_img4Batch(img_array, num_obj):
     if criterion == 'lwcossin':
         model = ResNet50(img_channel=3, output_size=4).to(device)
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        model.load_state_dict(torch.load('Model/best_model_304_combine.pt', map_location='cuda:0'))
+        model.load_state_dict(torch.load('Model/best_model_306_combine.pt', map_location='cuda:0'))
         # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
         model.eval()
 
@@ -361,8 +361,8 @@ def eval_img4Batch(img_array, num_obj):
         close_index = int(data_4_train * ratio)
         normal_index = int(data_4_train * (1 - ratio))
 
-        close_label = np.loadtxt('./Dataset/label/label_301_close_3.csv')[:, :4]
-        normal_label = np.loadtxt('./Dataset/label/label_301_normal_3.csv')[:, :4]
+        close_label = np.loadtxt('./Dataset/label/label_304_close_2.csv')[:, :4]
+        normal_label = np.loadtxt('./Dataset/label/label_304_normal_2.csv')[:, :4]
         test_label = []
 
         for i in range(close_num_test):
@@ -1095,9 +1095,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./test_226_combine_{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_304_combine_real', im0)
+                    cv2.imwrite(f'./Test_images/test_306_combine_real', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_304_combine_sim.png', im0)
+                    cv2.imwrite(f'./Test_images/test_306_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
