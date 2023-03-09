@@ -200,11 +200,20 @@ class Arm:
             new_xyz_list = self.xyz_list
             ground_truth_xyyaw = np.concatenate((self.check_pos, self.check_ori.reshape((-1, 1))), axis=1)
             order_ground_truth = np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0]))
+
+            ground_truth_xyyaw_test = np.copy(ground_truth_xyyaw[order_ground_truth, :])
+            for i in range(len(order_ground_truth) - 1):
+                if np.abs(ground_truth_xyyaw_test[i, 0] - ground_truth_xyyaw_test[i+1, 0]) < 0.005:
+                    if ground_truth_xyyaw_test[i, 1] < ground_truth_xyyaw_test[i+1, 1]:
+                        # ground_truth_xyyaw[order_ground_truth[i]], ground_truth_xyyaw[order_ground_truth[i+1]] = ground_truth_xyyaw[order_ground_truth[i+1]], ground_truth_xyyaw[order_ground_truth[i]]
+                        order_ground_truth[i], order_ground_truth[i+1] = order_ground_truth[i+1], order_ground_truth[i]
+                        print('truth change the order!')
+                    else:
+                        pass
             print('this is the ground truth order', order_ground_truth)
             print('this is the ground truth before changing the order\n', ground_truth_xyyaw)
-
-            ground_truth_xyyaw = ground_truth_xyyaw[order_ground_truth, :]
             new_xyz_list = new_xyz_list[order_ground_truth, :]
+            ground_truth_xyyaw = ground_truth_xyyaw[order_ground_truth, :]
             ############### order the ground truth depend on x, y in the world coordinate system ###############
 
             criterion = 'lwcossin'
@@ -226,7 +235,7 @@ class Arm:
 
                 # structure: x, y, length, width, ori
                 results = np.asarray(
-                    detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target))
+                    detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target, order_truth=order_ground_truth))
                 results = np.asarray(results[:, :5]).astype(np.float32)
                 print('this is the result of yolo+resnet', results)
                 pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))

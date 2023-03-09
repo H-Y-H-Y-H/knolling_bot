@@ -564,6 +564,19 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
     ############### order yolo output depend on x, y in the world coordinate system ###############
     xy_list = np.asarray(xy_list)
     order_yolo = np.lexsort((xy_list[:, 1], xy_list[:, 0]))
+
+    xy_list_test = np.copy(xy_list[order_yolo, :])
+    for i in range(len(order_yolo) - 1):
+        if np.abs(xy_list_test[i, 0] - xy_list_test[i + 1, 0]) < 0.005:
+            if xy_list_test[i, 1] < xy_list_test[i + 1, 1]:
+                # xy_list_test[order_yolo[i]], xy_list_test[order_yolo[i + 1]] = xy_list_test[order_yolo[i + 1]], xy_list_test[order_yolo[i]]
+                order_yolo[i], order_yolo[i + 1] = order_yolo[i + 1], order_yolo[i]
+                print('pred change the order!')
+                print(xy_list[order_yolo[i]])
+                print(xy_list[order_yolo[i+1]])
+            else:
+                pass
+
     all_pred = all_pred[order_yolo, :]
     new_xyxy_list = []
     new_color_label = []
@@ -870,7 +883,7 @@ def check_dataset():
         print(np.mean(total_loss))
         return total_loss
 
-def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, real_operate=None, all_truth=None):
+def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, real_operate=None, all_truth=None, order_truth=None):
     cam_obs = True
     path = ''
     parser = argparse.ArgumentParser()
