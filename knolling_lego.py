@@ -203,7 +203,7 @@ class Arm:
 
             ground_truth_xyyaw_test = np.copy(ground_truth_xyyaw[order_ground_truth, :])
             for i in range(len(order_ground_truth) - 1):
-                if np.abs(ground_truth_xyyaw_test[i, 0] - ground_truth_xyyaw_test[i+1, 0]) < 0.005:
+                if np.abs(ground_truth_xyyaw_test[i, 0] - ground_truth_xyyaw_test[i+1, 0]) < 0.003:
                     if ground_truth_xyyaw_test[i, 1] < ground_truth_xyyaw_test[i+1, 1]:
                         # ground_truth_xyyaw[order_ground_truth[i]], ground_truth_xyyaw[order_ground_truth[i+1]] = ground_truth_xyyaw[order_ground_truth[i+1]], ground_truth_xyyaw[order_ground_truth[i]]
                         order_ground_truth[i], order_ground_truth[i+1] = order_ground_truth[i+1], order_ground_truth[i]
@@ -271,13 +271,6 @@ class Arm:
                 manipulator_before = np.asarray(manipulator_before)
                 new_xyz_list = self.xyz_list
                 print('this is manipulator before after the detection \n', manipulator_before)
-
-                # # arange the sequence based on the coordinate system (no use)
-                # z = np.zeros(len(results)).reshape(-1, 1)
-                # roll = np.zeros(len(results)).reshape(-1, 1)
-                # pitch = np.zeros(len(results)).reshape(-1, 1)
-                # manipulator_before = np.concatenate((results[:, :2], z, roll, pitch, results[:, 2].reshape((-1, 1))), axis=1)
-                # print('this is manipulator before after the detection \n', manipulator_before)
 
             # if criterion == 'x1y1x2y2':
             #     target = []
@@ -522,13 +515,15 @@ class Arm:
 
             img = cv2.imread("test_without_marker.png")
 
-            # manipulator_before = [i for i in range(len(self.manipulator_after) + 1)]
-            # while len(manipulator_before) != len(self.manipulator_after):
-            #     print('we need to detect the num and kinds of lego bricks')
-            results = np.asarray(detect(img, real_operate=self.real_operate))
+            # structure: x,y,length,width,yaw
+            results = np.asarray(
+                detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=None, order_truth=None))
             results = np.asarray(results[:, :5]).astype(np.float32)
-            # results[:, 2] = results[:, 2] * math.pi / 180
-            # structure: x,y,yaw,length,width
+            print('this is the result of yolo+resnet', results)
+            pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
+            pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
+            pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
+            pred_compare_2 = np.concatenate((results[:, 2:4], -pred_cos, -pred_sin), axis=1)
 
             all_index = []
             new_xyz_list = []
@@ -563,17 +558,6 @@ class Arm:
             new_results = np.asarray(new_results)
             print(new_results)
             print(all_index)
-
-            # point_1 = np.array([new_results[:, 2], new_results[:, 3]]).T
-            # point_2 = np.array([new_results[:, 4], new_results[:, 5]]).T
-            # # print(point_1)
-            # # print(point_2)
-            # # print(point_1[:, 1] - point_2[:, 1])
-            # # print(point_1[:, 0] - point_2[:, 0])
-
-            # ###############################fix the angle gap###############################
-            # ori = np.arctan2(point_1[:, 1] - point_2[:, 1], point_1[:, 0] - point_2[:, 0]) + np.pi / 2
-            # ###############################fix the angle gap###############################
 
             manipulator_before = []
             for i in range(len(all_index)):
