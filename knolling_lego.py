@@ -1929,7 +1929,7 @@ if __name__ == '__main__':
                            gap_item=gap_item, gap_block=gap_block,
                            real_operate=real_operate, obs_order=obs_order,
                            random_offset=random_offset, check_obs_error=check_dataset_error)
-        evaluations = 4
+        evaluations = 5
 
         for i in range(evaluations):
             image_trim = env.change_config()
