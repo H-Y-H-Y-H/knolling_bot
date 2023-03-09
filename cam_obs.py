@@ -15,6 +15,7 @@ import torch.backends.cudnn as cudnn
 import matplotlib.pyplot as plt
 import sys
 sys.path.append('/home/ubuntu/Desktop/knolling_bot/yolov7')
+sys.path.append('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/yolov7')
 from utils.plots import my_plot_one_box_lwcossin
 from numpy import random
 from models.experimental import attempt_load
@@ -873,7 +874,7 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
     cam_obs = True
     path = ''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/yolov71/weights/best.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best.pt', help='model.pt path(s)')
     # file/folder, 0 for webcam
     if cam_obs:
         parser.add_argument('--source', type=str, default=path, help='source')
@@ -1089,15 +1090,15 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
 
                 # print(box_number)
                 im0, to_arm = Plot4Batch(im0, xyxy_list, xy_list, img_label, color_label, box_number, all_truth)
-                cv2.namedWindow('123', 0)
-                cv2.imshow('123', im0)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-                # cv2.imwrite(f'./test_226_combine_{evaluation}.png',im0)
-                if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_306_combine_real', im0)
-                else:
-                    cv2.imwrite(f'./Test_images/test_306_combine_sim.png', im0)
+                # cv2.namedWindow('123', 0)
+                # cv2.imshow('123', im0)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
+                cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
+                # if real_operate == True:
+                #     cv2.imwrite(f'./Test_images/test_306_combine_real', im0)
+                # else:
+                #     cv2.imwrite(f'./Test_images/test_306_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
