@@ -1788,6 +1788,8 @@ class Arm:
                 check_accuracy_real()
             else:
                 check_accuracy_sim()
+        elif order == 5:
+            _ = get_start_end()
 
     def step(self, evaluation):
 
@@ -1836,8 +1838,9 @@ class Arm:
 
         #######################################################################################
         # self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
+        self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(2, conn, table_surface_height, sim_table_surface_height, evaluation)
-        error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
+        # error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
         #######################################################################################
 
@@ -1917,16 +1920,16 @@ if __name__ == '__main__':
         random_offset = True
         real_operate = False
         obs_order = 'sim_image_obj'
-        check_obs_error = False
+        check_dataset_error = False
 
 
-        env = Arm(is_render=False)
+        env = Arm(is_render=True)
         env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4,
                            total_offset=total_offset, grasp_order=grasp_order,
                            gap_item=gap_item, gap_block=gap_block,
                            real_operate=real_operate, obs_order=obs_order,
-                           random_offset=random_offset, check_obs_error=check_obs_error)
-        evaluations = 1
+                           random_offset=random_offset, check_obs_error=check_dataset_error)
+        evaluations = 4
 
         for i in range(evaluations):
             image_trim = env.change_config()
