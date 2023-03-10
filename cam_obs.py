@@ -893,7 +893,7 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
     cam_obs = True
     path = ''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/yolov71/weights/best.pt', help='model.pt path(s)')
     # file/folder, 0 for webcam
     if cam_obs:
         parser.add_argument('--source', type=str, default=path, help='source')
@@ -982,21 +982,22 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
         if real_operate == True:
             print(length_width_channel)
             img = img.reshape(length_width_channel[1], length_width_channel[2], length_width_channel[0])
-            # cv2.imshow('aaa', img)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            # cv2.imshow('bbb', im0s)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            img = np.clip((1.03 * img + 50), 0, 255)
-            im0s = np.clip((1.03 * im0s + 50), 0, 255)
-            # cv2.imshow('aaa', img)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            # cv2.imshow('bbb', im0s)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
+            cv2.imshow('aaa', img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            cv2.imshow('bbb', im0s)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            img = np.uint8(np.clip((0.9 * img + 50), 0, 255))
+            im0s = np.uint8(np.clip((0.9 * im0s + 50), 0, 255))
+            cv2.imshow('aaa', img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            cv2.imshow('bbb', im0s)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
             img = img.reshape(length_width_channel[0], length_width_channel[1], length_width_channel[2])
+            pass
         else:
             print(length_width_channel)
             img = img.reshape(length_width_channel[1], length_width_channel[2], length_width_channel[0])
@@ -1113,18 +1114,17 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 # cv2.imshow('123', im0)
                 # cv2.waitKey(0)
                 # cv2.destroyAllWindows()
-                cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
-                # if real_operate == True:
-                #     cv2.imwrite(f'./Test_images/test_306_combine_real', im0)
-                # else:
-                #     cv2.imwrite(f'./Test_images/test_306_combine_sim.png', im0)
+                # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
+                if real_operate == True:
+                    cv2.imwrite(f'./Test_images/test_306_combine_real.png', im0)
+                else:
+                    cv2.imwrite(f'./Test_images/test_306_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
                     return to_arm
             # Print time (inference + NMS)
-            print(
-                f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
+            print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
 
             # Stream results
             if view_img:

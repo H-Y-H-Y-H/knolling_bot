@@ -985,7 +985,7 @@ class Arm:
             pass
         self.items_pos_list = self.items_pos_list + self.total_offset - center
         self.manipulator_after = np.concatenate((self.items_pos_list, self.items_ori_list), axis=1)
-        print(self.manipulator_after)
+        print('this is manipulation after', self.manipulator_after)
 
         # import urdf and assign the trim pos & ori
         items_names = globals()
@@ -1109,10 +1109,6 @@ class Arm:
             plot_cmd = []
             cmd_xyz = []
             cmd_ori = []
-
-            # target_pos = Cartesian_offset_step(cur_pos, tar_pos)
-            # print('TRYTAR!!!!!!!!!!!!!!!!!!!!', target_pos)
-            # print('TRYCUR!!!!!!!!!!!!!!!!!!!!', cur_pos)
 
             # if target_pos[0] > 0.2:
             #     target_pos[0] = target_pos[0] + 0.012
@@ -1851,7 +1847,7 @@ class Arm:
 if __name__ == '__main__':
 
     random_flag = True
-    command = 'evaluate_object_detection'  # image virtual real
+    command = 'knolling'  # image virtual real
 
     if torch.cuda.is_available():
         device = 'cuda'
@@ -1914,8 +1910,8 @@ if __name__ == '__main__':
         gap_item = 0.015
         gap_block = 0.02
         random_offset = True
-        real_operate = False
-        obs_order = 'sim_image_obj'
+        real_operate = True
+        obs_order = 'real_image_obj'
         check_dataset_error = False
 
 
@@ -1951,7 +1947,7 @@ if __name__ == '__main__':
             obs_order = 'sim_image_obj_evaluate'
             check_obs_error = False
 
-            env = Arm(is_render=False)
+            env = Arm(is_render=True)
             env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4,
                                total_offset=total_offset, grasp_order=grasp_order,
                                gap_item=gap_item, gap_block=gap_block,

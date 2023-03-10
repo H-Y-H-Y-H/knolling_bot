@@ -101,21 +101,10 @@ class sort():
 
         img = cv2.imread("129_testpip.png")
 
-        results = np.asarray(detect(img,real_operate=True))
-        results = np.asarray(results[:, :8]).astype(np.float32)
-        # results[:, 2] = results[:, 2] * math.pi / 180
+        results = np.asarray(detect(img, real_operate=True, order_truth=None))
+        results = np.asarray(results[:, :5]).astype(np.float32)
         # structure: x,y,yaw,length,width
 
-        point_1 = np.array([results[:, 2], results[:, 3]]).T
-        point_2 = np.array([results[:, 4], results[:, 5]]).T
-        # print(point_1)
-        # print(point_2)
-        # print(point_1[:, 1] - point_2[:, 1])
-        # print(point_1[:, 0] - point_2[:, 0])
-
-        ###############################fix the angle gap###############################
-        ori = np.arctan2(point_1[:, 1] - point_2[:, 1], point_1[:, 0] - point_2[:, 0]) + np.pi / 2
-        ###############################fix the angle gap###############################
 
         all_index = []
         new_xyz_list = []
@@ -129,7 +118,7 @@ class sort():
             kind_index = []
             for j in range(len(results)):
                 # if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
-                if np.linalg.norm(self.correct[i][0] - results[j][6]) < 0.003:
+                if np.linalg.norm(self.correct[i][0] - results[j][2]) < 0.003:
                     kind_index.append(num)
                     new_xyz_list.append(self.correct[i])
                     num += 1
@@ -194,7 +183,6 @@ class sort():
                 print(new_results[all_index[i][j]][0])
                 print(new_results[all_index[i][j]][1])
                 pos_before.append([new_results[all_index[i][j]][0], new_results[all_index[i][j]][1], z])
-                ori_before.append([roll, pitch, ori[all_index[i][j]]])
         pos_before = np.asarray(pos_before)
         ori_before = np.asarray(ori_before)
         print(pos_before)
