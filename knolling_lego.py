@@ -1902,9 +1902,9 @@ if __name__ == '__main__':
 
     if command == 'knolling':
 
-        num_2x2 = 3
-        num_2x3 = 2
-        num_2x4 = 2
+        num_2x2 = 5
+        num_2x3 = 5
+        num_2x4 = 5
         total_offset = [0.15, 0, 0.006]
         grasp_order = [1, 0, 2]
         gap_item = 0.015

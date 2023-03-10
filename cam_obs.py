@@ -612,7 +612,7 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
             my_to_arm = [xy[0], xy[1], my_length, my_width, my_ori, color_label[i]]
             to_arm.append(my_to_arm)
             ############################### plot the ground truth ################################
-            if all_truth:
+            if not all_truth is None:
                 length_truth, width_truth, cos_truth, sin_truth, x_truth, y_truth = all_truth[i][:6]
                 ori_truth = np.arctan2(sin_truth, cos_truth) / 2
                 # message = 'the ground truth is shown below'
@@ -988,8 +988,8 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
             cv2.imshow('bbb', im0s)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
-            img = np.uint8(np.clip((0.9 * img + 50), 0, 255))
-            im0s = np.uint8(np.clip((0.9 * im0s + 50), 0, 255))
+            img = np.uint8(np.clip((0.8 * img + 10), 0, 255))
+            im0s = np.uint8(np.clip((0.8 * im0s + 10), 0, 255))
             cv2.imshow('aaa', img)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
@@ -1110,10 +1110,10 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
 
                 # print(box_number)
                 im0, to_arm = Plot4Batch(im0, xyxy_list, xy_list, img_label, color_label, box_number, all_truth)
-                # cv2.namedWindow('123', 0)
-                # cv2.imshow('123', im0)
-                # cv2.waitKey(0)
-                # cv2.destroyAllWindows()
+                cv2.namedWindow('123', 0)
+                cv2.imshow('123', im0)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
                     cv2.imwrite(f'./Test_images/test_306_combine_real.png', im0)
