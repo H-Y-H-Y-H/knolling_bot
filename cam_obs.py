@@ -893,14 +893,14 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
     cam_obs = True
     path = ''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/yolov71/weights/best.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best_310.pt', help='model.pt path(s)')
     # file/folder, 0 for webcam
     if cam_obs:
         parser.add_argument('--source', type=str, default=path, help='source')
     else:
         parser.add_argument('--source', type=str, default='2', help='source')
     parser.add_argument('--img-size', type=int, default=640,help='inference size (pixels)')
-    parser.add_argument('--conf-thres', type=float, default=0.7, help='object confidence threshold')
+    parser.add_argument('--conf-thres', type=float, default=0.8, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.2, help='IOU threshold for NMS')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--view-img', action='store_true', help='display results')
@@ -988,8 +988,8 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
             cv2.imshow('bbb', im0s)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
-            img = np.uint8(np.clip((0.8 * img + 10), 0, 255))
-            im0s = np.uint8(np.clip((0.8 * im0s + 10), 0, 255))
+            img = np.uint8(np.clip((0.95 * img + 70), 0, 255))
+            im0s = np.uint8(np.clip((0.95 * im0s + 70), 0, 255))
             cv2.imshow('aaa', img)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
@@ -1116,9 +1116,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_306_combine_real.png', im0)
+                    cv2.imwrite(f'./Test_images/test_310_combine_real.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_306_combine_sim.png', im0)
+                    cv2.imwrite(f'./Test_images/test_310_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
