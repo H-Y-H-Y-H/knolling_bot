@@ -1116,9 +1116,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_310_combine_real.png', im0)
+                    cv2.imwrite(f'./Test_images/test_312_combine_real.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_310_combine_sim.png', im0)
+                    cv2.imwrite(f'./Test_images/test_312_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:

@@ -95,11 +95,11 @@ class sort():
             add = int((640 - 480) / 2)
             resized_color_image = cv2.copyMakeBorder(resized_color_image, add, add, 0, 0, cv2.BORDER_CONSTANT,
                                                      None, value=0)
-            cv2.imwrite("129_testpip.png", resized_color_image)
+            cv2.imwrite("Adjust_images/312_testpip_2.png", resized_color_image)
 
             cv2.waitKey(1)
 
-        img = cv2.imread("129_testpip.png")
+        img = cv2.imread("Adjust_images/312_testpip_2.png")
 
         results = np.asarray(detect(img, real_operate=True, order_truth=None))
         results = np.asarray(results[:, :5]).astype(np.float32)
