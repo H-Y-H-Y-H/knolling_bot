@@ -641,8 +641,8 @@ class Arm:
 
                     rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
                                         random.uniform(self.y_low_obs, self.y_high_obs), 0.006])
-                    ori = [0, 0, random.uniform(0, math.pi)]
-                    # ori = [0, 0, 0]
+                    # ori = [0, 0, random.uniform(0, math.pi)]
+                    ori = [0, 0, 0]
                     collect_ori.append(ori)
                     check_list = np.zeros(last_pos.shape[0])
 
