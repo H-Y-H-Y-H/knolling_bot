@@ -83,7 +83,7 @@ def rad2cmd(cur_rad): # sim to real
 def cmd2rad(cur_cmd): # real to sim
 
     # input: scaled angle of motors in pybullet, basically (0, 1)
-    # outputt: angle of motors in pybullet, (-180, 180)
+    # output: angle of motors in pybullet, (-180, 180)
 
     cur_cmd = np.asarray(cur_cmd)
     reset_cmds = np.asarray([0.5, 0, 1, 0, 0.5])

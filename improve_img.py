@@ -6,7 +6,7 @@ import numpy as np
 sys.path.append('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/Adjust_images')
 
 img = cv2.imread("./Adjust_images/312_testpip_1.png")
-img = np.uint8(np.clip((1.1 * img + 70), 0, 255))
+img = np.uint8(np.clip((1.1 * img + 20), 0, 255))
 # img = cv2.dilate(img, np.ones((2, 2), np.uint8))
 cv2.imshow('zzz_origin', img)
 cv2.waitKey(0)
@@ -18,7 +18,7 @@ print(pixel)
 
 for i in range(len(img)):
     for j in range(len(img[0])):
-        if np.mean(img[i][j]) < 150 and np.max(img[i][j]) < 175 and np.min(img[i][j]) > 100:
+        if np.mean(img[i][j]) < 100 and np.max(img[i][j]) < 125 and np.min(img[i][j]) > 50:
             img[i][j] = np.uint8(np.array([pixel, pixel, pixel]))
         if j < 20 or j > 620 or 80 < i < 100 or 560 > i > 540:
             img[i][j] = np.uint8(np.array([100, 100, 100]))
@@ -29,9 +29,9 @@ cv2.imshow('zzz_result', img)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-# img = cv2.medianBlur(img, 3)
-img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+# kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+# # img = cv2.medianBlur(img, 3)
+# img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
 
     # 把灰白色部分修改为与背景接近的颜色
 # print(len(img[img < 30]))
