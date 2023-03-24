@@ -1,5 +1,8 @@
 /Dataset/
 /Model/
 /yolov7/
-/Test_and_Calibration/
-/Test_and_Calibration/*
+/Test_and_Calibration/demo_xyz
+/Test_and_Calibration/model_pt
+/Test_and_Calibration/model_pt_xyz
+/Test_and_Calibration/nn_data
+/Test_and_Calibration/nn_data_xyz

@@ -41,10 +41,12 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         # First fully connected layer
-        self.fc1 = nn.Linear(3, 32)
-        self.fc2 = nn.Linear(32, 32)
-        self.fc3 = nn.Linear(32, 32)
-        self.fc4 = nn.Linear(32, 3)
+        self.fc1 = nn.Linear(3, 12)
+        self.fc2 = nn.Linear(12, 32)
+        self.fc3 = nn.Linear(32, 64)
+        self.fc4 = nn.Linear(64, 32)
+        self.fc5 = nn.Linear(32, 12)
+        self.fc6 = nn.Linear(12, 3)
 
     def forward(self, x):
         # define forward pass
@@ -52,8 +54,10 @@ class Net(nn.Module):
         # x = torch.sigmoid(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = F.relu(self.fc5(x))
         # nn.Dropout()
-        x = self.fc4(x)
+        x = self.fc6(x)
         return x
 
     def loss(self, pred, target):
@@ -1072,10 +1076,10 @@ class Arm:
             scaler_output.fit(output_sc)
             scaler_input.fit(input_sc)
 
-            # model = Net().to(device)
-            # model.load_state_dict(torch.load("nn_calibration/model_pt_xyz/combine_all003005_free_far015025003005_free.pt"))
-            # # print(model)
-            # model.eval()
+            model = Net().to(device)
+            model.load_state_dict(torch.load("nn_calibration/model_pt_xyz/all_distance_free_new.pt"))
+            # print(model)
+            model.eval()
             with torch.no_grad():
                 xyz_input_scaled = scaler_input.transform(xyz_input).astype(np.float32)
                 xyz_input_scaled = torch.from_numpy(xyz_input_scaled)
