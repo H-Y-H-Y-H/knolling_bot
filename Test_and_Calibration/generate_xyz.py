@@ -17,6 +17,30 @@ from shapely.geometry import Polygon
 
 torch.manual_seed(42)
 
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        # First fully connected layer
+        self.fc1 = nn.Linear(3, 12)
+        self.fc2 = nn.Linear(12, 32)
+        self.fc3 = nn.Linear(32, 64)
+        self.fc4 = nn.Linear(64, 32)
+        self.fc5 = nn.Linear(32, 12)
+        self.fc6 = nn.Linear(12, 3)
+
+    def forward(self, x):
+        # define forward pass
+        x = self.fc1(x)
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = F.relu(self.fc5(x))
+        x = self.fc6(x)
+        return x
+
+    def loss(self, pred, target):
+        value = (pred - target) ** 2
+        return torch.mean(value)
 
 class Arm:
 
@@ -116,6 +140,7 @@ class Arm:
             np.savetxt('check_obs_error', total_loss)
         else:
             pass
+        self.test_error_motion = True
 
 
     def get_obs(self, order, evaluation):
@@ -298,6 +323,37 @@ class Arm:
 
             return start_end
 
+        def Cartesian_offset_nn(xyz_input):
+
+            # input:(n, 3), output: (n, 3)
+
+            input_sc = [[-0.01, -0.201, -0.01],
+                        [0.30, 0.201, 0.0601]]
+            output_sc = [[-0.01, -0.201, -0.01],
+                         [0.30, 0.201, 0.0601]]
+            input_sc = np.load('nn_data_xyz/all_distance_free_new/real_scale.npy')
+            output_sc = np.load('nn_data_xyz/all_distance_free_new/cmd_scale.npy')
+
+            scaler_output = MinMaxScaler()
+            scaler_input = MinMaxScaler()
+            scaler_output.fit(output_sc)
+            scaler_input.fit(input_sc)
+
+            model = Net().to(device)
+            model.load_state_dict(torch.load("model_pt_xyz/all_distance_free_new.pt"))
+            # print(model)
+            model.eval()
+            with torch.no_grad():
+                xyz_input_scaled = scaler_input.transform(xyz_input).astype(np.float32)
+                xyz_input_scaled = torch.from_numpy(xyz_input_scaled)
+                xyz_input_scaled = xyz_input_scaled.to(device)
+                pred_xyz = model.forward(xyz_input_scaled)
+                # print(pred_angle)
+                pred_xyz = pred_xyz.cpu().data.numpy()
+                xyz_output = scaler_output.inverse_transform(pred_xyz)
+
+            return xyz_output
+
         def move(cur_pos, cur_ori, tar_pos, tar_ori):
 
             plot_cmd = []
@@ -317,6 +373,9 @@ class Arm:
             target_pos = np.copy(tar_pos)
             target_ori = np.copy(tar_ori)
 
+            if self.test_error_motion == True:
+                target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )
+
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
                 # vertical, choose a small slice
                 move_slice = 0.006
@@ -330,6 +389,9 @@ class Arm:
             step_ori = (target_ori - cur_ori) / num_step
 
             if self.real_operate == True:
+                print('this is real xyz before nn', tar_pos)
+                print('this is real xyz after nn', target_pos)
+                print('this is cur pos', cur_pos)
                 while True:
                     tar_pos = cur_pos + step_pos
                     tar_ori = cur_ori + step_ori
@@ -363,6 +425,7 @@ class Arm:
                 # print('this is plot cmd\n', plot_cmd)
                 print('this is the shape of cmd', plot_cmd.shape)
                 print('this is the shape of xyz', sim_xyz.shape)
+                # print('this is the motor pos sent', plot_cmd[-1])
                 conn.sendall(plot_cmd.tobytes())
                 # print('waiting the manipulator')
                 angles_real = conn.recv(4096)
@@ -380,35 +443,37 @@ class Arm:
                     real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
                 real_xyz = np.asarray(real_xyz)
 
+                if self.test_error_motion == True:
+                    with open(file="nn_data_xyz/free_2/cmd_xyz_nn.csv", mode="a", encoding="utf-8") as f:
+                        sim_xyz = sim_xyz.tolist()
+                        for i in range(len(sim_xyz)):
+                            list_zzz = [str(j) for j in sim_xyz[i]]
+                            f.writelines(' '.join(list_zzz))
+                            f.write('\n')
+                    with open(file="nn_data_xyz/free_2/real_xyz_nn.csv", mode="a", encoding="utf-8") as f:
+                        real_xyz = real_xyz.tolist()
+                        for i in range(len(real_xyz)):
+                            list_zzz = [str(j) for j in real_xyz[i]]
+                            f.writelines(' '.join(list_zzz))
+                            f.write('\n')
+                    with open(file="nn_data_xyz/free_2/cmd_nn.csv", mode="a", encoding="utf-8") as f:
+                        plot_cmd = plot_cmd.tolist()
+                        for i in range(len(plot_cmd)):
+                            list_zzz = [str(j) for j in plot_cmd[i]]
+                            f.writelines(' '.join(list_zzz))
+                            f.write('\n')
+                    with open(file="nn_data_xyz/free_2/real_nn.csv", mode="a", encoding="utf-8") as f:
+                        angles_real = angles_real.tolist()
+                        for i in range(len(angles_real)):
+                            list_zzz = [str(j) for j in angles_real[i]]
+                            f.writelines(' '.join(list_zzz))
+                            f.write('\n')
+                    with open(file="step.txt", mode="a", encoding="utf-8") as f:
+                        list_zzz = [str(j) for j in plot_step]
+                        f.writelines(' '.join(list_zzz))
+                        f.write('\n')
 
-                with open(file="nn_data_xyz/all_distance_free_new/cmd_xyz_nn.csv", mode="a", encoding="utf-8") as f:
-                    sim_xyz = sim_xyz.tolist()
-                    for i in range(len(sim_xyz)):
-                        list_zzz = [str(j) for j in sim_xyz[i]]
-                        f.writelines(' '.join(list_zzz))
-                        f.write('\n')
-                with open(file="nn_data_xyz/all_distance_free_new/real_xyz_nn.csv", mode="a", encoding="utf-8") as f:
-                    real_xyz = real_xyz.tolist()
-                    for i in range(len(real_xyz)):
-                        list_zzz = [str(j) for j in real_xyz[i]]
-                        f.writelines(' '.join(list_zzz))
-                        f.write('\n')
-                with open(file="nn_data_xyz/all_distance_free_new/cmd_nn.csv", mode="a", encoding="utf-8") as f:
-                    plot_cmd = plot_cmd.tolist()
-                    for i in range(len(plot_cmd)):
-                        list_zzz = [str(j) for j in plot_cmd[i]]
-                        f.writelines(' '.join(list_zzz))
-                        f.write('\n')
-                with open(file="nn_data_xyz/all_distance_free_new/real_nn.csv", mode="a", encoding="utf-8") as f:
-                    angles_real = angles_real.tolist()
-                    for i in range(len(angles_real)):
-                        list_zzz = [str(j) for j in angles_real[i]]
-                        f.writelines(' '.join(list_zzz))
-                        f.write('\n')
-                with open(file="step.txt", mode="a", encoding="utf-8") as f:
-                    list_zzz = [str(j) for j in plot_step]
-                    f.writelines(' '.join(list_zzz))
-                    f.write('\n')
+                return cur_pos # return cur pos to let the manipualtor remember the improved pos
 
         def gripper(gap):
             if self.real_operate == True:
@@ -444,24 +509,36 @@ class Arm:
             last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
             last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
 
-            times = 10
+            if self.test_error_motion == True:
+                trajectory_pos_list = np.array([[0, 0.15, 0.04],
+                                                [0.25, 0.15, 0.04],
+                                                [0.25, -0.15, 0.04],
+                                                [0, -0.15, 0.04]])
+                for j in range(len(trajectory_pos_list)):
 
-            trajectory_pos_list = np.array([0, 0.15, 0.035])
+                    if len(trajectory_pos_list[j]) == 3:
+                        last_pos = move(last_pos, last_ori, trajectory_pos_list[j], rest_ori)
+                        time.sleep(5)
+                        # last_pos = np.copy(trajectory_pos_list[j])
+                        last_ori = np.copy(rest_ori)
 
-            for j in range(times):
+                    elif len(trajectory_pos_list[j]) == 1:
+                        gripper(trajectory_pos_list[j][0])
+            else:
+                times = 2
+                for j in range(times):
 
-                # trajectory_pos_list = np.array([np.random.uniform(0, 0.25), np.random.uniform(-0.2, 0.2), np.random.uniform(0.032, 0.08)])
-                # trajectory_pos_list = np.array([0.25, 0, 0.032])
+                    trajectory_pos_list = np.array([np.random.uniform(0, 0.28), np.random.uniform(-0.16, 0.16), np.random.uniform(0.032, 0.08)])
 
-                if len(trajectory_pos_list) == 3:
-                    print('ready to move', trajectory_pos_list)
-                    move(last_pos, last_ori, trajectory_pos_list, rest_ori)
-                    time.sleep(20)
-                    last_pos = np.copy(trajectory_pos_list)
-                    last_ori = np.copy(rest_ori)
+                    if len(trajectory_pos_list) == 3:
+                        print('ready to move', trajectory_pos_list)
+                        last_pos = move(last_pos, last_ori, trajectory_pos_list, rest_ori)
+                        # time.sleep(20)
+                        # last_pos = np.copy(trajectory_pos_list)
+                        last_ori = np.copy(rest_ori)
 
-                elif len(trajectory_pos_list[j]) == 1:
-                    gripper(trajectory_pos_list[j][0])
+                    elif len(trajectory_pos_list[j]) == 1:
+                        gripper(trajectory_pos_list[j][0])
 
             # back to the reset pos and ori
             ik_angles0 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=[0, 0, 0.06],
@@ -487,20 +564,25 @@ class Arm:
 
         if self.real_operate == True:
 
-            # with open(file="nn_data_xyz/all_distance_free_new/cmd_xyz_nn.csv", mode="w", encoding="utf-8") as f:
-            #     f.truncate(0)
-            # with open(file="nn_data_xyz/all_distance_free_new/real_xyz_nn.csv", mode="w", encoding="utf-8") as f:
-            #     f.truncate(0)
-            # with open(file="step.txt", mode="w", encoding="utf-8") as f:
-            #     f.truncate(0)
+            with open(file="nn_data_xyz/free_2/cmd_xyz_nn.csv", mode="w", encoding="utf-8") as f:
+                f.truncate(0)
+            with open(file="nn_data_xyz/free_2/real_xyz_nn.csv", mode="w", encoding="utf-8") as f:
+                f.truncate(0)
+            with open(file="nn_data_xyz/free_2/cmd_nn.csv", mode="w", encoding="utf-8") as f:
+                f.truncate(0)
+            with open(file="nn_data_xyz/free_2/real_nn.csv", mode="w", encoding="utf-8") as f:
+                f.truncate(0)
+            with open(file="step.txt", mode="w", encoding="utf-8") as f:
+                f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8880  # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.
             # associate the socket with a specific network interface
             s.listen()
+            print('Test error motion:', self.test_error_motion)
             print(f"Waiting for connection...\n")
             conn, addr = s.accept()
             print(conn)
@@ -515,6 +597,7 @@ class Arm:
                                                      targetOrientation=p.getQuaternionFromEuler(
                                                          [0, 1.57, 0]))
             reset_real = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles[0:5])), dtype=np.float32)
+            print('this is the reset motor pos', reset_real)
             conn.sendall(reset_real.tobytes())
 
             for i in range(num_motor):

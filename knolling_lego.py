@@ -51,12 +51,10 @@ class Net(nn.Module):
     def forward(self, x):
         # define forward pass
         x = self.fc1(x)
-        # x = torch.sigmoid(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
         x = F.relu(self.fc4(x))
         x = F.relu(self.fc5(x))
-        # nn.Dropout()
         x = self.fc6(x)
         return x
 
@@ -1051,25 +1049,16 @@ class Arm:
 
             return start_end
 
-        def Cartesian_offset_step(cur, tar):
-            print(tar)
-            if 0.1 < tar[0] <= 0.15:
-                tar[2] = tar[2] + 0.003 * ((tar[0] - 0.1) / (0.15 - 0.1))
-            elif 0.15 < tar[0] <= 0.2:
-                tar[2] = tar[2] + 0.003 * ((tar[0] - 0.15) / (0.2 - 0.15))
-            elif 0.2 < tar[0] <= 0.25:
-                tar[2] = tar[2] + 0.006 * ((tar[0] - 0.2) / (0.25 - 0.2))
-            elif 0.25 < tar[0]:
-                tar[2] = tar[2] + 0.008 * ((tar[0] - 0.25) / (0.3 - 0.25))
-            print(tar)
-            return tar
-
         def Cartesian_offset_nn(xyz_input):
+
+            # input:(n, 3), output: (n, 3)
 
             input_sc = [[-0.01, -0.201, -0.01],
                         [0.30, 0.201, 0.0601]]
             output_sc = [[-0.01, -0.201, -0.01],
                         [0.30, 0.201, 0.0601]]
+            input_sc = np.load('Test_and_Calibration/nn_data_xyz/all_distance_free_new/real_scale.npy')
+            output_sc = np.load('Test_and_Calibration/nn_data_xyz/all_distance_free_new/cmd_scale.npy')
 
             scaler_output = MinMaxScaler()
             scaler_input = MinMaxScaler()
@@ -1077,7 +1066,7 @@ class Arm:
             scaler_input.fit(input_sc)
 
             model = Net().to(device)
-            model.load_state_dict(torch.load("nn_calibration/model_pt_xyz/all_distance_free_new.pt"))
+            model.load_state_dict(torch.load("Test_and_Calibration/model_pt_xyz/all_distance_free_new.pt"))
             # print(model)
             model.eval()
             with torch.no_grad():
@@ -1105,6 +1094,7 @@ class Arm:
             #     plt.legend()
             # plt.suptitle("Comparison of output and input")
             # plt.show()
+            # print('this is output of nn', xyz_output)
 
             return xyz_output
 
@@ -1168,6 +1158,10 @@ class Arm:
             target_pos = np.copy(tar_pos)
             target_ori = np.copy(tar_ori)
 
+            # 暂时改成sim和real都用nn修正！
+            if self.real_operate == True:
+                target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1,)
+
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
                 # vertical, choose a small slice
                 move_slice = 0.006
@@ -1203,41 +1197,24 @@ class Arm:
                     cur_pos = tar_pos
                     cur_ori = tar_ori
 
-                ######################### nn offset #######################
-                cmd_xyz = np.asarray(cmd_xyz)
-                cmd_ori = np.asarray(cmd_ori)
-                new_cmd_xyz = Cartesian_offset_nn(cmd_xyz)
-                # if target_pos[0] > 0.2:
-                #     new_cmd_xyz[:, 0] = cmd_xyz[:, 0] + 0.012
-                #     print('add 0.012')
-                # elif 0.175 < target_pos[0] <= 0.2:
-                #     new_cmd_xyz[:, 0] = cmd_xyz[:, 0] + 0.008
-                #     print('add 0.008')
-                # elif 0.15 < target_pos[0] <= 0.175:
-                #     new_cmd_xyz[:, 0] = cmd_xyz[:, 0] + 0.003
-                #     print('add 0.003')
-                # elif 0.05 < target_pos[0] <= 0.10:
-                #     new_cmd_xyz[:, 0] = cmd_xyz[:, 0] - 0.003
-                #     print('add -0.003')
-                # elif 0.00 < target_pos[0] <= 0.05:
-                #     new_cmd_xyz[:, 0] = cmd_xyz[:, 0] - 0.005
-                #     print('add -0.005')
+                # ######################### nn offset #######################
+                # cmd_xyz = np.asarray(cmd_xyz)
+                # cmd_ori = np.asarray(cmd_ori)
+                # new_cmd_xyz = Cartesian_offset_nn(cmd_xyz)
+                # print('this is tar', target_pos)
+                # print('this is cur', current_pos)
+                # print('this is tar ori', target_ori)
+                # if abs(target_pos[2] - current_pos[2]) > 0.02 and abs(target_pos[0] - current_pos[0]) < 0.0005 and abs(target_pos[1] - current_pos[1]) < 0.0005:
+                #     new_cmd_xyz[:, :2] = cmd_xyz[:, :2]
+                #     # print('vertical grasp!!!')
                 # else:
                 #     new_cmd_xyz[:, 0] = cmd_xyz[:, 0]
-                print('this is tar', target_pos)
-                print('this is cur', current_pos)
-                print('this is tar ori', target_ori)
-                if abs(target_pos[2] - current_pos[2]) > 0.02 and abs(target_pos[0] - current_pos[0]) < 0.0005 and abs(target_pos[1] - current_pos[1]) < 0.0005:
-                    new_cmd_xyz[:, :2] = cmd_xyz[:, :2]
-                    # print('vertical grasp!!!')
-                else:
-                    new_cmd_xyz[:, 0] = cmd_xyz[:, 0]
-                    # print('horizontal grasp!!!')
-                ######################### nn offset #######################
+                #     # print('horizontal grasp!!!')
+                # ######################### nn offset #######################
 
-                for i in range(len(new_cmd_xyz)):
+                for i in range(len(cmd_xyz)):
                     ik_angles_real = p.calculateInverseKinematics(self.arm_id, 9,
-                                                                  targetPosition=new_cmd_xyz[i] + np.array([0, 0, real_height]),
+                                                                  targetPosition=cmd_xyz[i] + np.array([0, 0, real_height]),
                                                                   maxNumIterations=200,
                                                                   targetOrientation=p.getQuaternionFromEuler(
                                                                       cmd_ori[i]))
@@ -1249,10 +1226,6 @@ class Arm:
                 plot_step = np.arange(num_step)
                 plot_cmd = np.asarray(plot_cmd)
                 print('this is the shape of cmd', plot_cmd.shape)
-                # print(len(plot_cmd.reshape(-1)))
-                # print(plot_cmd)
-                # test_bytes = plot_cmd.tobytes()
-                # print(len(test_bytes))
                 conn.sendall(plot_cmd.tobytes())
                 # time.sleep(2)
                 # print('waiting the manipulator')
@@ -1281,6 +1254,8 @@ class Arm:
                 #     f.write('\n')
 
             else:
+                print('this is sim tar pos before the nn', tar_pos)
+                print('this is sim tar pos after the nn', target_pos)
                 while True:
                     tar_pos = cur_pos + step_pos
                     tar_ori = cur_ori + step_ori
@@ -1834,9 +1809,9 @@ class Arm:
 
         #######################################################################################
         # self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
-        error = self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
+        # error = self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(2, conn, table_surface_height, sim_table_surface_height, evaluation)
-        # error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
+        error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
         #######################################################################################
 
@@ -1906,16 +1881,16 @@ if __name__ == '__main__':
 
     if command == 'knolling':
 
-        num_2x2 = 5
-        num_2x3 = 5
-        num_2x4 = 5
+        num_2x2 = 2
+        num_2x3 = 3
+        num_2x4 = 4
         total_offset = [0.15, 0, 0.006]
         grasp_order = [1, 0, 2]
         gap_item = 0.015
         gap_block = 0.02
         random_offset = True
         real_operate = False
-        obs_order = 'sim_image_obj'
+        obs_order = 'sim_obj'
         check_dataset_error = False
 
 

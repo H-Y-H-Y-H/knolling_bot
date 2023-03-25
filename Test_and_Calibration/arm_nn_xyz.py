@@ -83,9 +83,16 @@ def train():
     print("Device:", device)
 
     real_label = np.loadtxt('nn_data_xyz/all_distance_free_new/real_xyz_nn.csv')
-    real_label_demo = np.copy(real_label)
+    real_min = np.min(real_label, axis=0).reshape(1, 3)
+    real_max = np.max(real_label, axis=0).reshape(1, 3)
     cmd_label = np.loadtxt('nn_data_xyz/all_distance_free_new/cmd_xyz_nn.csv')
-    cmd_label_demo = np.copy(cmd_label)
+    cmd_min = np.min(cmd_label, axis=0).reshape(1, 3)
+    cmd_max = np.max(cmd_label, axis=0).reshape(1, 3)
+
+    np.save('nn_data_xyz/all_distance_free_new/real_scale.npy', np.concatenate((real_min, real_max), axis=0))
+    np.save('nn_data_xyz/all_distance_free_new/cmd_scale.npy', np.concatenate((cmd_min, cmd_max), axis=0))
+    real_label_demo = np.load('nn_data_xyz/all_distance_free_new/real_scale.npy')
+    cmd_label_demo = np.load('nn_data_xyz/all_distance_free_new/cmd_scale.npy')
 
     log_path = 'model_pt_xyz/'
 
@@ -227,11 +234,19 @@ def eval():
         device = 'cpu'
     print("Device:", device)
 
-    real_label = np.loadtxt(
-        'nn_data_xyz/all_distance_free_new/real_xyz_nn.csv')
-    real_label_demo = np.copy(real_label)
+    real_label = np.loadtxt('nn_data_xyz/all_distance_free_new/real_xyz_nn.csv')
+    real_min = np.min(real_label, axis=0).reshape(1, 3)
+    real_max = np.max(real_label, axis=0).reshape(1, 3)
     cmd_label = np.loadtxt('nn_data_xyz/all_distance_free_new/cmd_xyz_nn.csv')
-    cmd_label_demo = np.copy(cmd_label)
+    cmd_min = np.min(cmd_label, axis=0).reshape(1, 3)
+    cmd_max = np.max(cmd_label, axis=0).reshape(1, 3)
+
+    np.save('nn_data_xyz/all_distance_free_new/real_scale.npy', np.concatenate((real_min, real_max), axis=0))
+    np.save('nn_data_xyz/all_distance_free_new/cmd_scale.npy', np.concatenate((cmd_min, cmd_max), axis=0))
+    real_label_demo = np.load('nn_data_xyz/all_distance_free_new/real_scale.npy')
+    cmd_label_demo = np.load('nn_data_xyz/all_distance_free_new/cmd_scale.npy')
+    print('this is real scale', real_label_demo)
+    print('this is cmd scale', cmd_label_demo)
 
     log_path = 'model_pt_xyz/'
 
@@ -261,8 +276,8 @@ def eval():
                 plot_cmd = cmd_xyz.cpu().data.numpy()
                 plot_real = real_xyz.cpu().data.numpy()
                 # real_angle = real_angle.to(device)
-                print('cmd', cmd_xyz)
-                print('real', real_xyz)
+                # print('cmd', cmd_xyz)
+                # print('real', real_xyz)
                 scaler_cmd = MinMaxScaler()
                 scaler_cmd.fit(cmd_label_demo)
                 cmd_xyz = scaler_cmd.transform(cmd_xyz)
@@ -278,14 +293,14 @@ def eval():
                 pred_xyz = model.forward(real_xyz)
 
                 loss = model.loss(pred_xyz, cmd_xyz)
-                print('this is loss', loss)
+                # print('this is loss', loss)
 
                 new_cmd = pred_xyz.cpu().data.numpy()
                 # print(new_cmd)
 
                 new_cmd = scaler_cmd.inverse_transform(new_cmd)
 
-                print(new_cmd)
+                # print(new_cmd)
 
     for i in range(len(plot_real[0])):
         plt.subplot(1, 3, i + 1)
