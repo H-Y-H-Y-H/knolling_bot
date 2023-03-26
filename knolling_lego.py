@@ -1809,9 +1809,9 @@ class Arm:
 
         #######################################################################################
         # self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
-        # error = self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
+        error = self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(2, conn, table_surface_height, sim_table_surface_height, evaluation)
-        error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
+        # error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
         #######################################################################################
 
@@ -1889,8 +1889,8 @@ if __name__ == '__main__':
         gap_item = 0.015
         gap_block = 0.02
         random_offset = True
-        real_operate = False
-        obs_order = 'sim_obj'
+        real_operate = True
+        obs_order = 'real_image_obj'
         check_dataset_error = False
 
 

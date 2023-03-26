@@ -679,6 +679,7 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj):
     obj_y = int((px_resy1 + px_resy2) / 2)
 
     mm2px = 1 / 0.000625  # unit convert = 1600
+    # mm2px = 1500 / 1  # unit convert = 1500
 
     obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0）
     obj_y = obj_y - 80
@@ -980,52 +981,52 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
 
         ##################### change the lightness of the image ###################
         if real_operate == True:
-            # print(length_width_channel)
-            # img = img.reshape(length_width_channel[1], length_width_channel[2], length_width_channel[0])
-            # cv2.imshow('aaa', img)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            # cv2.imshow('bbb', im0s)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            # img = np.uint8(np.clip((0.95 * img + 70), 0, 255))
-            # im0s = np.uint8(np.clip((0.95 * im0s + 70), 0, 255))
-            # cv2.imshow('aaa', img)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            # cv2.imshow('bbb', im0s)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            # img = img.reshape(length_width_channel[0], length_width_channel[1], length_width_channel[2])
+            print(length_width_channel)
+            img = img.reshape(length_width_channel[1], length_width_channel[2], length_width_channel[0])
+            cv2.imshow('aaa', img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            cv2.imshow('bbb', im0s)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            img = np.uint8(np.clip((0.95 * img + 70), 0, 255))
+            im0s = np.uint8(np.clip((0.95 * im0s + 70), 0, 255))
+            cv2.imshow('aaa', img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            cv2.imshow('bbb', im0s)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            img = img.reshape(length_width_channel[0], length_width_channel[1], length_width_channel[2])
             pass
         else:
             print(length_width_channel)
             img = img.reshape(length_width_channel[1], length_width_channel[2], length_width_channel[0])
-            # img = np.clip((1.03 * img), 0, 255)
+            img = np.clip((1.03 * img), 0, 255)
 
-            # im0s_split = cv2.split(im0s)
-            #
-            # result_planes = []
-            # result_norm_planes = []
-            # for plane in im0s_split:
-            #     dilated_img = cv2.dilate(plane, np.ones((3, 3), np.uint8))
-            #     bg_img = cv2.medianBlur(dilated_img, 11)
-            #     diff_img = 255 - cv2.absdiff(plane, bg_img)
-            #     norm_img = cv2.normalize(diff_img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX,
-            #                              dtype=cv2.CV_8UC1)
-            #     result_planes.append(diff_img)
-            #     result_norm_planes.append(norm_img)
-            #
-            # im0s = cv2.merge(result_planes)
-            # im0s_result_norm = cv2.merge(result_norm_planes)
+            im0s_split = cv2.split(im0s)
 
-            # im0s = np.uint8(np.clip((1.2 * im0s + 10), 0, 255))
-            # cv2.imshow('aaa', im0s)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            # cv2.imshow('bbb', im0s_result_norm)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
+            result_planes = []
+            result_norm_planes = []
+            for plane in im0s_split:
+                dilated_img = cv2.dilate(plane, np.ones((3, 3), np.uint8))
+                bg_img = cv2.medianBlur(dilated_img, 11)
+                diff_img = 255 - cv2.absdiff(plane, bg_img)
+                norm_img = cv2.normalize(diff_img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX,
+                                         dtype=cv2.CV_8UC1)
+                result_planes.append(diff_img)
+                result_norm_planes.append(norm_img)
+
+            im0s = cv2.merge(result_planes)
+            im0s_result_norm = cv2.merge(result_norm_planes)
+
+            im0s = np.uint8(np.clip((1.2 * im0s + 10), 0, 255))
+            cv2.imshow('aaa', im0s)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            cv2.imshow('bbb', im0s_result_norm)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
             img = img.reshape(length_width_channel[0], length_width_channel[1], length_width_channel[2])
             pass
         ##################### change the lightness of the image ###################
@@ -1116,9 +1117,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_312_combine_real.png', im0)
+                    cv2.imwrite(f'./Test_images/test_326_combine_real.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_312_combine_sim.png', im0)
+                    cv2.imwrite(f'./Test_images/test_326_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
