@@ -666,7 +666,7 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
     return img, to_arm
 
 
-def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj):
+def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_operate):
 
     # left-top to right-down
     px_resx1 = int(xyxy[0].cpu().detach().numpy())  # row
@@ -678,11 +678,17 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj):
     obj_x = int((px_resx1 + px_resx2) / 2)
     obj_y = int((px_resy1 + px_resy2) / 2)
 
-    mm2px = 1 / 0.000625  # unit convert = 1600
-    # mm2px = 1500 / 1  # unit convert = 1500
+    if real_operate == True:
+        mm2px = 1500 / 1  # unit convert = 1500
+    else:
+        mm2px = 1 / 0.000625  # unit convert = 1600
 
-    obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0）
-    obj_y = obj_y - 80
+    if real_operate == True:
+        obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0）
+        obj_y = obj_y - 96
+    else:
+        obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0）
+        obj_y = obj_y - 80
 
     obj_x = obj_x / mm2px
     obj_y = obj_y / mm2px
@@ -1001,33 +1007,33 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
             pass
         else:
             print(length_width_channel)
-            img = img.reshape(length_width_channel[1], length_width_channel[2], length_width_channel[0])
-            img = np.clip((1.03 * img), 0, 255)
-
-            im0s_split = cv2.split(im0s)
-
-            result_planes = []
-            result_norm_planes = []
-            for plane in im0s_split:
-                dilated_img = cv2.dilate(plane, np.ones((3, 3), np.uint8))
-                bg_img = cv2.medianBlur(dilated_img, 11)
-                diff_img = 255 - cv2.absdiff(plane, bg_img)
-                norm_img = cv2.normalize(diff_img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX,
-                                         dtype=cv2.CV_8UC1)
-                result_planes.append(diff_img)
-                result_norm_planes.append(norm_img)
-
-            im0s = cv2.merge(result_planes)
-            im0s_result_norm = cv2.merge(result_norm_planes)
-
-            im0s = np.uint8(np.clip((1.2 * im0s + 10), 0, 255))
-            cv2.imshow('aaa', im0s)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-            cv2.imshow('bbb', im0s_result_norm)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-            img = img.reshape(length_width_channel[0], length_width_channel[1], length_width_channel[2])
+            # img = img.reshape(length_width_channel[1], length_width_channel[2], length_width_channel[0])
+            # img = np.clip((1.03 * img), 0, 255)
+            #
+            # im0s_split = cv2.split(im0s)
+            #
+            # result_planes = []
+            # result_norm_planes = []
+            # for plane in im0s_split:
+            #     dilated_img = cv2.dilate(plane, np.ones((3, 3), np.uint8))
+            #     bg_img = cv2.medianBlur(dilated_img, 11)
+            #     diff_img = 255 - cv2.absdiff(plane, bg_img)
+            #     norm_img = cv2.normalize(diff_img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX,
+            #                              dtype=cv2.CV_8UC1)
+            #     result_planes.append(diff_img)
+            #     result_norm_planes.append(norm_img)
+            #
+            # im0s = cv2.merge(result_planes)
+            # im0s_result_norm = cv2.merge(result_norm_planes)
+            #
+            # im0s = np.uint8(np.clip((1.2 * im0s + 10), 0, 255))
+            # cv2.imshow('aaa', im0s)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
+            # cv2.imshow('bbb', im0s_result_norm)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
+            # img = img.reshape(length_width_channel[0], length_width_channel[1], length_width_channel[2])
             pass
         ##################### change the lightness of the image ###################
 
@@ -1105,7 +1111,7 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                     if save_img or view_img:  # Add bbox to image
                         label = f'{names[int(cls)]} {conf:.2f}'
 
-                        img_modify(my_im, xyxy, img_label, color_label, xy_list, box_number)
+                        img_modify(my_im, xyxy, img_label, color_label, xy_list, box_number, real_operate)
 
                         box_number += 1
 

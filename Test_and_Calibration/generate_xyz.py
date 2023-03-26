@@ -510,16 +510,25 @@ class Arm:
             last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
 
             if self.test_error_motion == True:
-                trajectory_pos_list = np.array([[0, 0.15, 0.04],
-                                                [0.25, 0.15, 0.04],
-                                                [0.25, -0.15, 0.04],
-                                                [0, -0.15, 0.04]])
+                trajectory_pos_list = np.array([[0, 0.15, 0.06],
+                                                [0, 0.15, 0.035],
+                                                [0, 0.15, 0.06],
+                                                # [0.25, 0.15, 0.06],
+                                                # [0.25, 0.15, 0.04],
+                                                # [0.25, 0.15, 0.06],
+                                                [0.25, -0.15, 0.06],
+                                                [0.25, -0.15, 0.035],
+                                                [0.25, -0.15, 0.06],
+                                                [0, -0.15, 0.06],
+                                                [0, -0.15, 0.035],
+                                                [0, -0.15, 0.06]])
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], rest_ori)
-                        time.sleep(5)
-                        # last_pos = np.copy(trajectory_pos_list[j])
+                        # if trajectory_pos_list[j][2] < 0.05:
+                        #     time.sleep(2)
+                        time.sleep(2)
                         last_ori = np.copy(rest_ori)
 
                     elif len(trajectory_pos_list[j]) == 1:
