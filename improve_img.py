@@ -6,9 +6,9 @@ import numpy as np
 sys.path.append('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/Adjust_images')
 
 img = cv2.imread("./Adjust_images/326_testpip.png")
-# img = cv2.dilate(img, np.ones((2, 2), np.uint8))
+img = cv2.dilate(img, np.ones((2, 2), np.uint8))
 # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-# img = np.uint8(np.clip((1.1 * img + 20), 0, 255))
+img = np.uint8(np.clip((1.1 * img + 20), 0, 255))
 
 
 cv2.namedWindow("zzz_origin", 0)
@@ -16,29 +16,29 @@ cv2.imshow('zzz_origin', img)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-# rgb_planes = cv2.split(img)
-#
-# mask_plane = []
-# for plane in rgb_planes: # sequence: BGR
-#     # print(plane.shape)
-#
-#     mask_plane.append(plane < 110)
-#     # print(plane < 90)
-#
-#     cv2.namedWindow("zzz_plane", 0)
-#     cv2.imshow('zzz_plane', plane)
-#     cv2.waitKey(0)
-#     cv2.destroyAllWindows()
-#
-# mask = np.logical_and(np.logical_and(mask_plane[0], mask_plane[1]), mask_plane[2])
-# print(mask)
-# pixel = int(np.mean(img[img > 70]))
-#
-# img[mask] = pixel
-# cv2.namedWindow("zzz_improved", 0)
-# cv2.imshow('zzz_improved', img)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
+rgb_planes = cv2.split(img)
+
+mask_plane = []
+for plane in rgb_planes: # sequence: BGR
+    # print(plane.shape)
+
+    mask_plane.append(plane < 110)
+    # print(plane < 90)
+
+    cv2.namedWindow("zzz_plane", 0)
+    cv2.imshow('zzz_plane', plane)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+mask = np.logical_and(np.logical_and(mask_plane[0], mask_plane[1]), mask_plane[2])
+print(mask)
+pixel = int(np.mean(img[img > 70]))
+
+img[mask] = pixel
+cv2.namedWindow("zzz_improved", 0)
+cv2.imshow('zzz_improved', img)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 
 
 
