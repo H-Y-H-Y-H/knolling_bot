@@ -34,8 +34,8 @@ from sklearn.preprocessing import MinMaxScaler
 from shapely.geometry import Polygon
 
 torch.manual_seed(42)
-# np.random.seed(100)
-# random.seed(100)
+np.random.seed(100)
+random.seed(100)
 
 class Net(nn.Module):
     def __init__(self):
@@ -228,30 +228,83 @@ class Arm:
                 scaler.fit(demo)
 
                 # this is lwyaw ground truth
+                # select the ori for squares to x2
+                ground_truth_xyyaw_plot = np.copy(ground_truth_xyyaw)
+                for i in range(len(ground_truth_xyyaw)):
+                    if np.abs(new_xyz_list[i][0] - new_xyz_list[i][1]) < 0.001:
+                        if ground_truth_xyyaw[i][2] > np.pi / 2:
+                            print('square change!')
+                            print(i, ground_truth_xyyaw[i][2])
+                            new_angle = ground_truth_xyyaw[i][2] - int(
+                                ground_truth_xyyaw[i][2] // (np.pi / 2)) * np.pi / 2
+                            print(i, ground_truth_xyyaw[i][2])
+                        elif ground_truth_xyyaw[i][2] < 0:
+                            print('square change!')
+                            print(i, ground_truth_xyyaw[i][2])
+                            new_angle = ground_truth_xyyaw[i][2] + (
+                                    int(ground_truth_xyyaw[i][2] // (-np.pi / 2)) + 1) * np.pi / 2
+                            print(i, ground_truth_xyyaw[i][2])
+                        else:
+                            new_angle = np.copy(ground_truth_xyyaw[i][2])
+                        ground_truth_xyyaw[i][2] = new_angle * 2
+
+                target_cos_plot = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+                target_sin_plot = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+                target_plot = np.concatenate((new_xyz_list[:, :2], target_cos_plot, target_sin_plot, ground_truth_xyyaw_plot[:, :]), axis=1) # this is the target for plot!!!!!!!!!
+                # structure: length, width, cos(2 * ori), sin(2 * ori)
                 target_cos = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
                 target_sin = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
-                target = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin, ground_truth_xyyaw[:, :2]), axis=1)
-                # structure: length, width, cos(2 * ori), sin(2 * ori)
                 target_compare = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin), axis=1)
+                print('this is the target_compare\n', target_compare)
                 target_compare_scaled = scaler.transform(target_compare)
 
                 # structure: x, y, length, width, ori
                 results = np.asarray(
-                    detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target, order_truth=order_ground_truth))
+                    detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target_plot, order_truth=order_ground_truth))
                 results = np.asarray(results[:, :5]).astype(np.float32)
-                print('this is the result of yolo+resnet', results)
+                # print('this is the result of yolo+resnet\n', results)
+                for i in range(len(results)):
+                    if results[i][2] < 0.018:
+                        results[i][4] = results[i][4] * 2
                 pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
                 pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
                 pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
-                pred_compare_2 = np.concatenate((results[:, 2:4], -pred_cos, -pred_sin), axis=1)
-                for i in range(len(pred_compare)):
-                    if np.mean((pred_compare[i] - target_compare[i]) ** 2) > np.mean((pred_compare_2[i] - target_compare[i]) ** 2):
-                        pred_compare[i] = np.copy(pred_compare_2[i])
-                        print('pred changed!')
+                print('this is the pred_compare\n', pred_compare)
+                # pred_compare_2 = np.concatenate((results[:, 2:4], -pred_cos, -pred_sin), axis=1)
+                # for i in range(len(pred_compare)):
+                #     if np.mean((pred_compare[i] - target_compare[i]) ** 2) > np.mean((pred_compare_2[i] - target_compare[i]) ** 2):
+                #         pred_compare[i] = np.copy(pred_compare_2[i])
+                #         print('pred changed!')
                 pred_compare_scaled = scaler.transform(pred_compare)
 
                 zzz_error = np.mean((pred_compare_scaled - target_compare_scaled) ** 2)
                 print('this is the error between the target and the pred', zzz_error)
+
+                # # this is lwyaw ground truth
+                # target_cos = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+                # target_sin = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+                # target = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin, ground_truth_xyyaw[:, :2]), axis=1)
+                # # structure: length, width, cos(2 * ori), sin(2 * ori)
+                # target_compare = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin), axis=1)
+                # target_compare_scaled = scaler.transform(target_compare)
+                #
+                # # structure: x, y, length, width, ori
+                # results = np.asarray(
+                #     detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target, order_truth=order_ground_truth))
+                # results = np.asarray(results[:, :5]).astype(np.float32)
+                # print('this is the result of yolo+resnet', results)
+                # pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
+                # pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
+                # pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
+                # pred_compare_2 = np.concatenate((results[:, 2:4], -pred_cos, -pred_sin), axis=1)
+                # for i in range(len(pred_compare)):
+                #     if np.mean((pred_compare[i] - target_compare[i]) ** 2) > np.mean((pred_compare_2[i] - target_compare[i]) ** 2):
+                #         pred_compare[i] = np.copy(pred_compare_2[i])
+                #         print('pred changed!')
+                # pred_compare_scaled = scaler.transform(pred_compare)
+                #
+                # zzz_error = np.mean((pred_compare_scaled - target_compare_scaled) ** 2)
+                # print('this is the error between the target and the pred', zzz_error)
 
 
                 # arange the sequence based on categories of cubes
@@ -643,8 +696,8 @@ class Arm:
 
                     rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
                                         random.uniform(self.y_low_obs, self.y_high_obs), 0.006])
-                    ori = [0, 0, random.uniform(0, math.pi)]
-                    # ori = [0, 0, 0]
+                    # ori = [0, 0, random.uniform(0, math.pi)]
+                    ori = [0, 0, 0]
                     collect_ori.append(ori)
                     check_list = np.zeros(last_pos.shape[0])
 
@@ -665,10 +718,10 @@ class Arm:
                                    baseOrientation=p.getQuaternionFromEuler(ori), useFixedBase=False,
                                    flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
 
-                    r = np.random.uniform(0.3, 0.7)
-                    g = np.random.uniform(0.3, 0.7)
-                    b = np.random.uniform(0.3, 0.7)
-                    p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
+                    # r = np.random.uniform(0, 0.9)
+                    # g = np.random.uniform(0, 0.9)
+                    # b = np.random.uniform(0, 0.9)
+                    # p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
 
             collect_ori = np.asarray(collect_ori)
             collect_pos = np.asarray(collect_pos)
@@ -691,9 +744,9 @@ class Arm:
         print(self.obj_idx)
         for i in range(len(self.obj_idx)):
             p.changeDynamics(self.obj_idx[i], -1, restitution=30)
-            r = np.random.uniform(0.3, 0.7)
-            g = np.random.uniform(0.3, 0.7)
-            b = np.random.uniform(0.3, 0.7)
+            r = np.random.uniform(0, 0.9)
+            g = np.random.uniform(0, 0.9)
+            b = np.random.uniform(0, 0.9)
             p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
 
         # set the initial pos of the arm
@@ -1881,9 +1934,9 @@ if __name__ == '__main__':
 
     if command == 'knolling':
 
-        num_2x2 = 2
+        num_2x2 = 6
         num_2x3 = 3
-        num_2x4 = 4
+        num_2x4 = 2
         total_offset = [0.15, 0, 0.006]
         grasp_order = [1, 0, 2]
         gap_item = 0.015

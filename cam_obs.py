@@ -350,7 +350,7 @@ def eval_img4Batch(img_array, num_obj):
     if criterion == 'lwcossin':
         model = ResNet50(img_channel=3, output_size=4).to(device)
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        model.load_state_dict(torch.load('Model/best_model_306_combine.pt', map_location='cuda:0'))
+        model.load_state_dict(torch.load('Model/best_model_328_combine.pt', map_location='cuda:0'))
         # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
         model.eval()
 
@@ -362,8 +362,8 @@ def eval_img4Batch(img_array, num_obj):
         close_index = int(data_4_train * ratio)
         normal_index = int(data_4_train * (1 - ratio))
 
-        close_label = np.loadtxt('./Dataset/label/label_304_close_2.csv')[:, :4]
-        normal_label = np.loadtxt('./Dataset/label/label_304_normal_2.csv')[:, :4]
+        close_label = np.loadtxt('./Dataset/label/label_327_close.csv')[:, :4]
+        normal_label = np.loadtxt('./Dataset/label/label_327_normal.csv')[:, :4]
         test_label = []
 
         for i in range(close_num_test):
@@ -558,6 +558,7 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
 
     # pos_truth is the xy pairs of lego cubes in world coordinate system, not z
     # ori_truth is the yaw, not the angle of two grasp points!!!!!!!!!!
+    print('Plot4Batch!!!')
 
     all_pred = eval_img4Batch(img_label, obj_num)
 
@@ -596,6 +597,8 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
             # my_yaw, my_length, my_width = all_pred[i][0], all_pred[i][1], all_pred[i][2]
             my_length, my_width, my_cos, my_sin = all_pred[i][0], all_pred[i][1], all_pred[i][2], all_pred[i][3]
             my_ori = np.arctan2(my_sin, my_cos) / 2
+            if my_length < 0.018:
+                my_ori = np.arctan2(my_sin, my_cos) / 4
             # pred_label = [xy[0], xy[1], my_yaw, my_length, my_width]
 
             info1 = f'cos: {my_cos:.3f} sin: {my_sin:.3f}, ori: {my_ori}'
@@ -613,8 +616,8 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
             to_arm.append(my_to_arm)
             ############################### plot the ground truth ################################
             if not all_truth is None:
-                length_truth, width_truth, cos_truth, sin_truth, x_truth, y_truth = all_truth[i][:6]
-                ori_truth = np.arctan2(sin_truth, cos_truth) / 2
+                length_truth, width_truth, cos_truth, sin_truth, x_truth, y_truth, ori_truth = all_truth[i][:7]
+                # ori_truth = np.arctan2(sin_truth, cos_truth)
                 # message = 'the ground truth is shown below'
                 info1 = f'cos: {cos_truth:.3f} sin: {sin_truth:.3f}, ori: {ori_truth:.3f}'
                 info2 = f'length: {length_truth * 1000:.3f} width: {width_truth * 1000:.3f}'
@@ -900,7 +903,7 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
     cam_obs = True
     path = ''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best_310.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best_326.pt', help='model.pt path(s)')
     # file/folder, 0 for webcam
     if cam_obs:
         parser.add_argument('--source', type=str, default=path, help='source')
@@ -1123,9 +1126,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_326_combine_real.png', im0)
+                    cv2.imwrite(f'./Test_images/test_328_combine_real.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_326_combine_sim.png', im0)
+                    cv2.imwrite(f'./Test_images/test_328_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
