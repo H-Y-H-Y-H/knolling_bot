@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.append('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/Adjust_images')
 
-img = cv2.imread("./Adjust_images/326_testpip.png")
+img = cv2.imread("./Adjust_images/328_testpip.png")
 img = cv2.dilate(img, np.ones((2, 2), np.uint8))
 # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 img = np.uint8(np.clip((1.1 * img + 20), 0, 255))
@@ -22,7 +22,7 @@ mask_plane = []
 for plane in rgb_planes: # sequence: BGR
     # print(plane.shape)
 
-    mask_plane.append(plane < 110)
+    mask_plane.append(plane < 100)
     # print(plane < 90)
 
     cv2.namedWindow("zzz_plane", 0)
