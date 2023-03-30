@@ -183,6 +183,7 @@ class sort():
                 print(new_results[all_index[i][j]][0])
                 print(new_results[all_index[i][j]][1])
                 pos_before.append([new_results[all_index[i][j]][0], new_results[all_index[i][j]][1], z])
+                ori_before.append([roll, pitch, new_results[all_index[i][j]][4]])
         pos_before = np.asarray(pos_before)
         ori_before = np.asarray(ori_before)
         print(pos_before)

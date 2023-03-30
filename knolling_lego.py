@@ -696,8 +696,8 @@ class Arm:
 
                     rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
                                         random.uniform(self.y_low_obs, self.y_high_obs), 0.006])
-                    # ori = [0, 0, random.uniform(0, math.pi)]
-                    ori = [0, 0, 0]
+                    ori = [0, 0, random.uniform(0, math.pi)]
+                    # ori = [0, 0, 0]
                     collect_ori.append(ori)
                     check_list = np.zeros(last_pos.shape[0])
 
@@ -1139,16 +1139,6 @@ class Arm:
                 #     angle_output[:, 1] = angle_output[:, 2]
                 # # !!!!!!!!!!!!!!!!!!!! unify the differences!!!!!!!!!!!!!!!!!!!!!!
 
-            # for i in range(len(xyz_input[0])):
-            #     plt.subplot(2, 3, i+1)
-            #     plt.plot(np.arange(len(xyz_input)), xyz_output[:, i], label='output cmd')
-            #     plt.plot(np.arange(len(xyz_input)), xyz_input[:, i], label='input cmd')
-            #     plt.title(f'motor{i}')
-            #     plt.legend()
-            # plt.suptitle("Comparison of output and input")
-            # plt.show()
-            # print('this is output of nn', xyz_output)
-
             return xyz_output
 
         def move(cur_pos, cur_ori, tar_pos, tar_ori):
@@ -1180,26 +1170,26 @@ class Arm:
             # else:
             #     pass
 
-            if self.real_operate == True:
-
-                # automatically add bias
-                R = np.array([0, 0.10, 0.185, 0.225, 0.27])
-                x_bias = np.array([0.001, 0.004, 0.0055, 0.007, 0.01])
-                y_bias = np.array([0, -0.0005, -0.002, 0, +0.001])
-                # R = np.array([0.15, 0.185, 0.225, 0.27])
-                # x_bias = np.array([0.003, 0.006, 0.010, 0.014])
-                # y_bias = np.array([0.002, 0.003, 0.006, 0.008])
-                x_parameters = np.polyfit(R, x_bias, 3)
-                y_parameters = np.polyfit(R, y_bias, 3)
-                new_x_formula = np.poly1d(x_parameters)
-                new_y_formula = np.poly1d(y_parameters)
-
-                distance = np.linalg.norm(tar_pos - np.array([0, 0, tar_pos[2]]))
-                tar_pos[0] = tar_pos[0] + new_x_formula(distance)
-                if tar_pos[1] < 0:
-                    tar_pos[1] = tar_pos[1] - new_y_formula(distance)
-                else:
-                    tar_pos[1] = tar_pos[1] + new_y_formula(distance)
+            # if self.real_operate == True:
+            #
+            #     # automatically add bias
+            #     R = np.array([0, 0.10, 0.185, 0.225, 0.27])
+            #     x_bias = np.array([0.001, 0.004, 0.0055, 0.007, 0.01])
+            #     y_bias = np.array([0, -0.0005, -0.002, 0, +0.001])
+            #     # R = np.array([0.15, 0.185, 0.225, 0.27])
+            #     # x_bias = np.array([0.003, 0.006, 0.010, 0.014])
+            #     # y_bias = np.array([0.002, 0.003, 0.006, 0.008])
+            #     x_parameters = np.polyfit(R, x_bias, 3)
+            #     y_parameters = np.polyfit(R, y_bias, 3)
+            #     new_x_formula = np.poly1d(x_parameters)
+            #     new_y_formula = np.poly1d(y_parameters)
+            #
+            #     distance = np.linalg.norm(tar_pos - np.array([0, 0, tar_pos[2]]))
+            #     tar_pos[0] = tar_pos[0] + new_x_formula(distance)
+            #     if tar_pos[1] < 0:
+            #         tar_pos[1] = tar_pos[1] - new_y_formula(distance)
+            #     else:
+            #         tar_pos[1] = tar_pos[1] + new_y_formula(distance)
 
             if tar_ori[2] > 1.58:
                 tar_ori[2] = tar_ori[2] - np.pi
@@ -1208,12 +1198,17 @@ class Arm:
 
             current_pos = np.copy(cur_pos)
             current_ori = np.copy(cur_ori)
-            target_pos = np.copy(tar_pos)
-            target_ori = np.copy(tar_ori)
 
-            # 暂时改成sim和real都用nn修正！
+            # use nn to improve target pos
             if self.real_operate == True:
-                target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1,)
+                tar_pos = tar_pos + np.array([0, 0, real_height])
+                target_pos = np.copy(tar_pos)
+                target_ori = np.copy(tar_ori)
+                target_pos[2] = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )[2]
+            else:
+                tar_pos = tar_pos + np.array([0, 0, sim_height])
+                target_pos = np.copy(tar_pos)
+                target_ori = np.copy(tar_ori)
 
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
                 # vertical, choose a small slice
@@ -1228,13 +1223,16 @@ class Arm:
             step_ori = (target_ori - cur_ori) / num_step
 
             if self.real_operate == True:
+                print('this is real xyz before nn', tar_pos)
+                print('this is real xyz after nn', target_pos)
+                print('this is cur pos', cur_pos)
                 while True:
                     tar_pos = cur_pos + step_pos
                     tar_ori = cur_ori + step_ori
                     cmd_xyz.append(tar_pos)
                     cmd_ori.append(tar_ori)
 
-                    ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos + np.array([0, 0, sim_height]),
+                    ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
                                                               maxNumIterations=200,
                                                               targetOrientation=p.getQuaternionFromEuler(tar_ori))
 
@@ -1267,7 +1265,7 @@ class Arm:
 
                 for i in range(len(cmd_xyz)):
                     ik_angles_real = p.calculateInverseKinematics(self.arm_id, 9,
-                                                                  targetPosition=cmd_xyz[i] + np.array([0, 0, real_height]),
+                                                                  targetPosition=cmd_xyz[i],
                                                                   maxNumIterations=200,
                                                                   targetOrientation=p.getQuaternionFromEuler(
                                                                       cmd_ori[i]))
@@ -1328,6 +1326,8 @@ class Arm:
                         break
                     cur_pos = tar_pos
                     cur_ori = tar_ori
+
+            return cur_pos
 
         def gripper(gap):
             if self.real_operate == True:
@@ -1454,8 +1454,7 @@ class Arm:
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
-                        move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
-                        last_pos = np.copy(trajectory_pos_list[j])
+                        last_pos = move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
                         last_ori = np.copy(trajectory_ori_list[j])
                     elif len(trajectory_pos_list[j]) == 1:
                         gripper(trajectory_pos_list[j][0])
@@ -1645,8 +1644,7 @@ class Arm:
                 last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
                 for j in range(len(trajectory_pos_list)):
                     if len(trajectory_pos_list[j]) == 3:
-                        move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
-                        last_pos = np.copy(trajectory_pos_list[j])
+                        last_pos = move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
                         last_ori = np.copy(trajectory_ori_list[j])
                     elif len(trajectory_pos_list[j]) == 1:
                         gripper(trajectory_pos_list[j][0])
@@ -1719,8 +1717,7 @@ class Arm:
 
                     if len(trajectory_pos_list[j]) == 3:
                         # print('ready to move', trajectory_ori_list[j])
-                        move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
-                        last_pos = np.copy(trajectory_pos_list[j])
+                        last_pos = move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
                         last_ori = np.copy(trajectory_ori_list[j])
 
                     elif len(trajectory_pos_list[j]) == 1:
@@ -1827,7 +1824,7 @@ class Arm:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8880  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.
@@ -1837,11 +1834,11 @@ class Arm:
             conn, addr = s.accept()
             print(conn)
             print(f"Connected by {addr}")
-            table_surface_height = -0.01
+            table_surface_height = 0.021
             sim_table_surface_height = -0.01
             num_motor = 5
             # ! reset the pos in both real and sim
-            reset_pos = [0.015, 0, 0.1]
+            reset_pos = [0.005, 0, 0.1]
             ik_angles = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=reset_pos,
                                                      maxNumIterations=300,
                                                      targetOrientation=p.getQuaternionFromEuler(
@@ -1857,7 +1854,7 @@ class Arm:
                 time.sleep(1 / 48)
         else:
             conn = None
-            table_surface_height = -0.008
+            table_surface_height = 0.021
             sim_table_surface_height = -0.01
 
         #######################################################################################
@@ -1942,8 +1939,8 @@ if __name__ == '__main__':
         gap_item = 0.015
         gap_block = 0.02
         random_offset = True
-        real_operate = False
-        obs_order = 'sim_image_obj'
+        real_operate = True
+        obs_order = 'real_image_obj'
         check_dataset_error = False
 
 
@@ -1979,7 +1976,7 @@ if __name__ == '__main__':
             obs_order = 'sim_image_obj_evaluate'
             check_obs_error = False
 
-            env = Arm(is_render=True)
+            env = Arm(is_render=False)
             env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4,
                                total_offset=total_offset, grasp_order=grasp_order,
                                gap_item=gap_item, gap_block=gap_block,
