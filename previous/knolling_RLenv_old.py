@@ -28,7 +28,7 @@ class Arm_env(gym.Env):
 
         self.step_counter = 0
 
-        self.urdf_path = 'urdf'
+        self.urdf_path = '../urdf'
         self.pybullet_path = pd.getDataPath()
         self.is_render = is_render
 

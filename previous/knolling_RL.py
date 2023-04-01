@@ -49,7 +49,7 @@ class Arm(gym.Env):
     def __init__(self, is_render=True):
 
         self.kImageSize = {'width': 480, 'height': 480}
-        self.urdf_path = 'urdf'
+        self.urdf_path = '../urdf'
         self.pybullet_path = pd.getDataPath()
         self.is_render = is_render
         if self.is_render:
@@ -902,20 +902,20 @@ class Arm(gym.Env):
                 # print('received')
                 plot_real = np.frombuffer(plot_real, dtype=np.float32)
                 plot_real = plot_real.reshape(-1, 6)
-                with open(file="Cartisian_data/cmd.txt", mode="a", encoding="utf-8") as f:
+                with open(file="../Cartisian_data/cmd.txt", mode="a", encoding="utf-8") as f:
                     plot_cmd = plot_cmd.tolist()
                     # print(plot_cmd)
                     for i in range(len(plot_cmd)):
                         list_zzz = [str(j) for j in plot_cmd[i]]
                         f.writelines(' '.join(list_zzz))
                         f.write('\n')
-                with open(file="Cartisian_data/real.txt", mode="a", encoding="utf-8") as f:
+                with open(file="../Cartisian_data/real.txt", mode="a", encoding="utf-8") as f:
                     plot_real = plot_real.tolist()
                     for i in range(len(plot_real)):
                         list_zzz = [str(j) for j in plot_real[i]]
                         f.writelines(' '.join(list_zzz))
                         f.write('\n')
-                with open(file="Cartisian_data/step.txt", mode="a", encoding="utf-8") as f:
+                with open(file="../Cartisian_data/step.txt", mode="a", encoding="utf-8") as f:
                     list_zzz = [str(j) for j in plot_step]
                     f.writelines(' '.join(list_zzz))
                     f.write('\n')
@@ -1194,20 +1194,20 @@ class Arm(gym.Env):
                 # print('received')
                 plot_real = np.frombuffer(plot_real, dtype=np.float32)
                 plot_real = plot_real.reshape(-1, 6)
-                with open(file="Cartisian_data/cmd.txt", mode="a", encoding="utf-8") as f:
+                with open(file="../Cartisian_data/cmd.txt", mode="a", encoding="utf-8") as f:
                     plot_cmd = plot_cmd.tolist()
                     # print(plot_cmd)
                     for i in range(len(plot_cmd)):
                         list_zzz = [str(j) for j in plot_cmd[i]]
                         f.writelines(' '.join(list_zzz))
                         f.write('\n')
-                with open(file="Cartisian_data/real.txt", mode="a", encoding="utf-8") as f:
+                with open(file="../Cartisian_data/real.txt", mode="a", encoding="utf-8") as f:
                     plot_real = plot_real.tolist()
                     for i in range(len(plot_real)):
                         list_zzz = [str(j) for j in plot_real[i]]
                         f.writelines(' '.join(list_zzz))
                         f.write('\n')
-                with open(file="Cartisian_data/step.txt", mode="a", encoding="utf-8") as f:
+                with open(file="../Cartisian_data/step.txt", mode="a", encoding="utf-8") as f:
                     list_zzz = [str(j) for j in plot_step]
                     f.writelines(' '.join(list_zzz))
                     f.write('\n')
@@ -1367,11 +1367,11 @@ class Arm(gym.Env):
 
         if self.real_operate == True:
 
-            with open(file="Cartisian_data/cmd.txt", mode="w", encoding="utf-8") as f:
+            with open(file="../Cartisian_data/cmd.txt", mode="w", encoding="utf-8") as f:
                 f.truncate(0)
-            with open(file="Cartisian_data/real.txt", mode="w", encoding="utf-8") as f:
+            with open(file="../Cartisian_data/real.txt", mode="w", encoding="utf-8") as f:
                 f.truncate(0)
-            with open(file="Cartisian_data/step.txt", mode="w", encoding="utf-8") as f:
+            with open(file="../Cartisian_data/step.txt", mode="w", encoding="utf-8") as f:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)

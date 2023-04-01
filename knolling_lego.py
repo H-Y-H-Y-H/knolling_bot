@@ -20,7 +20,7 @@
 
 import numpy as np
 import pyrealsense2 as rs
-from items_real import sort
+from items_real import Sort_objects
 import pybullet_data as pd
 import math
 from turdf import *
@@ -465,7 +465,7 @@ class Arm:
         p.changeVisualShape(baseid, -1, textureUniqueId=textureId,rgbaColor=[np.random.uniform(0.9,1), np.random.uniform(0.9,1),np.random.uniform(0.9,1), 1])
 
         # get the standard xyz and corresponding index from files in the computer
-        items_sort = sort()
+        items_sort = Sort_objects()
         self.obj_idx = []
         if self.real_operate == False:
             self.xyz_list, _, _, self.all_index = items_sort.get_data_virtual(self.grasp_order, self.num_2x2,
@@ -579,7 +579,7 @@ class Arm:
         p.changeVisualShape(baseid, -1, textureUniqueId=textureId,rgbaColor=[np.random.uniform(0.9,1), np.random.uniform(0.9,1),np.random.uniform(0.9,1), 1])
 
         # get the standard xyz and corresponding index from files in the computer
-        items_sort = sort()
+        items_sort = Sort_objects()
         if self.real_operate == False:
             self.xyz_list, _, _, self.all_index = items_sort.get_data_virtual(self.grasp_order, self.num_2x2,
                                                                               self.num_2x3, self.num_2x4,
@@ -1610,8 +1610,7 @@ class Arm:
 
 if __name__ == '__main__':
 
-    random_flag = True
-    command = 'knolling'  # image virtual real
+    command = 'image'  # image virtual real
 
     if torch.cuda.is_available():
         device = 'cuda'
@@ -1623,6 +1622,7 @@ if __name__ == '__main__':
     # # print(model)
     # model.eval()
 
+    # Visualize two images (before and after knolling)
     if command == 'image':
         num_2x2 = 2
         num_2x3 = 4

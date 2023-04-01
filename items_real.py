@@ -4,7 +4,7 @@ from cam_obs import *
 import pyrealsense2 as rs
 import math
 
-class sort():
+class Sort_objects():
     
     def __init__(self):
 
@@ -213,7 +213,7 @@ class sort():
 if __name__ == '__main__':
 
     order_kinds = [1, 2, 0]
-    SORT = sort()
-    xyz_list, _, _, all_index = SORT.get_data_virtual(order_kinds, num_2x2=2, num_2x3=1, num_2x4=4, num_pencil=0)
+    Sort_objects1 = Sort_objects()
+    xyz_list, _, _, all_index = Sort_objects1.get_data_virtual(order_kinds, num_2x2=2, num_2x3=1, num_2x4=4, num_pencil=0)
     print(xyz_list)
     print(all_index)

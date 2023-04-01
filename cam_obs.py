@@ -115,14 +115,6 @@ class ResNet(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # # 225_combine structure
-        # self.fc0 = nn.Linear(512 * 4, 256 * 4)
-        # self.fc1 = nn.Linear(256 * 4, 512)
-        # self.fc2 = nn.Linear(512, 256)
-        # self.fc3 = nn.Linear(256, 128)
-        # self.fc4 = nn.Linear(128, 64)
-        # self.fc5 = nn.Linear(64, 32)
-        # self.fc6 = nn.Linear(32, output_size)
 
         # 306_combine structure
         self.fc0 = nn.Linear(512 * 4, 512 * 6)
@@ -138,17 +130,6 @@ class ResNet(nn.Module):
         self.fc8_1 = nn.Linear(32, output_size - 2)
         self.fc8_2 = nn.Linear(16, 2)
 
-        # # 226_combine structure
-        # self.fc0 = nn.Linear(512 * 4, 512 * 6)
-        # self.fc1 = nn.Linear(512 * 6, 256 * 6)
-        # self.fc2 = nn.Linear(256 * 6, 256 * 4)
-        # self.fc3 = nn.Linear(256 * 4, 256 * 2)
-        # self.fc4 = nn.Linear(256 * 2, 256)
-        # self.fc5 = nn.Linear(256, 128)
-        # self.fc6 = nn.Linear(128, 64)
-        # self.fc7 = nn.Linear(64, 16)
-        # self.fc8 = nn.Linear(16, output_size)
-
     def forward(self, IMG):
 
         x = self.conv1(IMG)
@@ -159,27 +140,6 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-
-        # # 226_combine structure
-        # x = self.avgpool(x)
-        # x = x.reshape(x.shape[0], -1)
-        # x = self.relu(self.fc0(x))
-        # x = self.dropout(x)
-        # x = self.relu(self.fc1(x))
-        # x = self.dropout(x)
-        # x = self.relu(self.fc2(x))
-        # x = self.dropout(x)
-        # x = self.relu(self.fc3(x))
-        # x = self.dropout(x)
-        # x = self.relu(self.fc4(x))
-        # x = self.dropout(x)
-        # x = self.relu(self.fc5(x))
-        # x = self.dropout(x)
-        # x = self.relu(self.fc6(x))
-        # x = self.dropout(x)
-        # x = self.relu(self.fc7(x))
-        # x = self.dropout(x)
-        # x = self.relu(self.fc8(x))
 
         # 306_combine structure
         x = self.avgpool(x)
@@ -216,20 +176,6 @@ class ResNet(nn.Module):
         # return x
 
     def loss(self, pred, target):
-
-            # index_yaw = 3, 11, 19, 27, 35
-            # index_LWH = [4,5,6] [12,13,14] [20,21,22] [28,29,30] [36,37,38]
-            # weights = np.ones(40)
-            #
-            # for k in range(5):
-            #     l = target[k][4 + 8*k]
-            #     w = target[k][5 + 8*k]
-            #     if abs(l - w) >= 0.003:
-            #         weights[3 + 8*k] = 0.01
-            #
-            # weights_tensor = torch.from_numpy(weights).to('cuda')
-            # value = torch.mul((pred - target) ** 2, weights_tensor)
-
             value = (pred - target) ** 2
 
             return torch.mean(value)
