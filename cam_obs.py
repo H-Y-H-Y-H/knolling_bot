@@ -629,12 +629,14 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_ope
 
     if real_operate == True:
         mm2px = 1500 / 1  # unit convert = 1500
+        mm2px = 530 / 0.3
     else:
         mm2px = 1 / 0.000625  # unit convert = 1600
 
     if real_operate == True:
         obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0）
-        obj_y = obj_y - 96
+        # obj_y = obj_y - 96
+        obj_y = obj_y - 86
     else:
         obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0）
         obj_y = obj_y - 80
