@@ -466,45 +466,48 @@ class Arm:
                     if seg_time > 0:
                         seg_flag = False
                         print('segment fail, try to tune!')
-                        for i in range(1, 10):
-                            plot_cmd = []
-                            real_xyz = []
-                            tar_pos = cur_pos + (target_pos - cur_pos) * i / 3
-                            ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
-                                                                         maxNumIterations=200,
-                                                                         targetOrientation=p.getQuaternionFromEuler(
-                                                                             tar_ori))
 
-                            for motor_index in range(self.num_motor):
-                                p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                                                        targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
-                            for i in range(20):
-                                p.stepSimulation()
 
-                            angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
-                            plot_cmd.append(angle_sim)
-                            plot_cmd = np.asarray(plot_cmd)
-                            conn.sendall(plot_cmd.tobytes())
-                            angles_real = conn.recv(4096)
-                            angles_real = np.frombuffer(angles_real, dtype=np.float32).reshape(-1, 6)
-                            ik_angles_real = []
-                            for i in range(len(angles_real)):
-                                ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
-                                for motor_index in range(self.num_motor):
-                                    p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                                                            targetPosition=ik_angles_real[motor_index], maxVelocity=25)
-                                for i in range(40):
-                                    p.stepSimulation()
-                                real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
-                            real_xyz = np.asarray(real_xyz)
 
-                            cur_pos = real_xyz[-1]
-                            print('this is tar pos while moving', tar_pos)
-                            print('this is cur pos while moving', cur_pos)
-                            if abs(target_pos[0] - cur_pos[0]) < 0.001 and abs(target_pos[1] - cur_pos[1]) < 0.001 and abs(
-                                    target_pos[2] - cur_pos[2]) < 0.001:
-                                print('tune success!')
-                                break
+                        # for i in range(1, 10):
+                        #     plot_cmd = []
+                        #     real_xyz = []
+                        #     tar_pos = cur_pos + (target_pos - cur_pos) * i / 3
+                        #     ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
+                        #                                                  maxNumIterations=200,
+                        #                                                  targetOrientation=p.getQuaternionFromEuler(
+                        #                                                      tar_ori))
+                        #
+                        #     for motor_index in range(self.num_motor):
+                        #         p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                        #                                 targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
+                        #     for i in range(20):
+                        #         p.stepSimulation()
+                        #
+                        #     angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
+                        #     plot_cmd.append(angle_sim)
+                        #     plot_cmd = np.asarray(plot_cmd)
+                        #     conn.sendall(plot_cmd.tobytes())
+                        #     angles_real = conn.recv(4096)
+                        #     angles_real = np.frombuffer(angles_real, dtype=np.float32).reshape(-1, 6)
+                        #     ik_angles_real = []
+                        #     for i in range(len(angles_real)):
+                        #         ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
+                        #         for motor_index in range(self.num_motor):
+                        #             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                        #                                     targetPosition=ik_angles_real[motor_index], maxVelocity=25)
+                        #         for i in range(40):
+                        #             p.stepSimulation()
+                        #         real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
+                        #     real_xyz = np.asarray(real_xyz)
+                        #
+                        #     cur_pos = real_xyz[-1]
+                        #     print('this is tar pos while moving', tar_pos)
+                        #     print('this is cur pos while moving', cur_pos)
+                        #     if abs(target_pos[0] - cur_pos[0]) < 0.001 and abs(target_pos[1] - cur_pos[1]) < 0.001 and abs(
+                        #             target_pos[2] - cur_pos[2]) < 0.001:
+                        #         print('tune success!')
+                        #         break
 
                         break
 
