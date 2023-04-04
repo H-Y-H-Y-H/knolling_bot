@@ -296,7 +296,7 @@ def eval_img4Batch(img_array, num_obj):
     if criterion == 'lwcossin':
         model = ResNet50(img_channel=3, output_size=4).to(device)
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        model.load_state_dict(torch.load('Model/best_model_328_combine.pt', map_location='cuda:0'))
+        model.load_state_dict(torch.load('Model/best_model_401_combine.pt', map_location='cuda:0'))
         # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
         model.eval()
 
@@ -308,8 +308,8 @@ def eval_img4Batch(img_array, num_obj):
         close_index = int(data_4_train * ratio)
         normal_index = int(data_4_train * (1 - ratio))
 
-        close_label = np.loadtxt('./Dataset/label/label_327_close.csv')[:, :4]
-        normal_label = np.loadtxt('./Dataset/label/label_327_normal.csv')[:, :4]
+        close_label = np.loadtxt('./Dataset/label/label_401_close.csv')[:, :4]
+        normal_label = np.loadtxt('./Dataset/label/label_401_normal.csv')[:, :4]
         test_label = []
 
         for i in range(close_num_test):
@@ -376,90 +376,6 @@ def eval_img4Batch(img_array, num_obj):
                 # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
 
                 return pred_lwcossin
-
-    if criterion == 'x1y1x2y2':
-        model = ResNet50(img_channel=3, output_size=4).to(device)
-        # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        model.load_state_dict(torch.load('Model/best_model_302_combine_**2.pt', map_location='cuda:0'))
-        # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
-        model.eval()
-
-        data_num = 60000
-        data_4_train = int(data_num * 0.8)
-        ratio = 0.5  # close3, normal7
-        close_num_test = int((data_num - data_4_train) * ratio)
-        normal_num_test = int((data_num - data_4_train) - close_num_test)
-        close_index = int(data_4_train * ratio)
-        normal_index = int(data_4_train * (1 - ratio))
-
-        close_label = np.loadtxt('./Dataset/label/label_301_close_2.csv')[:, :5]
-        normal_label = np.loadtxt('./Dataset/label/label_301_normal_2.csv')[:, :5]
-        test_label = []
-
-        for i in range(close_num_test):
-            test_label.append(close_label[close_index])
-            close_index += 1
-        for i in range(normal_num_test):
-            test_label.append(normal_label[normal_index])
-            normal_index += 1
-
-        scaler = MinMaxScaler()
-        scaler.fit(test_label)
-        print(scaler.data_max_)
-        print(scaler.data_min_)
-
-        test_data = []
-        # mm_sc = [[0, 14 / 1000, 14 / 1000], [np.pi, 34 / 1000, 16 / 1000]]
-        for i in range(num_obj):
-            img_array1 = img_array[i].astype(np.float32)/255
-            img_array1[0], img_array1[2] = img_array1[2], img_array1[0]
-            image2 = img_array1
-            # image = plt.imread('real_test/img%s.png' %i)
-            # print(image)
-            # print(image2)
-
-            # if (image == image2).all():
-            #     print('!')
-
-            # print('shape',image.shape)
-            # print('shape', image2.shape)
-            test_data.append(image2)
-
-        test_dataset = VD_Data(
-            img_data=test_data, label_data = test_label, transform=ToTensor())
-
-        BATCH_SIZE = 32
-
-        test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
-                                 shuffle=False, num_workers=0)
-
-        with torch.no_grad():
-
-            for batch in test_loader:
-                img = batch["image"]
-
-                # ############################## test the shape of img ##############################
-                # img_show = img.cpu().detach().numpy()
-                # print(img_show[0].shape)
-                # temp = img_show[0]
-                # temp_shape = temp.shape
-                # temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
-                # print(temp.shape)
-                # cv2.namedWindow("well",0)
-                # cv2.imshow('well', temp)
-                # cv2.waitKey(0)
-                # cv2.destroyAllWindows()
-                # ############################## test the shape of img ##############################
-
-                img = img.to(device)
-                pred_x1y1x2y2l = model.forward(img)
-                pred_x1y1x2y2l = pred_x1y1x2y2l.cpu().detach().numpy()
-                # print('this is', pred_x1y1x2y2l)
-                pred_x1y1x2y2l = scaler.inverse_transform(pred_x1y1x2y2l)
-                # print('this is', pred_x1y1x2y2l)
-                # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
-
-                return pred_x1y1x2y2l
 
 def color_define(obj_hsv):
     # obj_HSV = [H,S,V]
@@ -781,7 +697,7 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
     cam_obs = True
     path = ''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best_326.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best_401.pt', help='model.pt path(s)')
     # file/folder, 0 for webcam
     if cam_obs:
         parser.add_argument('--source', type=str, default=path, help='source')
@@ -1021,9 +937,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_328_combine_real_5.png', im0)
+                    cv2.imwrite(f'./Test_images/test_403_combine_real.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_328_combine_sim_5.png', im0)
+                    cv2.imwrite(f'./Test_images/test_403_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
