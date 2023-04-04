@@ -576,41 +576,6 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
                 pass
             ############################### plot the ground truth ################################
 
-    # if criterion == 'x1y1x2y2lw':
-    #     to_arm = []
-    #     print('this is number of obj', obj_num)
-    #     for i in range(obj_num):
-    #         xy = xy_list[i]
-    #         # my_yaw, my_length, my_width = all_pred[i][0], all_pred[i][1], all_pred[i][2]
-    #         x1, y1, x2, y2, my_length = all_pred[i][0], all_pred[i][1], all_pred[i][2], all_pred[i][3], all_pred[i][4]
-    #         my_width = np.linalg.norm(np.array([x1, y1]) - np.array([x2, y2]))
-    #         # pred_label = [xy[0], xy[1], my_yaw, my_length, my_width]
-    #
-    #         info1 = f'x1: {x1:.3f} y1: {y1:.3f} x2: {x2:.3f} y2: {y2:.3f}'
-    #         info2 = f'length: {my_length * 1000:.3f} width: {my_width * 1000:.3f}'
-    #         # plot_one_box(xyxy, im0, label=label,
-    #         #              color=colors[int(cls)], line_thickness=1)
-    #         color_pos = f'color: {color_label[i]} x_pos: {xy[0]:.4f} y_pos: {xy[1]:.4f}'
-    #         # my_plot_one_box(xyxy_list[i], img, my_yaw, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
-    #         #                 color=[0, 0, 0], line_thickness=1)
-    #         check_flag = False
-    #         my_plot_one_box(xyxy_list[i], img, x1, y1, x2, y2, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
-    #                         color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
-    #         my_to_arm = [xy[0], xy[1], x1, y1, x2, y2, my_length, my_width, color_label[i]]
-    #         to_arm.append(my_to_arm)
-    #         ############################### plot the ground truth ################################
-    #         if all_truth:
-    #             x1_truth, y1_truth, x2_truth, y2_truth, length_truth = all_truth[i][0], all_truth[i][1], all_truth[i][2], all_truth[i][3], all_truth[i][4]
-    #             width_truth = np.linalg.norm(np.array([x1_truth, y1_truth]) - np.array([x2_truth, y2_truth]))
-    #             message = 'the ground truth is shown below'
-    #             info2 = f'x1: {x1_truth:.3f} y1: {y1_truth:.3f} x2: {x2_truth:.3f} y2: {y2_truth:.3f}'
-    #             check_flag = True
-    #             my_plot_one_box(xyxy_list[i], img, x1_truth, y1_truth, x2_truth, y2_truth, length_truth, width_truth,
-    #                             label1=message, label2=info2, label3=None, color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
-    #         else:
-    #             pass
-    #         ############################### plot the ground truth ################################
-
 
     return img, to_arm
 
@@ -767,41 +732,6 @@ def check_dataset():
 
     test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
                              shuffle=False, num_workers=0)
-
-    # label = np.loadtxt('Dataset/label/label_221_combine.csv')[:, :5]
-    # # print('this is label', label)
-    #
-    # xyzyaw = np.copy(label)
-    #
-    # scaler = MinMaxScaler()
-    # scaler.fit(label)
-    # print(scaler.data_max_)
-    # print(scaler.data_min_)
-    #
-    # model = ResNet50(img_channel=3, output_size=5).to(device)
-    # # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    # model.load_state_dict(torch.load('Model/best_model_223_combine.pt', map_location='cuda:0'))
-    # # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
-    # model.eval()
-    #
-    # img_pth = "Dataset/yolo_221_combine/"
-    # data_num = 60000
-    # data_4_train = int(data_num * 0.8)
-
-    # test_data = []
-    # for i in range(data_4_train,data_num):
-    #     # print(i)
-    #     img = plt.imread(img_pth + "img%d.png" % i)
-    #     # print(np.shape(img))
-    #     test_data.append(img)
-    #
-    # test_dataset = VD_Data(
-    #     img_data=test_data, label_data=xyzyaw[data_4_train:data_num], transform=ToTensor())
-    #
-    # BATCH_SIZE = 32
-    #
-    # test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
-    #                          shuffle=False, num_workers=0)
 
     with torch.no_grad():
         total_loss = []
