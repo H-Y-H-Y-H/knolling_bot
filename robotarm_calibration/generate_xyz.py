@@ -435,7 +435,6 @@ class Arm:
 
                     plot_step = np.arange(num_step)
                     plot_cmd = np.asarray(plot_cmd)
-                    # print('this is plot cmd\n', plot_cmd)
                     print('this is the shape of cmd', plot_cmd.shape)
                     print('this is the shape of xyz', sim_xyz.shape)
                     # print('this is the motor pos sent', plot_cmd[-1])
@@ -445,28 +444,60 @@ class Arm:
                     # print('received')
                     angles_real = np.frombuffer(angles_real, dtype=np.float32)
                     angles_real = angles_real.reshape(-1, 6)
-                    ik_angles_real = []
-                    for i in range(len(angles_real)):
-                        ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
+                    # ik_angles_real = []
+                    # for i in range(len(angles_real)):
+                    #     ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
+                    #     for motor_index in range(self.num_motor):
+                    #         p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                    #                                 targetPosition=ik_angles_real[motor_index], maxVelocity=25)
+                    #     for i in range(40):
+                    #         p.stepSimulation()
+                    #     real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
+                    # real_xyz = np.asarray(real_xyz)
+                    #
+                    # # update cur_pos based on real pos of the arm
+                    # cur_pos = real_xyz[-1]
+                    # if abs(seg_pos[0] - cur_pos[0]) < 0.001 and abs(seg_pos[1] - cur_pos[1]) < 0.001 and abs(
+                    #         seg_pos[2] - cur_pos[2]) < 0.001:
+                    #     seg_flag = True
+                    #     break
+                    # print('this is seg_time', seg_time)
+                    if seg_time > 0:
+                        seg_flag = False
+                        print('segment fail, try to tune!')
+                        ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=target_pos,
+                                                                     maxNumIterations=200,
+                                                                     targetOrientation=p.getQuaternionFromEuler(
+                                                                         target_ori))
+
+                        for motor_index in range(self.num_motor):
+                            p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                                                    targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
+                        for i in range(20):
+                            p.stepSimulation()
+
+                        angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
+                        final_cmd = np.append(angle_sim, 0).reshape(1, -1)
+                        final_cmd = np.asarray(final_cmd, dtype=np.float32)
+                        print(final_cmd.shape)
+                        print(final_cmd)
+                        conn.sendall(final_cmd.tobytes())
+
+                        # get the pos after tune!
+                        final_angles_real = conn.recv(4096)
+                        # print('received')
+                        final_angles_real = np.frombuffer(final_angles_real, dtype=np.float32).reshape(-1, 6)
+
+                        ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(final_angles_real)), dtype=np.float32)
                         for motor_index in range(self.num_motor):
                             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
                                                     targetPosition=ik_angles_real[motor_index], maxVelocity=25)
                         for i in range(40):
                             p.stepSimulation()
-                        real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
-                    real_xyz = np.asarray(real_xyz)
-
-                    # update cur_pos based on real pos of the arm
-                    cur_pos = real_xyz[-1]
-                    if abs(seg_pos[0] - cur_pos[0]) < 0.001 and abs(seg_pos[1] - cur_pos[1]) < 0.001 and abs(
-                            seg_pos[2] - cur_pos[2]) < 0.001:
-                        seg_flag = True
+                        real_xyz = np.append(real_xyz, np.asarray(p.getLinkState(self.arm_id, 9)[0])).reshape(-1, 3)
+                        cur_pos = real_xyz[-1]
+                        # print(real_xyz)
                         break
-                    print('this is seg_time', seg_time)
-                    if seg_time > 0:
-                        seg_flag = False
-                        print('segment fail, try to tune!')
-
 
 
                         # for i in range(1, 10):
@@ -508,8 +539,6 @@ class Arm:
                         #             target_pos[2] - cur_pos[2]) < 0.001:
                         #         print('tune success!')
                         #         break
-
-                        break
 
 
                 if self.test_error_motion == True:
@@ -686,15 +715,21 @@ class Arm:
             last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
 
             if self.test_error_motion == True:
-                trajectory_pos_list = np.array([[0.1, 0.17, 0.03],
-                                                [0.1, -0.17, 0.03]])
+                trajectory_pos_list = np.array([[0.0, 0.17, 0.03],
+                                                [0.0, 0.17, 0.005],
+                                                [0.0, -0.17, 0.03],
+                                                [0.0, -0.17, 0.005],
+                                                [0.2, -0.1, 0.03],
+                                                [0.2, -0.1, 0.005],
+                                                [0.2, 0.1, 0.03],
+                                                [0.2, 0.1, 0.005]])
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], rest_ori)
                         # if trajectory_pos_list[j][2] < 0.05:
                         #     time.sleep(2)
-                        time.sleep(5)
+                        time.sleep(20)
                         last_ori = np.copy(rest_ori)
 
                     elif len(trajectory_pos_list[j]) == 1:
@@ -751,7 +786,7 @@ class Arm:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8880  # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.
