@@ -284,7 +284,7 @@ class Arm:
                                  basePosition=[-0.08, 0, 0.02], useFixedBase=True,
                                  flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
-        textureId = p.loadTexture("../img1.png")
+        textureId = p.loadTexture("../img_1.png")
         p.changeDynamics(baseid, -1, lateralFriction=1, spinningFriction=1, rollingFriction=0.002, linearDamping=0.5, angularDamping=0.5)
         p.changeDynamics(self.arm_id, 7, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=0, angularDamping=0)
         p.changeDynamics(self.arm_id, 8, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=0, angularDamping=0)
@@ -356,13 +356,6 @@ class Arm:
 
         def move(cur_pos, cur_ori, tar_pos, tar_ori):
 
-            plot_cmd = []
-            plot_real = []
-            sim_xyz = []
-            sim_ori = []
-            real_xyz = []
-            real_ori = []
-
             if tar_ori[2] > 1.58:
                 tar_ori[2] = tar_ori[2] - np.pi
             elif tar_ori[2] < -1.58:
@@ -370,78 +363,151 @@ class Arm:
 
             current_pos = np.copy(cur_pos)
             current_ori = np.copy(cur_ori)
-            target_pos = np.copy(tar_pos)
-            target_ori = np.copy(tar_ori)
 
-            if self.test_error_motion == True:
-                target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )
+            # if self.test_error_motion == True:
+            #     target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )
 
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
                 # vertical, choose a small slice
                 move_slice = 0.006
             else:
                 # horizontal, choose a large slice
-                move_slice = 0.01
-            distance = np.linalg.norm(tar_pos - cur_pos)
-            num_step = np.ceil(distance / move_slice)
-
-            step_pos = (target_pos - cur_pos) / num_step
-            step_ori = (target_ori - cur_ori) / num_step
+                move_slice = 0.006
 
             if self.real_operate == True:
-                print('this is real xyz before nn', tar_pos)
-                print('this is real xyz after nn', target_pos)
-                print('this is cur pos', cur_pos)
+                tar_pos = tar_pos + np.array([0, 0, real_height])
+                target_pos = np.copy(tar_pos)
+                target_ori = np.copy(tar_ori)
+                # target_pos[2] = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )[2] # remove nn offset temporary
+                mark_ratio = 0.95
+                seg_time = 0
+
                 while True:
-                    tar_pos = cur_pos + step_pos
-                    tar_ori = cur_ori + step_ori
-                    sim_xyz.append(tar_pos)
-                    sim_ori.append(tar_ori)
+                    plot_cmd = []
+                    # plot_real = []
+                    sim_xyz = []
+                    sim_ori = []
+                    real_xyz = []
+                    # real_ori = []
 
-                    ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
-                                                              maxNumIterations=200,
-                                                              targetOrientation=p.getQuaternionFromEuler(tar_ori))
+                    # divide the whole trajectory into several segment
+                    seg_time += 1
+                    seg_pos = mark_ratio * (target_pos - cur_pos) + cur_pos
+                    seg_ori = mark_ratio * (target_ori - cur_ori) + cur_ori
+                    distance = np.linalg.norm(seg_pos - cur_pos)
+                    num_step = np.ceil(distance / move_slice)
+                    step_pos = (seg_pos - cur_pos) / num_step
+                    step_ori = (seg_ori - cur_ori) / num_step
 
-                    for motor_index in range(self.num_motor):
-                        p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                                                targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
-                    for i in range(20):
-                        p.stepSimulation()
+                    print('this is cur pos', cur_pos)
+                    print('this is seg pos', seg_pos)
 
-                    angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
-                    plot_cmd.append(angle_sim)
+                    while True:
+                        tar_pos = cur_pos + step_pos
+                        tar_ori = cur_ori + step_ori
+                        sim_xyz.append(tar_pos)
+                        sim_ori.append(tar_ori)
 
-                    if abs(target_pos[0] - tar_pos[0]) < 0.001 and abs(target_pos[1] - tar_pos[1]) < 0.001 and abs(target_pos[2] - tar_pos[2]) < 0.001 and \
-                            abs(target_ori[0] - tar_ori[0]) < 0.001 and abs(target_ori[1] - tar_ori[1]) < 0.001 and abs(target_ori[2] - tar_ori[2]) < 0.001:
+                        ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
+                                                                  maxNumIterations=200,
+                                                                  targetOrientation=p.getQuaternionFromEuler(tar_ori))
+
+                        for motor_index in range(self.num_motor):
+                            p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                                                    targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
+                        for i in range(20):
+                            p.stepSimulation()
+
+                        angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
+                        plot_cmd.append(angle_sim)
+
+                        break_flag = abs(seg_pos[0] - tar_pos[0]) < 0.001 and abs(
+                            seg_pos[1] - tar_pos[1]) < 0.001 and abs(seg_pos[2] - tar_pos[2]) < 0.001 and \
+                                     abs(seg_ori[0] - tar_ori[0]) < 0.001 and abs(
+                            seg_ori[1] - tar_ori[1]) < 0.001 and abs(seg_ori[2] - tar_ori[2]) < 0.001
+                        if break_flag:
+                            break
+
+                        cur_pos = tar_pos
+                        cur_ori = tar_ori
+
+                    sim_xyz = np.asarray(sim_xyz)
+
+                    plot_step = np.arange(num_step)
+                    plot_cmd = np.asarray(plot_cmd)
+                    # print('this is plot cmd\n', plot_cmd)
+                    print('this is the shape of cmd', plot_cmd.shape)
+                    print('this is the shape of xyz', sim_xyz.shape)
+                    # print('this is the motor pos sent', plot_cmd[-1])
+                    conn.sendall(plot_cmd.tobytes())
+                    # print('waiting the manipulator')
+                    angles_real = conn.recv(4096)
+                    # print('received')
+                    angles_real = np.frombuffer(angles_real, dtype=np.float32)
+                    angles_real = angles_real.reshape(-1, 6)
+                    ik_angles_real = []
+                    for i in range(len(angles_real)):
+                        ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
+                        for motor_index in range(self.num_motor):
+                            p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                                                    targetPosition=ik_angles_real[motor_index], maxVelocity=25)
+                        for i in range(40):
+                            p.stepSimulation()
+                        real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
+                    real_xyz = np.asarray(real_xyz)
+
+                    # update cur_pos based on real pos of the arm
+                    cur_pos = real_xyz[-1]
+                    if abs(seg_pos[0] - cur_pos[0]) < 0.001 and abs(seg_pos[1] - cur_pos[1]) < 0.001 and abs(
+                            seg_pos[2] - cur_pos[2]) < 0.001:
+                        seg_flag = True
+                        break
+                    print('this is seg_time', seg_time)
+                    if seg_time > 0:
+                        seg_flag = False
+                        print('segment fail, try to tune!')
+                        for i in range(1, 10):
+                            plot_cmd = []
+                            real_xyz = []
+                            tar_pos = cur_pos + (target_pos - cur_pos) * i / 3
+                            ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
+                                                                         maxNumIterations=200,
+                                                                         targetOrientation=p.getQuaternionFromEuler(
+                                                                             tar_ori))
+
+                            for motor_index in range(self.num_motor):
+                                p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                                                        targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
+                            for i in range(20):
+                                p.stepSimulation()
+
+                            angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
+                            plot_cmd.append(angle_sim)
+                            plot_cmd = np.asarray(plot_cmd)
+                            conn.sendall(plot_cmd.tobytes())
+                            angles_real = conn.recv(4096)
+                            angles_real = np.frombuffer(angles_real, dtype=np.float32).reshape(-1, 6)
+                            ik_angles_real = []
+                            for i in range(len(angles_real)):
+                                ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
+                                for motor_index in range(self.num_motor):
+                                    p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                                                            targetPosition=ik_angles_real[motor_index], maxVelocity=25)
+                                for i in range(40):
+                                    p.stepSimulation()
+                                real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
+                            real_xyz = np.asarray(real_xyz)
+
+                            cur_pos = real_xyz[-1]
+                            print('this is tar pos while moving', tar_pos)
+                            print('this is cur pos while moving', cur_pos)
+                            if abs(target_pos[0] - cur_pos[0]) < 0.001 and abs(target_pos[1] - cur_pos[1]) < 0.001 and abs(
+                                    target_pos[2] - cur_pos[2]) < 0.001:
+                                print('tune success!')
+                                break
+
                         break
 
-                    cur_pos = tar_pos
-                    cur_ori = tar_ori
-
-                sim_xyz = np.asarray(sim_xyz)
-
-                plot_step = np.arange(num_step)
-                plot_cmd = np.asarray(plot_cmd)
-                # print('this is plot cmd\n', plot_cmd)
-                print('this is the shape of cmd', plot_cmd.shape)
-                print('this is the shape of xyz', sim_xyz.shape)
-                # print('this is the motor pos sent', plot_cmd[-1])
-                conn.sendall(plot_cmd.tobytes())
-                # print('waiting the manipulator')
-                angles_real = conn.recv(4096)
-                # print('received')
-                angles_real = np.frombuffer(angles_real, dtype=np.float32)
-                angles_real = angles_real.reshape(-1, 6)
-                ik_angles_real = []
-                for i in range(len(angles_real)):
-                    ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
-                    for motor_index in range(self.num_motor):
-                        p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                                                targetPosition=ik_angles_real[motor_index], maxVelocity=25)
-                    for i in range(40):
-                        p.stepSimulation()
-                    real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
-                real_xyz = np.asarray(real_xyz)
 
                 if self.test_error_motion == True:
                     with open(file="nn_data_xyz/free_2/cmd_xyz_nn.csv", mode="a", encoding="utf-8") as f:
@@ -474,6 +540,113 @@ class Arm:
                         f.write('\n')
 
                 return cur_pos # return cur pos to let the manipualtor remember the improved pos
+
+            # target_pos = np.copy(tar_pos)
+            # target_ori = np.copy(tar_ori)
+            #
+            # if self.test_error_motion == True:
+            #     target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )
+            #
+            # if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
+            #     # vertical, choose a small slice
+            #     move_slice = 0.006
+            # else:
+            #     # horizontal, choose a large slice
+            #     move_slice = 0.01
+            # distance = np.linalg.norm(tar_pos - cur_pos)
+            # num_step = np.ceil(distance / move_slice)
+            #
+            # step_pos = (target_pos - cur_pos) / num_step
+            # step_ori = (target_ori - cur_ori) / num_step
+            #
+            # if self.real_operate == True:
+            #     print('this is real xyz before nn', tar_pos)
+            #     print('this is real xyz after nn', target_pos)
+            #     print('this is cur pos', cur_pos)
+            #     while True:
+            #         tar_pos = cur_pos + step_pos
+            #         tar_ori = cur_ori + step_ori
+            #         sim_xyz.append(tar_pos)
+            #         sim_ori.append(tar_ori)
+            #
+            #         ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
+            #                                                      maxNumIterations=200,
+            #                                                      targetOrientation=p.getQuaternionFromEuler(tar_ori))
+            #
+            #         for motor_index in range(self.num_motor):
+            #             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+            #                                     targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
+            #         for i in range(20):
+            #             p.stepSimulation()
+            #
+            #         angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
+            #         plot_cmd.append(angle_sim)
+            #
+            #         if abs(target_pos[0] - tar_pos[0]) < 0.001 and abs(target_pos[1] - tar_pos[1]) < 0.001 and abs(
+            #                 target_pos[2] - tar_pos[2]) < 0.001 and \
+            #                 abs(target_ori[0] - tar_ori[0]) < 0.001 and abs(target_ori[1] - tar_ori[1]) < 0.001 and abs(
+            #             target_ori[2] - tar_ori[2]) < 0.001:
+            #             break
+            #
+            #         cur_pos = tar_pos
+            #         cur_ori = tar_ori
+            #
+            #     sim_xyz = np.asarray(sim_xyz)
+            #
+            #     plot_step = np.arange(num_step)
+            #     plot_cmd = np.asarray(plot_cmd)
+            #     # print('this is plot cmd\n', plot_cmd)
+            #     print('this is the shape of cmd', plot_cmd.shape)
+            #     print('this is the shape of xyz', sim_xyz.shape)
+            #     # print('this is the motor pos sent', plot_cmd[-1])
+            #     conn.sendall(plot_cmd.tobytes())
+            #     # print('waiting the manipulator')
+            #     angles_real = conn.recv(4096)
+            #     # print('received')
+            #     angles_real = np.frombuffer(angles_real, dtype=np.float32)
+            #     angles_real = angles_real.reshape(-1, 6)
+            #     ik_angles_real = []
+            #     for i in range(len(angles_real)):
+            #         ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
+            #         for motor_index in range(self.num_motor):
+            #             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+            #                                     targetPosition=ik_angles_real[motor_index], maxVelocity=25)
+            #         for i in range(40):
+            #             p.stepSimulation()
+            #         real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
+            #     real_xyz = np.asarray(real_xyz)
+            #
+            #     if self.test_error_motion == True:
+            #         with open(file="nn_data_xyz/free_2/cmd_xyz_nn.csv", mode="a", encoding="utf-8") as f:
+            #             sim_xyz = sim_xyz.tolist()
+            #             for i in range(len(sim_xyz)):
+            #                 list_zzz = [str(j) for j in sim_xyz[i]]
+            #                 f.writelines(' '.join(list_zzz))
+            #                 f.write('\n')
+            #         with open(file="nn_data_xyz/free_2/real_xyz_nn.csv", mode="a", encoding="utf-8") as f:
+            #             real_xyz = real_xyz.tolist()
+            #             for i in range(len(real_xyz)):
+            #                 list_zzz = [str(j) for j in real_xyz[i]]
+            #                 f.writelines(' '.join(list_zzz))
+            #                 f.write('\n')
+            #         with open(file="nn_data_xyz/free_2/cmd_nn.csv", mode="a", encoding="utf-8") as f:
+            #             plot_cmd = plot_cmd.tolist()
+            #             for i in range(len(plot_cmd)):
+            #                 list_zzz = [str(j) for j in plot_cmd[i]]
+            #                 f.writelines(' '.join(list_zzz))
+            #                 f.write('\n')
+            #         with open(file="nn_data_xyz/free_2/real_nn.csv", mode="a", encoding="utf-8") as f:
+            #             angles_real = angles_real.tolist()
+            #             for i in range(len(angles_real)):
+            #                 list_zzz = [str(j) for j in angles_real[i]]
+            #                 f.writelines(' '.join(list_zzz))
+            #                 f.write('\n')
+            #         with open(file="step.txt", mode="a", encoding="utf-8") as f:
+            #             list_zzz = [str(j) for j in plot_step]
+            #             f.writelines(' '.join(list_zzz))
+            #             f.write('\n')
+            #
+            #     return cur_pos  # return cur pos to let the manipualtor remember the improved pos
 
         def gripper(gap):
             if self.real_operate == True:
@@ -510,25 +683,15 @@ class Arm:
             last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
 
             if self.test_error_motion == True:
-                trajectory_pos_list = np.array([[0, 0.15, 0.06],
-                                                [0, 0.15, 0.035],
-                                                [0, 0.15, 0.06],
-                                                # [0.25, 0.15, 0.06],
-                                                # [0.25, 0.15, 0.04],
-                                                # [0.25, 0.15, 0.06],
-                                                [0.25, -0.15, 0.06],
-                                                [0.25, -0.15, 0.035],
-                                                [0.25, -0.15, 0.06],
-                                                [0, -0.15, 0.06],
-                                                [0, -0.15, 0.035],
-                                                [0, -0.15, 0.06]])
+                trajectory_pos_list = np.array([[0.1, 0.17, 0.03],
+                                                [0.1, -0.17, 0.03]])
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], rest_ori)
                         # if trajectory_pos_list[j][2] < 0.05:
                         #     time.sleep(2)
-                        time.sleep(2)
+                        time.sleep(5)
                         last_ori = np.copy(rest_ori)
 
                     elif len(trajectory_pos_list[j]) == 1:
@@ -585,7 +748,7 @@ class Arm:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8880  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.
@@ -596,8 +759,8 @@ class Arm:
             conn, addr = s.accept()
             print(conn)
             print(f"Connected by {addr}")
-            table_surface_height = -0.01
-            sim_table_surface_height = -0.01
+            table_surface_height = 0.032
+            sim_table_surface_height = 0
             num_motor = 5
             # ! reset the pos in both real and sim
             reset_pos = [0.015, 0, 0.1]
