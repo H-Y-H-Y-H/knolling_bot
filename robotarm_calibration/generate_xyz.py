@@ -372,7 +372,7 @@ class Arm:
                 move_slice = 0.006
             else:
                 # horizontal, choose a large slice
-                move_slice = 0.006
+                move_slice = 0.01
 
             if self.real_operate == True:
                 tar_pos = tar_pos + np.array([0, 0, real_height])
@@ -719,17 +719,21 @@ class Arm:
                                                 [0.0, 0.17, 0.005],
                                                 [0.0, -0.17, 0.03],
                                                 [0.0, -0.17, 0.005],
-                                                [0.2, -0.1, 0.03],
-                                                [0.2, -0.1, 0.005],
-                                                [0.2, 0.1, 0.03],
-                                                [0.2, 0.1, 0.005]])
+                                                [0.23, 0.17, 0.03],
+                                                [0.23, 0.17, 0.005],
+                                                [0.23, -0.17, 0.03],
+                                                [0.23, -0.17, 0.005]])
+                # trajectory_pos_list = np.array([[0.23, -0.17, 0.03],
+                #                                 [0.23, -0.17, 0.01],
+                #                                 [0.23, 0.17, 0.03],
+                #                                 [0.23, 0.17, 0.01]])
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], rest_ori)
                         # if trajectory_pos_list[j][2] < 0.05:
                         #     time.sleep(2)
-                        time.sleep(20)
+                        time.sleep(5)
                         last_ori = np.copy(rest_ori)
 
                     elif len(trajectory_pos_list[j]) == 1:
@@ -743,7 +747,7 @@ class Arm:
                     if len(trajectory_pos_list) == 3:
                         print('ready to move', trajectory_pos_list)
                         last_pos = move(last_pos, last_ori, trajectory_pos_list, rest_ori)
-                        # time.sleep(20)
+                        time.sleep(5)
                         # last_pos = np.copy(trajectory_pos_list)
                         last_ori = np.copy(rest_ori)
 
@@ -786,7 +790,7 @@ class Arm:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8880  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.
