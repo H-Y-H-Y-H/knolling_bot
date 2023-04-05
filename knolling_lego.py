@@ -113,8 +113,8 @@ class Arm:
             ],  # the direction is from the light source position to the origin of the world frame.
         }
         self.view_matrix = p.computeViewMatrixFromYawPitchRoll(
-                                    cameraTargetPosition=[0.15, 0, 0],
-                                    distance=0.4,
+                                    cameraTargetPosition=[0.154, 0, 0],
+                                    distance=0.387,
                                     yaw=90,
                                     pitch=-90,
                                     roll=0,
@@ -1569,7 +1569,7 @@ class Arm:
             print(conn)
             print(f"Connected by {addr}")
             table_surface_height = 0.021
-            sim_table_surface_height = -0.01
+            sim_table_surface_height = 0.0
             num_motor = 5
             # ! reset the pos in both real and sim
             reset_pos = [0.005, 0, 0.1]
@@ -1589,7 +1589,7 @@ class Arm:
         else:
             conn = None
             table_surface_height = 0.021
-            sim_table_surface_height = -0.01
+            sim_table_surface_height = 0.0
 
         #######################################################################################
         # 1: clean_desk, 2: clean_item, 3: knolling, 4: check_accuracy, 5: get_camera
