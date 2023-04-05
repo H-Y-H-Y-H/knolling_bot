@@ -34,8 +34,8 @@ from sklearn.preprocessing import MinMaxScaler
 from shapely.geometry import Polygon
 
 torch.manual_seed(42)
-np.random.seed(100)
-random.seed(100)
+np.random.seed(123)
+random.seed(123)
 
 class Net(nn.Module):
     def __init__(self):
@@ -1101,7 +1101,7 @@ class Arm:
                 while True:
                     tar_pos = cur_pos + step_pos
                     tar_ori = cur_ori + step_ori
-                    ik_angles0 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos + np.array([0, 0, sim_height]),
+                    ik_angles0 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
                                                               maxNumIterations=200,
                                                               targetOrientation=p.getQuaternionFromEuler(tar_ori))
                     for motor_index in range(self.num_motor):
@@ -1278,9 +1278,10 @@ class Arm:
 
         def clean_item(manipulator_before, new_xyz_list):
 
-            gripper_width = 0.034
-            gripper_height = 0.024
+            gripper_width = 0.024
+            gripper_height = 0.034
             restrict_gripper_diagonal = np.sqrt(gripper_width ** 2 + gripper_height ** 2)
+            gripper_lego_gap = 0.008
             crowded_pos = []
             crowded_ori = []
             crowded_index = []
@@ -1322,30 +1323,45 @@ class Arm:
                 for i in range(len(crowded_index)):
                     break_flag = False
                     once_flag = False
-                    x = new_xyz_list[crowded_index[i]][0] / 2
-                    y = new_xyz_list[crowded_index[i]][1] / 2
+
+                    length_lego = new_xyz_list[crowded_index[i]][0]
+                    width_lego = new_xyz_list[crowded_index[i]][1]
                     theta = manipulator_before[crowded_index[i]][5]
-                    vertex_1 = np.array(
-                        [(x * math.cos(theta)) - (y * math.sin(theta)), (x * math.sin(theta)) + (y * math.cos(theta)), 0])
-                    vertex_2 = np.array(
-                        [(-x * math.cos(theta)) - (y * math.sin(theta)), (-x * math.sin(theta)) + (y * math.cos(theta)), 0])
-                    vertex_3 = np.array([(-x * math.cos(theta)) - (-y * math.sin(theta)),
-                                         (-x * math.sin(theta)) + (-y * math.cos(theta)), 0])
-                    vertex_4 = np.array(
-                        [(x * math.cos(theta)) - (-y * math.sin(theta)), (x * math.sin(theta)) + (-y * math.cos(theta)), 0])
-                    point_1 = vertex_1 + np.array(
-                        [(gripper_width / 2 * math.cos(theta)) - (gripper_height / 2 * math.sin(theta)),
-                         (gripper_width / 2 * math.sin(theta)) + (gripper_height / 2 * math.cos(theta)), 0])
-                    point_2 = vertex_2 + np.array(
-                        [(-gripper_width / 2 * math.cos(theta)) - (gripper_height / 2 * math.sin(theta)),
-                         (-gripper_width / 2 * math.sin(theta)) + (gripper_height / 2 * math.cos(theta)), 0])
-                    point_3 = vertex_3 + np.array(
-                        [(-gripper_width / 2 * math.cos(theta)) - (-gripper_height / 2 * math.sin(theta)),
-                         (-gripper_width / 2 * math.sin(theta)) + (-gripper_height / 2 * math.cos(theta)), 0])
-                    point_4 = vertex_4 + np.array(
-                        [(gripper_width / 2 * math.cos(theta)) - (-gripper_height / 2 * math.sin(theta)),
-                         (gripper_width / 2 * math.sin(theta)) + (-gripper_height / 2 * math.cos(theta)), 0])
-                    sequence_point = np.array([point_1, point_2, point_3, point_4])
+
+                    matrix = np.array([[np.cos(theta), -np.sin(theta)],
+                                       [np.sin(theta), np.cos(theta)]])
+                    target_point = np.array([[(length_lego + gripper_height + gripper_lego_gap) / 2, (width_lego + gripper_width + gripper_lego_gap) / 2],
+                                            [-(length_lego + gripper_height + gripper_lego_gap) / 2, (width_lego + gripper_width + gripper_lego_gap) / 2],
+                                            [-(length_lego + gripper_height + gripper_lego_gap) / 2, -(width_lego + gripper_width + gripper_lego_gap) / 2],
+                                            [(length_lego + gripper_height + gripper_lego_gap) / 2, -(width_lego + gripper_width + gripper_lego_gap) / 2]])
+                    target_point_rotate = (matrix.dot(target_point.T)).T
+                    print('this is target point rotate\n', target_point_rotate)
+                    sequence_point = np.concatenate((target_point_rotate, np.zeros((4, 1))), axis=1)
+
+                    # vertex_1 = np.array(
+                    #     [(x * math.cos(theta)) - (y * math.sin(theta)), (x * math.sin(theta)) + (y * math.cos(theta)),
+                    #      0])
+                    # vertex_2 = np.array(
+                    #     [(-x * math.cos(theta)) - (y * math.sin(theta)), (-x * math.sin(theta)) + (y * math.cos(theta)),
+                    #      0])
+                    # vertex_3 = np.array([(-x * math.cos(theta)) - (-y * math.sin(theta)),
+                    #                      (-x * math.sin(theta)) + (-y * math.cos(theta)), 0])
+                    # vertex_4 = np.array(
+                    #     [(x * math.cos(theta)) - (-y * math.sin(theta)), (x * math.sin(theta)) + (-y * math.cos(theta)),
+                    #      0])
+                    # point_1 = vertex_1 + np.array(
+                    #     [(gripper_width / 2 * math.cos(theta)) - (gripper_height / 2 * math.sin(theta)),
+                    #      (gripper_width / 2 * math.sin(theta)) + (gripper_height / 2 * math.cos(theta)), 0])
+                    # point_2 = vertex_2 + np.array(
+                    #     [(-gripper_width / 2 * math.cos(theta)) - (gripper_height / 2 * math.sin(theta)),
+                    #      (-gripper_width / 2 * math.sin(theta)) + (gripper_height / 2 * math.cos(theta)), 0])
+                    # point_3 = vertex_3 + np.array(
+                    #     [(-gripper_width / 2 * math.cos(theta)) - (-gripper_height / 2 * math.sin(theta)),
+                    #      (-gripper_width / 2 * math.sin(theta)) + (-gripper_height / 2 * math.cos(theta)), 0])
+                    # point_4 = vertex_4 + np.array(
+                    #     [(gripper_width / 2 * math.cos(theta)) - (-gripper_height / 2 * math.sin(theta)),
+                    #      (gripper_width / 2 * math.sin(theta)) + (-gripper_height / 2 * math.cos(theta)), 0])
+                    # sequence_point = np.array([point_1, point_2, point_3, point_4])
 
                     # print(crowded_index)
                     # print(crowded_index[i])
@@ -1410,6 +1426,8 @@ class Arm:
                             pass
                     else:
                         trajectory_pos_list.append([0.03159])
+                        print('this is crowded pos', crowded_pos[i])
+                        print('this is sequence point', sequence_point)
                         trajectory_pos_list.append(crowded_pos[i] + offset_high + sequence_point[0])
                         trajectory_pos_list.append(crowded_pos[i] + offset_low + sequence_point[0])
                         trajectory_pos_list.append(crowded_pos[i] + offset_low + sequence_point[1])
@@ -1434,7 +1452,6 @@ class Arm:
                     # only once!
                     if once_flag == True:
                         break
-
                 last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
                 last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
                 for j in range(len(trajectory_pos_list)):
@@ -1629,7 +1646,7 @@ class Arm:
             print(conn)
             print(f"Connected by {addr}")
             table_surface_height = 0.032
-            sim_table_surface_height = 0.0
+            sim_table_surface_height = -0.015
             num_motor = 5
             # ! reset the pos in both real and sim
             reset_pos = [0.005, 0, 0.1]
@@ -1645,11 +1662,11 @@ class Arm:
                                         maxVelocity=3)
             for _ in range(200):
                 p.stepSimulation()
-                time.sleep(1 / 48)
+                time.sleep(1 / 24)
         else:
             conn = None
             table_surface_height = 0.032
-            sim_table_surface_height = 0.0
+            sim_table_surface_height = -0.015
 
         #######################################################################################
         # 1: clean_desk + clean_item, 3: knolling, 4: check_accuracy, 5: get_camera
@@ -1725,16 +1742,16 @@ if __name__ == '__main__':
 
     if command == 'knolling':
 
-        num_2x2 = 6
-        num_2x3 = 3
-        num_2x4 = 2
+        num_2x2 = 2
+        num_2x3 = 6
+        num_2x4 = 6
         total_offset = [0.15, 0, 0.006]
         grasp_order = [1, 0, 2]
         gap_item = 0.015
         gap_block = 0.02
         random_offset = True
-        real_operate = True
-        obs_order = 'real_image_obj'
+        real_operate = False
+        obs_order = 'sim_obj'
         check_dataset_error = False
 
 
