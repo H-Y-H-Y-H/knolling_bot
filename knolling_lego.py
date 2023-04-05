@@ -77,8 +77,8 @@ class Arm:
 
         self.num_motor = 5
 
-        self.low_scale = np.array([0.05, -0.15, 0.006, - np.pi / 2, 0])
-        self.high_scale = np.array([0.25, 0.15, 0.05, np.pi / 2, 0.4])
+        self.low_scale = np.array([0.02, -0.15, 0.006, - np.pi / 2, 0])
+        self.high_scale = np.array([0.28, 0.15, 0.05, np.pi / 2, 0.4])
         self.low_act = -np.ones(5)
         self.high_act = np.ones(5)
         self.x_low_obs = self.low_scale[0]
@@ -87,7 +87,7 @@ class Arm:
         self.y_high_obs = self.high_scale[1]
         self.z_low_obs = self.low_scale[2]
         self.z_high_obs = self.high_scale[2]
-        self.table_boundary = 0.05
+        self.table_boundary = 0.02
 
         self.lateral_friction = 1
         self.spinning_friction = 1
@@ -520,13 +520,14 @@ class Arm:
             print('this is random ori when reset the environment', collect_ori)
             print('this is random pos when reset the environment', collect_pos)
         else:
-            self.xyz_list, pos_before, ori_before, self.all_index, self.kind = items_sort.get_data_real()
+            # these data has difined in function change_config, we don't need to define them twice!!!
+            # self.xyz_list, pos_before, ori_before, self.all_index, self.kind = items_sort.get_data_real()
             for i in range(len(self.kind)):
                 for j in range(len(self.all_index[i])):
                     self.obj_idx.append(
                         p.loadURDF(os.path.join(self.urdf_path, f"item_{self.kind[i]}/{j}.urdf"),
-                                   basePosition=pos_before[self.all_index[i][j]],
-                                   baseOrientation=p.getQuaternionFromEuler(ori_before[self.all_index[i][j]]), useFixedBase=False,
+                                   basePosition=self.pos_before[self.all_index[i][j]],
+                                   baseOrientation=p.getQuaternionFromEuler(self.ori_before[self.all_index[i][j]]), useFixedBase=False,
                                    flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
 
         print(self.obj_idx)
@@ -585,7 +586,7 @@ class Arm:
                                                                               self.num_2x3, self.num_2x4,
                                                                               self.num_pencil)
         else:
-            self.xyz_list, _, _, self.all_index, self.kind = items_sort.get_data_real()
+            self.xyz_list, self.pos_before, self.ori_before, self.all_index, self.kind = items_sort.get_data_real()
         print(f'this is standard trim xyz list\n {self.xyz_list}')
         print(f'this is standard trim index list\n {self.all_index}')
 
@@ -866,7 +867,7 @@ class Arm:
             p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
         # while 1:
         #     p.stepSimulation()
-        return self.get_obs('images', _)
+        return self.get_obs('images', None)
 
     def planning(self, order, conn, real_height, sim_height, evaluation):
 
@@ -966,6 +967,7 @@ class Arm:
                 tar_ori[2] = tar_ori[2] - np.pi
             elif tar_ori[2] < -1.58:
                 tar_ori[2] = tar_ori[2] + np.pi
+            print('this is tar ori', tar_ori)
 
             #################### use feedback control ###################
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
@@ -999,8 +1001,8 @@ class Arm:
                     step_pos = (seg_pos - cur_pos) / num_step
                     step_ori = (seg_ori - cur_ori) / num_step
 
-                    print('this is cur pos', cur_pos)
-                    print('this is seg pos', seg_pos)
+                    # print('this is cur pos', cur_pos)
+                    # print('this is seg pos', seg_pos)
 
                     while True:
                         tar_pos = cur_pos + step_pos
@@ -1037,8 +1039,8 @@ class Arm:
 
                     plot_step = np.arange(num_step)
                     plot_cmd = np.asarray(plot_cmd)
-                    print('this is the shape of cmd', plot_cmd.shape)
-                    print('this is the shape of xyz', sim_xyz.shape)
+                    # print('this is the shape of cmd', plot_cmd.shape)
+                    # print('this is the shape of xyz', sim_xyz.shape)
                     # print('this is the motor pos sent', plot_cmd[-1])
                     conn.sendall(plot_cmd.tobytes())
                     # print('waiting the manipulator')
@@ -1049,7 +1051,7 @@ class Arm:
 
                     if seg_time > 0:
                         seg_flag = False
-                        print('segment fail, try to tune!')
+                        # print('segment fail, try to tune!')
                         ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=target_pos,
                                                                      maxNumIterations=200,
                                                                      targetOrientation=p.getQuaternionFromEuler(
@@ -1064,8 +1066,8 @@ class Arm:
                         angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
                         final_cmd = np.append(angle_sim, 0).reshape(1, -1)
                         final_cmd = np.asarray(final_cmd, dtype=np.float32)
-                        print(final_cmd.shape)
-                        print(final_cmd)
+                        # print(final_cmd.shape)
+                        # print(final_cmd)
                         conn.sendall(final_cmd.tobytes())
 
                         # get the pos after tune!
@@ -1272,7 +1274,9 @@ class Arm:
                 pass
             print('Sweeping desktop end')
 
-        def clean_item():
+            return manipulator_before, new_xyz_list
+
+        def clean_item(manipulator_before, new_xyz_list):
 
             gripper_width = 0.034
             gripper_height = 0.024
@@ -1280,7 +1284,9 @@ class Arm:
             crowded_pos = []
             crowded_ori = []
             crowded_index = []
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+
+            # these two variables have been defined in clean_desk function, we don't need to define them twice!!!!!
+            # manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
             # print(manipulator_before)
 
             # define the cube which is crowded
@@ -1583,9 +1589,8 @@ class Arm:
             print('this is all distance between messy and neat in real world')
 
         if order == 1:
-            clean_desk()
-        elif order == 2:
-            clean_item()
+            manipulator_before_desk, new_xyz_list_desk = clean_desk()
+            clean_item(manipulator_before_desk, new_xyz_list_desk)
         elif order == 3:
             if self.obs_order == 'sim_image_obj_evaluate':
                 error = knolling()
@@ -1647,10 +1652,9 @@ class Arm:
             sim_table_surface_height = 0.0
 
         #######################################################################################
-        # 1: clean_desk, 2: clean_item, 3: knolling, 4: check_accuracy, 5: get_camera
-        # self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
+        # 1: clean_desk + clean_item, 3: knolling, 4: check_accuracy, 5: get_camera
+        self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
         # error = self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
-        # self.planning(2, conn, table_surface_height, sim_table_surface_height, evaluation)
         error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
         #######################################################################################
