@@ -361,9 +361,6 @@ class Arm:
             elif tar_ori[2] < -1.58:
                 tar_ori[2] = tar_ori[2] + np.pi
 
-            current_pos = np.copy(cur_pos)
-            current_ori = np.copy(cur_ori)
-
             # if self.test_error_motion == True:
             #     target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )
 
@@ -388,7 +385,6 @@ class Arm:
                     sim_xyz = []
                     sim_ori = []
                     real_xyz = []
-                    # real_ori = []
 
                     # divide the whole trajectory into several segment
                     seg_time += 1
