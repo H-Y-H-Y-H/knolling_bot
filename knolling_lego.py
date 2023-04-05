@@ -932,7 +932,7 @@ class Arm:
 
         def move(cur_pos, cur_ori, tar_pos, tar_ori):
 
-            # add the offset of nn
+            # add the offset manually
             if self.real_operate == True:
 
                 # # automatically add bias
@@ -957,11 +957,15 @@ class Arm:
                 # automatically add z bias
                 d = np.array([0, 0.10, 0.185, 0.225, 0.27])
                 z_bias = np.array([-0.005, 0.0, 0.005, 0.01, 0.015])
+                x_bias = np.array([0, 0.0025, 0.005, 0.075, 0.01])
                 z_parameters = np.polyfit(d, z_bias, 3)
+                x_parameters = np.polyfit(d, x_bias, 3)
                 new_z_formula = np.poly1d(z_parameters)
+                new_x_formula = np.poly1d(x_parameters)
 
                 distance = tar_pos[0]
                 tar_pos[2] = tar_pos[2] + new_z_formula(distance)
+                tar_pos[0] = tar_pos[0] + new_x_formula(distance)
 
             if tar_ori[2] > 1.58:
                 tar_ori[2] = tar_ori[2] - np.pi
