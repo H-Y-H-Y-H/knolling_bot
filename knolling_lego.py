@@ -34,8 +34,8 @@ from sklearn.preprocessing import MinMaxScaler
 from shapely.geometry import Polygon
 
 torch.manual_seed(42)
-np.random.seed(123)
-random.seed(123)
+np.random.seed(124)
+random.seed(124)
 
 class Net(nn.Module):
     def __init__(self):
@@ -77,8 +77,8 @@ class Arm:
 
         self.num_motor = 5
 
-        self.low_scale = np.array([0.02, -0.15, 0.006, - np.pi / 2, 0])
-        self.high_scale = np.array([0.28, 0.15, 0.05, np.pi / 2, 0.4])
+        self.low_scale = np.array([0.03, -0.14, 0.006, - np.pi / 2, 0])
+        self.high_scale = np.array([0.27, 0.14, 0.05, np.pi / 2, 0.4])
         self.low_act = -np.ones(5)
         self.high_act = np.ones(5)
         self.x_low_obs = self.low_scale[0]
@@ -87,7 +87,7 @@ class Arm:
         self.y_high_obs = self.high_scale[1]
         self.z_low_obs = self.low_scale[2]
         self.z_high_obs = self.high_scale[2]
-        self.table_boundary = 0.02
+        self.table_boundary = 0.03
 
         self.lateral_friction = 1
         self.spinning_friction = 1
@@ -113,7 +113,7 @@ class Arm:
             ],  # the direction is from the light source position to the origin of the world frame.
         }
         self.view_matrix = p.computeViewMatrixFromYawPitchRoll(
-                                    cameraTargetPosition=[0.154, 0, 0],
+                                    cameraTargetPosition=[0.15, 0, 0],
                                     distance=0.387,
                                     yaw=90,
                                     pitch=-90,
@@ -192,7 +192,16 @@ class Arm:
 
             ############### order the ground truth depend on x, y in the world coordinate system ###############
             new_xyz_list = self.xyz_list
-            ground_truth_xyyaw = np.concatenate((self.check_pos, self.check_ori.reshape((-1, 1))), axis=1)
+
+            # collect the cur pos and cur ori in pybullet as the ground truth
+            new_pos_before, new_ori_before = [], []
+            for i in range(len(self.obj_idx)):
+                new_pos_before.append(p.getBasePositionAndOrientation(self.obj_idx[i])[0][:2])
+                new_ori_before.append(p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.obj_idx[i])[1])[2])
+            new_pos_before = np.asarray(new_pos_before)
+            new_ori_before = np.asarray(new_ori_before)
+            ground_truth_xyyaw = np.concatenate((new_pos_before, new_ori_before.reshape((-1, 1))), axis=1)
+            # ground_truth_xyyaw = np.concatenate((self.check_pos, self.check_ori.reshape((-1, 1))), axis=1)
             order_ground_truth = np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0]))
 
             ground_truth_xyyaw_test = np.copy(ground_truth_xyyaw[order_ground_truth, :])
@@ -251,10 +260,12 @@ class Arm:
                 target_compare_scaled = scaler.transform(target_compare)
 
                 # structure: x, y, length, width, ori
+                ################### the results of object detection has changed the order!!!! ####################
                 results = np.asarray(
                     detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target_plot, order_truth=order_ground_truth))
                 results = np.asarray(results[:, :5]).astype(np.float32)
                 # print('this is the result of yolo+resnet\n', results)
+                ################### the results of object detection has changed the order!!!! ####################
                 for i in range(len(results)):
                     if results[i][2] < 0.018:
                         results[i][4] = results[i][4] * 2
@@ -368,6 +379,7 @@ class Arm:
             pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
             pred_compare_2 = np.concatenate((results[:, 2:4], -pred_cos, -pred_sin), axis=1)
 
+            # arange the sequence based on categories of cubes
             all_index = []
             new_xyz_list = []
             kind = []
@@ -1113,7 +1125,7 @@ class Arm:
                                                 targetPosition=ik_angles0[motor_index], maxVelocity=2.5)
                     for i in range(30):
                         p.stepSimulation()
-                        # time.sleep(1 / 240)
+                        time.sleep(1 / 48)
                     if abs(target_pos[0] - tar_pos[0]) < 0.001 and abs(target_pos[1] - tar_pos[1]) < 0.001 and abs(
                             target_pos[2] - tar_pos[2]) < 0.001 and \
                             abs(target_ori[0] - tar_ori[0]) < 0.001 and abs(target_ori[1] - tar_ori[1]) < 0.001 and abs(
@@ -1547,65 +1559,119 @@ class Arm:
             for motor_index in range(self.num_motor):
                 p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
                                         targetPosition=ik_angles0[motor_index], maxVelocity=7)
-            for i in range(80):
+            for i in range(100):
                 p.stepSimulation()
                 # self.images = self.get_image()
-                # time.sleep(1 / 120)
+                # time.sleep(1 / 12)
 
-        def check_accuracy_sim():
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
-            print('this is before', manipulator_before)
-            print('this is after', self.manipulator_after)
-            print('this is new xyz', new_xyz_list)
-            print('this is self xyz', self.xyz_list)
+        def check_accuracy_sim(): # need improvement
 
-            all_distance_sim = 0
-            # for i in range(len(manipulator_before)):
-            #     all_distance_sim += np.linalg.norm(manipulator_before[i][:3] - self.manipulator_after[i][:3])
-            #     if np.linalg.norm(manipulator_before[i][:3] - self.manipulator_after[i][:3]) > 0.01:
-            #         print(manipulator_before[i][:3])
-            #         print(self.manipulator_after[i][:3])
-            #         image_error = self.get_obs('images')
-            #         print('error happened when checking!')
-            #         temp = np.copy(image_error[:, :, 0])
-            #         image_error[:, :, 0] = np.copy(image_error[:, :, 2])
-            #         image_error[:, :, 2] = temp
-            #         cv2.imwrite(f'./Error_images/error_{evaluation}.png', image_error)
-            #         break
 
-            error_flag = False
-            for i in range(len(self.manipulator_after)):
-                for j in range(len(manipulator_before)):
-                    if np.linalg.norm(self.manipulator_after[i][:3] - manipulator_before[j][:3]) < 0.015 and np.linalg.norm(self.xyz_list[i] - new_xyz_list[j]) < 0.002:
-                        error_flag = False
-                        all_distance_sim += np.linalg.norm(self.manipulator_after[i][:3] - manipulator_before[j][:3])
-                        print('find it')
-                        break
+            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _) # the sequence along 2,3,4
+            manipulator_knolling = manipulator_before[:, :2]
+            xyz_knolling = new_xyz_list
+            # don't change the order of xyz in sim!!!!!!!!!!!!!
+
+            order_knolling = np.lexsort((manipulator_before[:, 1], manipulator_before[:, 0]))
+            manipulator_knolling_test = np.copy(manipulator_knolling[order_knolling, :])
+            for i in range(len(order_knolling) - 1):
+                if np.abs(manipulator_knolling_test[i, 0] - manipulator_knolling_test[i + 1, 0]) < 0.003:
+                    if manipulator_knolling_test[i, 1] < manipulator_knolling_test[i + 1, 1]:
+                        order_knolling[i], order_knolling[i + 1] = order_knolling[i + 1], \
+                                                                           order_knolling[i]
+                        print('knolling change the order!')
                     else:
-                        error_flag = True
-            if error_flag == True:
-                print('Error!!!')
-            print('this is all distance between messy and neat in simulation environment', all_distance_sim)
+                        pass
+            print('this is the ground truth order', order_knolling)
+            # print('this is the ground truth before changing the order\n', manipulator_knolling)
+            manipulator_knolling = manipulator_knolling[order_knolling, :]
+
+
+            new_pos_before, new_ori_before = [], []
+            for i in range(len(self.obj_idx)):
+                new_pos_before.append(p.getBasePositionAndOrientation(self.obj_idx[i])[0][:2])
+            new_pos_before = np.asarray(new_pos_before)
+            manipulator_ground_truth = new_pos_before
+            xyz_ground_truth = self.xyz_list
+            # don't change the order of xyz in sim!!!!!!!!!!!!!
+
+            order_ground_truth = np.lexsort((manipulator_ground_truth[:, 1], manipulator_ground_truth[:, 0]))
+            manipulator_ground_truth_test = np.copy(manipulator_ground_truth[order_ground_truth, :])
+            for i in range(len(order_ground_truth) - 1):
+                if np.abs(manipulator_ground_truth_test[i, 0] - manipulator_ground_truth_test[i + 1, 0]) < 0.003:
+                    if manipulator_ground_truth_test[i, 1] < manipulator_ground_truth_test[i + 1, 1]:
+                        order_ground_truth[i], order_ground_truth[i + 1] = order_ground_truth[i + 1], \
+                                                                   order_ground_truth[i]
+                        print('truth change the order!')
+                    else:
+                        pass
+            print('this is the ground truth order', order_knolling)
+            # print('this is the ground truth before changing the order\n', manipulator_knolling)
+            manipulator_ground_truth = manipulator_ground_truth[order_ground_truth, :]
+
+            print('this is manipulator ground truth while checking \n', manipulator_ground_truth)
+            print('this is manipulator after knolling while checking \n', manipulator_knolling)
+            print('this is xyz ground truth while checking \n', xyz_ground_truth)
+            print('this is xyz after knolling while checking \n', xyz_knolling)
+            for i in range(len(manipulator_ground_truth)):
+                if np.linalg.norm(manipulator_ground_truth[i] - manipulator_knolling[i]) < 0.005 and \
+                    np.linalg.norm(xyz_ground_truth[i] - xyz_knolling[i]) < 0.005:
+                    print('find it!')
+                else:
+                    print('error!')
 
         def check_accuracy_real():
             manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
-            all_distance_real = 0
-            for i in range(len(manipulator_before)):
-                all_distance_real += np.linalg.norm(manipulator_before[i][:3] - self.manipulator_after[i][:3])
+            manipulator_knolling = manipulator_before[:, :2]
+            xyz_knolling = new_xyz_list
+            # don't change the order of xyz in sim!!!!!!!!!!!!!
 
-            error_flag = False
-            for i in range(len(self.manipulator_fter)):
-                for j in range(len(manipulator_before)):
-                    if np.linalg.norm(self.manipulator_after[i][:3] - manipulator_before[j][:3]) < 0.015 and \
-                            np.linalg.norm(self.xyz_list[i] - new_xyz_list[j]) < 0.004:
-                        error_flag = False
-                        print('find it')
-                        all_distance_real += np.linalg.norm(self.manipulator_after[i][:3] - manipulator_before[j][:3])
-                        break
+            order_knolling = np.lexsort((manipulator_before[:, 1], manipulator_before[:, 0]))
+            manipulator_knolling_test = np.copy(manipulator_knolling[order_knolling, :])
+            for i in range(len(order_knolling) - 1):
+                if np.abs(manipulator_knolling_test[i, 0] - manipulator_knolling_test[i + 1, 0]) < 0.003:
+                    if manipulator_knolling_test[i, 1] < manipulator_knolling_test[i + 1, 1]:
+                        order_knolling[i], order_knolling[i + 1] = order_knolling[i + 1], \
+                                                                   order_knolling[i]
+                        print('knolling change the order!')
                     else:
-                        error_flag = True
-            if error_flag == True:
-                print('Error!!!')
+                        pass
+            print('this is the ground truth order', order_knolling)
+            # print('this is the ground truth before changing the order\n', manipulator_knolling)
+            manipulator_knolling = manipulator_knolling[order_knolling, :]
+
+            new_pos_before, new_ori_before = [], []
+            for i in range(len(self.obj_idx)):
+                new_pos_before.append(p.getBasePositionAndOrientation(self.obj_idx[i])[0][:2])
+            new_pos_before = np.asarray(new_pos_before)
+            manipulator_ground_truth = new_pos_before
+            xyz_ground_truth = self.xyz_list
+            # don't change the order of xyz in sim!!!!!!!!!!!!!
+
+            order_ground_truth = np.lexsort((manipulator_ground_truth[:, 1], manipulator_ground_truth[:, 0]))
+            manipulator_ground_truth_test = np.copy(manipulator_ground_truth[order_ground_truth, :])
+            for i in range(len(order_ground_truth) - 1):
+                if np.abs(manipulator_ground_truth_test[i, 0] - manipulator_ground_truth_test[i + 1, 0]) < 0.003:
+                    if manipulator_ground_truth_test[i, 1] < manipulator_ground_truth_test[i + 1, 1]:
+                        order_ground_truth[i], order_ground_truth[i + 1] = order_ground_truth[i + 1], \
+                                                                           order_ground_truth[i]
+                        print('truth change the order!')
+                    else:
+                        pass
+            print('this is the ground truth order', order_knolling)
+            # print('this is the ground truth before changing the order\n', manipulator_knolling)
+            manipulator_ground_truth = manipulator_ground_truth[order_ground_truth, :]
+
+            print('this is manipulator ground truth while checking \n', manipulator_ground_truth)
+            print('this is manipulator after knolling while checking \n', manipulator_knolling)
+            print('this is xyz ground truth while checking \n', xyz_ground_truth)
+            print('this is xyz after knolling while checking \n', xyz_knolling)
+            for i in range(len(manipulator_ground_truth)):
+                if np.linalg.norm(manipulator_ground_truth[i] - manipulator_knolling[i]) < 0.005 and \
+                        np.linalg.norm(xyz_ground_truth[i] - xyz_knolling[i]) < 0.005:
+                    print('find it!')
+                else:
+                    print('error!')
 
             print('this is all distance between messy and neat in real world')
 
@@ -1650,7 +1716,7 @@ class Arm:
             print(conn)
             print(f"Connected by {addr}")
             table_surface_height = 0.032
-            sim_table_surface_height = -0.015
+            sim_table_surface_height = 0
             num_motor = 5
             # ! reset the pos in both real and sim
             reset_pos = [0.005, 0, 0.1]
@@ -1666,18 +1732,18 @@ class Arm:
                                         maxVelocity=3)
             for _ in range(200):
                 p.stepSimulation()
-                time.sleep(1 / 24)
+                # time.sleep(1 / 24)
         else:
             conn = None
             table_surface_height = 0.032
-            sim_table_surface_height = -0.015
+            sim_table_surface_height = 0
 
         #######################################################################################
         # 1: clean_desk + clean_item, 3: knolling, 4: check_accuracy, 5: get_camera
-        self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
+        # self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
         # error = self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
         error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
-        # self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
+        self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
         #######################################################################################
 
         if self.obs_order == 'sim_image_obj_evaluate':
@@ -1747,15 +1813,15 @@ if __name__ == '__main__':
     if command == 'knolling':
 
         num_2x2 = 2
-        num_2x3 = 6
-        num_2x4 = 6
+        num_2x3 = 3
+        num_2x4 = 3
         total_offset = [0.15, 0, 0.006]
         grasp_order = [1, 0, 2]
         gap_item = 0.015
         gap_block = 0.02
         random_offset = True
-        real_operate = False
-        obs_order = 'sim_obj'
+        real_operate = True
+        obs_order = 'real_image_obj'
         check_dataset_error = False
 
 

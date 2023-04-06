@@ -471,7 +471,8 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
             # my_plot_one_box(xyxy_list[i], img, my_yaw, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
             #                 color=[0, 0, 0], line_thickness=1)
             check_flag = False
-            my_plot_one_box_lwcossin(xyxy_list[i], img, my_length, my_width, my_ori, label1=info1, label2=color_pos,
+            center_pred = [int((xyxy_list[i][1] + xyxy_list[i][3]) / 2), int((xyxy_list[i][0] + xyxy_list[i][2]) / 2)]
+            my_plot_one_box_lwcossin(center_pred, img, my_length, my_width, my_ori, label1=info1, label2=color_pos,
                             label3=info2,
                             color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
             my_to_arm = [xy[0], xy[1], my_length, my_width, my_ori, color_label[i]]
@@ -485,7 +486,11 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
                 info2 = f'length: {length_truth * 1000:.3f} width: {width_truth * 1000:.3f}'
                 info3 = f'x: {x_truth:.3f} y: {y_truth:.3f}'
                 check_flag = True
-                my_plot_one_box_lwcossin(xyxy_list[i], img, length_truth, width_truth, ori_truth,
+                mm2px = 530 / 0.34
+                # mm2px = 1500
+
+                center_ground_truth = [int(x_truth * mm2px + 86), int(y_truth * mm2px + 320)]
+                my_plot_one_box_lwcossin(center_ground_truth, img, length_truth, width_truth, ori_truth,
                                 label1=info1, label2=info2, label3=info3, color=[0, 0, 0], line_thickness=1,
                                 check_flag=check_flag)
             else:
@@ -495,6 +500,35 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
 
     return img, to_arm
 
+def xyz_resolve_inverse(x,y):
+
+    dist = math.dist([0.154, 0], [x, y])
+
+    cube_h = 10/1000
+
+    add_value = (cube_h * dist) / (0.387 - cube_h)
+
+    along_axis = abs(np.arctan(y/(x-0.154)))
+
+    # sign = lambda x: math.copysign(1, x)
+
+    x_new = x + np.sign(x-0.154) * add_value * math.cos(along_axis)
+    y_new = y + np.sign(y) * add_value * math.sin(along_axis)
+
+    # dist = math.dist([0.154, 0], [x, y])
+    #
+    # cube_h = 10 / 1000
+    #
+    # add_value = (cube_h * dist) / (0.387 - cube_h)
+    #
+    # along_axis = abs(np.arctan(y / (x - 0.154)))
+    #
+    # # sign = lambda x: math.copysign(1, x)
+    #
+    # x_new = x + np.sign(x - 0.154) * add_value * math.cos(along_axis)
+    # y_new = y + np.sign(y) * add_value * math.sin(along_axis)
+
+    return x_new, y_new
 
 def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_operate):
 
@@ -509,21 +543,23 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_ope
     obj_y = int((px_resy1 + px_resy2) / 2)
 
     if real_operate == True:
-        mm2px = 1500 / 1  # unit convert = 1500
         mm2px = 530 / 0.34
     else:
-        mm2px = 1 / 0.000625  # unit convert = 1600
+        mm2px = 530 / 0.34
 
     if real_operate == True:
         obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0）
-        # obj_y = obj_y - 96
+        obj_y = obj_y - (0.154 - (0.3112 - 0.154)) * mm2px + 5 # add the rm_distortion!!!!!!!!!!
         obj_y = obj_y - 86
     else:
-        obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0）
-        obj_y = obj_y - 80
+        obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0)
+        obj_y = obj_y - (0.154 - (0.3112 - 0.154)) * mm2px + 5 # add the rm_distortion!!!!!!!!!!
+        obj_y = obj_y - 86
 
+    # convert px to mm!!!!!!!!!!!!!
     obj_x = obj_x / mm2px
     obj_y = obj_y / mm2px
+    # obj_x, obj_y = xyz_resolve_inverse(obj_x, obj_y)
 
     xy_label.append([obj_y, obj_x])
     # print('box_number: ',box_number, obj_x, obj_y)
