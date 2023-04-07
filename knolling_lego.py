@@ -77,7 +77,7 @@ class Arm:
 
         self.num_motor = 5
 
-        self.low_scale = np.array([0.03, -0.14, 0.006, - np.pi / 2, 0])
+        self.low_scale = np.array([0.03, -0.14, 0.0, - np.pi / 2, 0])
         self.high_scale = np.array([0.27, 0.14, 0.05, np.pi / 2, 0.4])
         self.low_act = -np.ones(5)
         self.high_act = np.ones(5)
