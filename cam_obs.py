@@ -549,11 +549,11 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_ope
 
     if real_operate == True:
         obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0）
-        obj_y = obj_y - (0.154 - (0.3112 - 0.154)) * mm2px + 5 # add the rm_distortion!!!!!!!!!!
+        # obj_y = obj_y - (0.15 - (0.3112 - 0.15)) * mm2px + 5 # add the rm_distortion!!!!!!!!!!
         obj_y = obj_y - 86
     else:
         obj_x = obj_x - 320  # move it to the world coordinate 从左上角移动到pybullet中的（0，0)
-        obj_y = obj_y - (0.154 - (0.3112 - 0.154)) * mm2px + 5 # add the rm_distortion!!!!!!!!!!
+        # obj_y = obj_y - (0.15 - (0.3112 - 0.15)) * mm2px + 5 # add the rm_distortion!!!!!!!!!!
         obj_y = obj_y - 86
 
     # convert px to mm!!!!!!!!!!!!!
@@ -973,9 +973,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_404_combine_real.png', im0)
+                    cv2.imwrite(f'./Test_images/test_407_combine_real_2.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_404_combine_sim.png', im0)
+                    cv2.imwrite(f'./Test_images/test_407_combine_sim_2.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
