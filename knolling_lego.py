@@ -137,7 +137,7 @@ class Arm:
         p.setAdditionalSearchPath(pd.getDataPath())
 
     def get_parameters(self, num_2x2=0, num_2x3=0, num_2x4=0, num_pencil=0,
-                       total_offset=[0.1, 0, 0.006], grasp_order=[1, 0, 2],
+                       total_offset=[0.1, 0, 0.0], grasp_order=[1, 0, 2],
                        gap_item=0.03, gap_block=0.02,
                        real_operate=False, obs_order='1',
                        random_offset = False, check_obs_error=None):
@@ -496,7 +496,7 @@ class Arm:
             #     for j in range(self.num_list[self.grasp_order[i]]):
             #
             #         rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
-            #                             random.uniform(self.y_low_obs, self.y_high_obs), 0.006])
+            #                             random.uniform(self.y_low_obs, self.y_high_obs), 0.0])
             #         # ori = [0, 0, random.uniform(0, math.pi)]
             #         ori = [0, 0, 0]
             #         collect_ori.append(ori)
@@ -504,7 +504,7 @@ class Arm:
             #
             #         while 0 in check_list:
             #             rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs),
-            #                        random.uniform(self.y_low_obs, self.y_high_obs), 0.006]
+            #                        random.uniform(self.y_low_obs, self.y_high_obs), 0.0]
             #             for z in range(last_pos.shape[0]):
             #                 if np.linalg.norm(last_pos[z] - rdm_pos) < restrict + gripper_height:
             #                     check_list[z] = 0
@@ -525,10 +525,10 @@ class Arm:
             #         # p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
 
             ####################### try the corner pos and ori to calibrate the camera ####################
-            pos = np.array([[0.05, 0.15, 0.006],
-                            [0.25, 0.15, 0.006],
-                            [0.25, -0.15, 0.006],
-                            [0.05, -0.15, 0.006]])
+            pos = np.array([[0.05, 0.15, 0.00],
+                            [0.25, 0.15, 0.00],
+                            [0.25, -0.15, 0.00],
+                            [0.05, -0.15, 0.00]])
             ori = np.zeros((4, 3))
             for i in range(4):
                 collect_pos.append(pos[i])
@@ -862,7 +862,7 @@ class Arm:
         print(x_low, x_high, y_low, y_high)
         if self.random_offset == True:
             self.total_offset = np.array([random.uniform(self.x_low_obs + x_length / 2, self.x_high_obs - x_length / 2),
-                                          random.uniform(self.y_low_obs + y_length / 2, self.y_high_obs - y_length / 2), 0.006])
+                                          random.uniform(self.y_low_obs + y_length / 2, self.y_high_obs - y_length / 2), 0.0])
         else:
             pass
         self.items_pos_list = self.items_pos_list + self.total_offset - center
@@ -1210,10 +1210,10 @@ class Arm:
             x_low = np.min(self.manipulator_after[:, 0])
             y_high = np.max(self.manipulator_after[:, 1])
             y_low = np.min(self.manipulator_after[:, 1])
-            p.addUserDebugLine(lineFromXYZ=[x_low, y_low, 0.006], lineToXYZ=[x_high, y_low, 0.006])
-            p.addUserDebugLine(lineFromXYZ=[x_low, y_low, 0.006], lineToXYZ=[x_low, y_high, 0.006])
-            p.addUserDebugLine(lineFromXYZ=[x_high, y_high, 0.006], lineToXYZ=[x_high, y_low, 0.006])
-            p.addUserDebugLine(lineFromXYZ=[x_high, y_high, 0.006], lineToXYZ=[x_low, y_high, 0.006])
+            p.addUserDebugLine(lineFromXYZ=[x_low, y_low, 0], lineToXYZ=[x_high, y_low, 0])
+            p.addUserDebugLine(lineFromXYZ=[x_low, y_low, 0], lineToXYZ=[x_low, y_high, 0])
+            p.addUserDebugLine(lineFromXYZ=[x_high, y_high, 0], lineToXYZ=[x_high, y_low, 0])
+            p.addUserDebugLine(lineFromXYZ=[x_high, y_high, 0], lineToXYZ=[x_low, y_high, 0])
 
             while len(barricade_index) > 0:
 
@@ -1800,7 +1800,7 @@ if __name__ == '__main__':
         num_2x3 = 4
         num_2x4 = 3
         num_pencil = 0
-        total_offset = [0.1, -0.1, 0.006]
+        total_offset = [0.1, -0.1, 0]
         grasp_order = [1, 0, 2]
         gap_item = 0.015
         gap_block = 0.02
@@ -1841,7 +1841,7 @@ if __name__ == '__main__':
         num_2x2 = 4
         num_2x3 = 0
         num_2x4 = 0
-        total_offset = [0.15, 0, 0.006]
+        total_offset = [0.15, 0, 0]
         grasp_order = [0]
         gap_item = 0.015
         gap_block = 0.02
@@ -1874,7 +1874,7 @@ if __name__ == '__main__':
             num_2x2 = np.random.randint(1, 6)
             num_2x3 = np.random.randint(1, 6)
             num_2x4 = np.random.randint(1, 6)
-            total_offset = [0.15, 0, 0.006]
+            total_offset = [0.15, 0, 0]
             grasp_order = [1, 0, 2]
             gap_item = 0.015
             gap_block = 0.02
