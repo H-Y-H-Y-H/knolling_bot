@@ -822,38 +822,38 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
         if real_operate == True:
             print(length_width_channel)
 
-            im0s = cv2.rectangle(im0s, (0, 80), (640, 95), (0, 0, 0), thickness=-1)
-            im0s = cv2.rectangle(im0s, (0, 546), (640, 560), (0, 0, 0), thickness=-1)
-
-            cv2.namedWindow("zzz_origin", 0)
-            cv2.imshow('zzz_origin', im0s)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-
-            blank_mask = np.zeros(im0s.shape, dtype=np.uint8)
-            original = im0s.copy()
-            hsv = cv2.cvtColor(im0s, cv2.COLOR_BGR2HSV)
-            lower = np.array([0, 95, 20])
-            upper = np.array([255, 255, 255])
-            mask = cv2.inRange(hsv, lower, upper)
-
-            cnts = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-            cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
-            cv2.drawContours(blank_mask, cnts, -1, (255, 255, 255), -1)
-            # for c in cnts:
-            #     cv2.drawContours(blank_mask,[c], -1, (255,255,255), -1)
-            #     break
-
-            result = cv2.bitwise_and(original, blank_mask)
-            pixel = 200
-            result_gray = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
-            result[result_gray < 1] = pixel
-            im0s = np.copy(result)
-
-            cv2.imshow('result', result)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+            # im0s = cv2.rectangle(im0s, (0, 80), (640, 95), (0, 0, 0), thickness=-1)
+            # im0s = cv2.rectangle(im0s, (0, 546), (640, 560), (0, 0, 0), thickness=-1)
+            #
+            # cv2.namedWindow("zzz_origin", 0)
+            # cv2.imshow('zzz_origin', im0s)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
+            #
+            # blank_mask = np.zeros(im0s.shape, dtype=np.uint8)
+            # original = im0s.copy()
+            # hsv = cv2.cvtColor(im0s, cv2.COLOR_BGR2HSV)
+            # lower = np.array([0, 95, 20])
+            # upper = np.array([255, 255, 255])
+            # mask = cv2.inRange(hsv, lower, upper)
+            #
+            # cnts = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+            # cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
+            # cv2.drawContours(blank_mask, cnts, -1, (255, 255, 255), -1)
+            # # for c in cnts:
+            # #     cv2.drawContours(blank_mask,[c], -1, (255,255,255), -1)
+            # #     break
+            #
+            # result = cv2.bitwise_and(original, blank_mask)
+            # pixel = 200
+            # result_gray = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
+            # result[result_gray < 1] = pixel
+            # im0s = np.copy(result)
+            #
+            # cv2.imshow('result', result)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
             pass
         else:
             print(length_width_channel)
@@ -973,9 +973,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_407_combine_real_2.png', im0)
+                    cv2.imwrite(f'./Test_images/test_407_combine_real_3.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_407_combine_sim_2.png', im0)
+                    cv2.imwrite(f'./Test_images/test_407_combine_sim_3.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:

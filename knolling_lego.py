@@ -576,6 +576,15 @@ class Arm:
                                     targetPosition=ik_angles0[motor_index], maxVelocity=7)
         for i in range(60):
             p.stepSimulation()
+
+        ####################### try the corner pos and ori to calibrate the camera ####################
+        test_pos = []
+        for i in range(4):
+            test_pos.append(p.getBasePositionAndOrientation(self.obj_idx[i])[0])
+        test_pos = np.asarray(test_pos)
+        print('this is test of cube pos\n', test_pos)
+        ####################### try the corner pos and ori to calibrate the camera ####################
+
         return self.get_obs('images', None)
 
     def change_config(self):  # this is main function!!!!!!!!!
