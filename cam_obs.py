@@ -617,9 +617,9 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_ope
         img = cv2.resize(my_im2, (96, 96))
     h, w, ch = img.shape
     blank = np.zeros([h, w, ch], img.dtype)
-    img = cv2.addWeighted(img, 1.1, blank, 0.1, 60)
+    # img = cv2.addWeighted(img, 1.1, blank, 0.1, 60)
 
-    # cv2.imwrite('img_yolo%s.png' % num_obj, img)
+    cv2.imwrite('img_yolo%s.png' % num_obj, img)
 
     if det_color == 'undefined':
         obj_color = img[48, 48, :]
@@ -733,7 +733,7 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
     cam_obs = True
     path = ''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best_404.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best_407.pt', help='model.pt path(s)')
     # file/folder, 0 for webcam
     if cam_obs:
         parser.add_argument('--source', type=str, default=path, help='source')

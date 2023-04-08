@@ -493,53 +493,53 @@ class Arm:
             collect_pos = []
             ############## collect ori and pos to calculate the error of detection ##############
 
-            # for i in range(len(self.grasp_order)):
-            #     for j in range(self.num_list[self.grasp_order[i]]):
-            #
-            #         rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
-            #                             random.uniform(self.y_low_obs, self.y_high_obs), 0.0])
-            #         # ori = [0, 0, random.uniform(0, math.pi)]
-            #         ori = [0, 0, 0]
-            #         collect_ori.append(ori)
-            #         check_list = np.zeros(last_pos.shape[0])
-            #
-            #         while 0 in check_list:
-            #             rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs),
-            #                        random.uniform(self.y_low_obs, self.y_high_obs), 0.0]
-            #             for z in range(last_pos.shape[0]):
-            #                 if np.linalg.norm(last_pos[z] - rdm_pos) < restrict + gripper_height:
-            #                     check_list[z] = 0
-            #                 else:
-            #                     check_list[z] = 1
-            #         collect_pos.append(rdm_pos)
-            #
-            #         last_pos = np.append(last_pos, [rdm_pos], axis=0)
-            #         self.obj_idx.append(
-            #             p.loadURDF(os.path.join(self.urdf_path, f"item_{self.grasp_order[i]}/{j}.urdf"),
-            #                        basePosition=rdm_pos,
-            #                        baseOrientation=p.getQuaternionFromEuler(ori), useFixedBase=False,
-            #                        flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-            #
-            #         # r = np.random.uniform(0, 0.9)
-            #         # g = np.random.uniform(0, 0.9)
-            #         # b = np.random.uniform(0, 0.9)
-            #         # p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
+            for i in range(len(self.grasp_order)):
+                for j in range(self.num_list[self.grasp_order[i]]):
 
-            ####################### try the corner pos and ori to calibrate the camera ####################
-            pos = np.array([[0.05, 0.15, 0.00],
-                            [0.25, 0.15, 0.00],
-                            [0.25, -0.15, 0.00],
-                            [0.05, -0.15, 0.00]])
-            ori = np.zeros((4, 3))
-            for i in range(4):
-                collect_pos.append(pos[i])
-                collect_ori.append(ori[i])
-                self.obj_idx.append(
-                    p.loadURDF(os.path.join(self.urdf_path, f"item_{0}/{i}.urdf"),
-                               basePosition=pos[i],
-                               baseOrientation=p.getQuaternionFromEuler(ori[i]), useFixedBase=False,
-                               flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-            ####################### try the corner pos and ori to calibrate the camera ####################
+                    rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
+                                        random.uniform(self.y_low_obs, self.y_high_obs), 0.0])
+                    # ori = [0, 0, random.uniform(0, math.pi)]
+                    ori = [0, 0, 0]
+                    collect_ori.append(ori)
+                    check_list = np.zeros(last_pos.shape[0])
+
+                    while 0 in check_list:
+                        rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs),
+                                   random.uniform(self.y_low_obs, self.y_high_obs), 0.0]
+                        for z in range(last_pos.shape[0]):
+                            if np.linalg.norm(last_pos[z] - rdm_pos) < restrict + gripper_height:
+                                check_list[z] = 0
+                            else:
+                                check_list[z] = 1
+                    collect_pos.append(rdm_pos)
+
+                    last_pos = np.append(last_pos, [rdm_pos], axis=0)
+                    self.obj_idx.append(
+                        p.loadURDF(os.path.join(self.urdf_path, f"item_{self.grasp_order[i]}/{j}.urdf"),
+                                   basePosition=rdm_pos,
+                                   baseOrientation=p.getQuaternionFromEuler(ori), useFixedBase=False,
+                                   flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+
+                    # r = np.random.uniform(0, 0.9)
+                    # g = np.random.uniform(0, 0.9)
+                    # b = np.random.uniform(0, 0.9)
+                    # p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
+
+            # ####################### try the corner pos and ori to calibrate the camera ####################
+            # pos = np.array([[0.05, 0.15, 0.00],
+            #                 [0.25, 0.15, 0.00],
+            #                 [0.25, -0.15, 0.00],
+            #                 [0.05, -0.15, 0.00]])
+            # ori = np.zeros((4, 3))
+            # for i in range(4):
+            #     collect_pos.append(pos[i])
+            #     collect_ori.append(ori[i])
+            #     self.obj_idx.append(
+            #         p.loadURDF(os.path.join(self.urdf_path, f"item_{0}/{i}.urdf"),
+            #                    basePosition=pos[i],
+            #                    baseOrientation=p.getQuaternionFromEuler(ori[i]), useFixedBase=False,
+            #                    flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+            # ####################### try the corner pos and ori to calibrate the camera ####################
 
             collect_ori = np.asarray(collect_ori)
             collect_pos = np.asarray(collect_pos)
@@ -1860,15 +1860,15 @@ if __name__ == '__main__':
     if command == 'knolling':
 
         num_2x2 = 4
-        num_2x3 = 0
-        num_2x4 = 0
+        num_2x3 = 4
+        num_2x4 = 4
         total_offset = [0.15, 0.1, 0]
-        grasp_order = [0]
+        grasp_order = [0, 1, 2]
         gap_item = 0.015
         gap_block = 0.02
         random_offset = False
-        real_operate = True
-        obs_order = 'real_image_obj'
+        real_operate = False
+        obs_order = 'sim_image_obj'
         check_dataset_error = False
 
 
