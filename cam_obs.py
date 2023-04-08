@@ -825,10 +825,10 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
             # im0s = cv2.rectangle(im0s, (0, 80), (640, 95), (0, 0, 0), thickness=-1)
             # im0s = cv2.rectangle(im0s, (0, 546), (640, 560), (0, 0, 0), thickness=-1)
             #
-            # cv2.namedWindow("zzz_origin", 0)
-            # cv2.imshow('zzz_origin', im0s)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
+            # # cv2.namedWindow("zzz_origin", 0)
+            # # cv2.imshow('zzz_origin', im0s)
+            # # cv2.waitKey(0)
+            # # cv2.destroyAllWindows()
             #
             # blank_mask = np.zeros(im0s.shape, dtype=np.uint8)
             # original = im0s.copy()
@@ -851,9 +851,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
             # result[result_gray < 1] = pixel
             # im0s = np.copy(result)
             #
-            # cv2.imshow('result', result)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
+            # # cv2.imshow('result', result)
+            # # cv2.waitKey(0)
+            # # cv2.destroyAllWindows()
             pass
         else:
             print(length_width_channel)

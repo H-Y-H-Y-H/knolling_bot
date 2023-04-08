@@ -114,7 +114,7 @@ class Arm:
         }
         self.view_matrix = p.computeViewMatrixFromYawPitchRoll(
                                     cameraTargetPosition=[0.15, 0, 0],
-                                    distance=0.387,
+                                    distance=0.4,
                                     yaw=90,
                                     pitch=-90,
                                     roll=0,
@@ -129,7 +129,8 @@ class Arm:
             p.configureDebugVisualizer(lightPosition=[random.randint(3,5), random.randint(3,5), 5])
         else:
             p.configureDebugVisualizer(lightPosition=[random.randint(3,5), random.randint(-5, -3), 5])
-        # p.configureDebugVisualizer(lightPosition=[5, 0, 5], shadowMapIntensity=0.9)
+        p.configureDebugVisualizer(lightPosition=[random.randint(1, 3), random.randint(1, 2), 5],
+                                   shadowMapResolution=8192, shadowMapIntensity=np.random.randint(5, 8) / 10)
         p.resetDebugVisualizerCamera(cameraDistance=0.5,
                                      cameraYaw=45,
                                      cameraPitch=-45,
@@ -995,21 +996,26 @@ class Arm:
                 # automatically add z bias
                 d = np.array([0, 0.10, 0.185, 0.225, 0.27])
                 z_bias = np.array([-0.005, 0.0, 0.005, 0.01, 0.015])
-                x_bias = np.array([0, 0.0025, 0.005, 0.075, 0.01])
+                # x_bias = np.array([0, 0.0025, 0.005, 0.075, 0.01])
                 z_parameters = np.polyfit(d, z_bias, 3)
-                x_parameters = np.polyfit(d, x_bias, 3)
+                # x_parameters = np.polyfit(d, x_bias, 3)
                 new_z_formula = np.poly1d(z_parameters)
-                new_x_formula = np.poly1d(x_parameters)
+                # new_x_formula = np.poly1d(x_parameters)
 
                 distance = tar_pos[0]
                 tar_pos[2] = tar_pos[2] + new_z_formula(distance)
-                tar_pos[0] = tar_pos[0] + new_x_formula(distance)
+                # tar_pos[0] = tar_pos[0] + new_x_formula(distance)
 
-            if tar_ori[2] > 1.58:
+            if tar_ori[2] > 3.1416:
                 tar_ori[2] = tar_ori[2] - np.pi
-            elif tar_ori[2] < -1.58:
+                print('tar ori is too large')
+            elif tar_ori[2] < -3.1416:
                 tar_ori[2] = tar_ori[2] + np.pi
+                print('tar ori is too small')
             print('this is tar ori', tar_ori)
+
+            if cur_ori[0] > 0.1:
+                print('aaaaaa')
 
             #################### use feedback control ###################
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
@@ -1043,14 +1049,17 @@ class Arm:
                     step_pos = (seg_pos - cur_pos) / num_step
                     step_ori = (seg_ori - cur_ori) / num_step
 
-                    # print('this is cur pos', cur_pos)
-                    # print('this is seg pos', seg_pos)
+                    print('this is cur pos', cur_pos)
+                    print('this is seg pos', seg_pos)
+                    print('this is cur ori', cur_ori)
+                    print('this is seg ori', seg_ori)
 
                     while True:
                         tar_pos = cur_pos + step_pos
                         tar_ori = cur_ori + step_ori
                         sim_xyz.append(tar_pos)
                         sim_ori.append(tar_ori)
+                        print(tar_ori)
 
                         ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
                                                                      maxNumIterations=200,
@@ -1060,7 +1069,7 @@ class Arm:
                         for motor_index in range(self.num_motor):
                             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
                                                     targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
-                        for i in range(20):
+                        for i in range(40):
                             p.stepSimulation()
 
                         angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
@@ -1076,6 +1085,7 @@ class Arm:
                         # update cur_pos and cur_ori in several step of each segment
                         cur_pos = tar_pos
                         cur_ori = tar_ori
+                        print('this is cur ori after 0.95', cur_ori)
 
                     sim_xyz = np.asarray(sim_xyz)
 
@@ -1102,7 +1112,7 @@ class Arm:
                         for motor_index in range(self.num_motor):
                             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
                                                     targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
-                        for i in range(20):
+                        for i in range(40):
                             p.stepSimulation()
 
                         angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
@@ -1320,10 +1330,15 @@ class Arm:
 
         def clean_item(manipulator_before, new_xyz_list):
 
-            gripper_width = 0.024
-            gripper_height = 0.034
+            if self.real_operate == False:
+                gripper_width = 0.024
+                gripper_height = 0.034
+            else:
+                gripper_width = 0.018
+                gripper_height = 0.04
+
             restrict_gripper_diagonal = np.sqrt(gripper_width ** 2 + gripper_height ** 2)
-            gripper_lego_gap = 0.008
+            gripper_lego_gap = 0.006
             crowded_pos = []
             crowded_ori = []
             crowded_index = []
@@ -1565,14 +1580,20 @@ class Arm:
                                        rest_ori + start_end[i][9:12],
                                        [0.025],
                                        rest_ori + start_end[i][9:12]]
-                last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
-                last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
+                if i == 0:
+                    last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
+                    last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
+                else:
+                    pass
+
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
                         # print('ready to move', trajectory_ori_list[j])
+                        # print('ready to move cur ori', last_ori)
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
                         last_ori = np.copy(trajectory_ori_list[j])
+                        # print('this is last ori after moving', last_ori)
 
                     elif len(trajectory_pos_list[j]) == 1:
                         gripper(trajectory_pos_list[j][0])
@@ -1731,7 +1752,7 @@ class Arm:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8880  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.
@@ -1766,10 +1787,10 @@ class Arm:
 
         #######################################################################################
         # 1: clean_desk + clean_item, 3: knolling, 4: check_accuracy, 5: get_camera
-        # self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
+        self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
         # error = self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
         error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
-        self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
+        # self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
         #######################################################################################
 
         if self.obs_order == 'sim_image_obj_evaluate':
@@ -1841,13 +1862,13 @@ if __name__ == '__main__':
         num_2x2 = 4
         num_2x3 = 0
         num_2x4 = 0
-        total_offset = [0.15, 0, 0]
+        total_offset = [0.15, 0.1, 0]
         grasp_order = [0]
         gap_item = 0.015
         gap_block = 0.02
-        random_offset = True
-        real_operate = False
-        obs_order = 'sim_image_obj'
+        random_offset = False
+        real_operate = True
+        obs_order = 'real_image_obj'
         check_dataset_error = False
 
 
