@@ -733,7 +733,7 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
     cam_obs = True
     path = ''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best_407.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str,default='yolov7/runs/train/zzz_yolo/weights/best_408.pt', help='model.pt path(s)')
     # file/folder, 0 for webcam
     if cam_obs:
         parser.add_argument('--source', type=str, default=path, help='source')
@@ -973,9 +973,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_407_combine_real_3.png', im0)
+                    cv2.imwrite(f'./Test_images/test_408_combine_real.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_407_combine_sim_3.png', im0)
+                    cv2.imwrite(f'./Test_images/test_408_combine_sim.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
