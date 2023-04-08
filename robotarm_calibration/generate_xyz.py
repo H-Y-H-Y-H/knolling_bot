@@ -363,6 +363,19 @@ class Arm:
 
             # if self.test_error_motion == True:
             #     target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )
+            # automatically add z and x bias
+            d = np.array([0, 0.10, 0.185, 0.225, 0.27])
+            z_bias = np.array([-0.005, 0.0, 0.005, 0.01, 0.015])
+            # x_bias = np.array([0, 0.0025, 0.005, 0.075, 0.01])
+            z_parameters = np.polyfit(d, z_bias, 3)
+            # x_parameters = np.polyfit(d, x_bias, 3)
+            new_z_formula = np.poly1d(z_parameters)
+            # new_x_formula = np.poly1d(x_parameters)
+
+            distance = tar_pos[0]
+            tar_pos[2] = tar_pos[2] + new_z_formula(distance)
+            # tar_pos[0] = tar_pos[0] + new_x_formula(distance)
+            tar_pos[0] = tar_pos[0] + 0.002
 
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
                 # vertical, choose a small slice
@@ -711,10 +724,10 @@ class Arm:
             last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
 
             if self.test_error_motion == True:
-                trajectory_pos_list = np.array([[0.0, 0.17, 0.03],
-                                                [0.0, 0.17, 0.005],
-                                                [0.0, -0.17, 0.03],
-                                                [0.0, -0.17, 0.005],
+                trajectory_pos_list = np.array([[0.05, 0.17, 0.03],
+                                                [0.05, 0.17, 0.005],
+                                                [0.05, -0.17, 0.03],
+                                                [0.05, -0.17, 0.005],
                                                 [0.23, 0.17, 0.03],
                                                 [0.23, 0.17, 0.005],
                                                 [0.23, -0.17, 0.03],

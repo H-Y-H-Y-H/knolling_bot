@@ -498,8 +498,8 @@ class Arm:
 
                     rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
                                         random.uniform(self.y_low_obs, self.y_high_obs), 0.0])
-                    # ori = [0, 0, random.uniform(0, math.pi)]
-                    ori = [0, 0, 0]
+                    ori = [0, 0, random.uniform(0, math.pi)]
+                    # ori = [0, 0, 0]
                     collect_ori.append(ori)
                     check_list = np.zeros(last_pos.shape[0])
 
@@ -993,7 +993,7 @@ class Arm:
                 # else:
                 #     tar_pos[1] = tar_pos[1] + new_y_formula(distance)
 
-                # automatically add z bias
+                # automatically add z and x bias
                 d = np.array([0, 0.10, 0.185, 0.225, 0.27])
                 z_bias = np.array([-0.005, 0.0, 0.005, 0.01, 0.015])
                 # x_bias = np.array([0, 0.0025, 0.005, 0.075, 0.01])
@@ -1005,6 +1005,7 @@ class Arm:
                 distance = tar_pos[0]
                 tar_pos[2] = tar_pos[2] + new_z_formula(distance)
                 # tar_pos[0] = tar_pos[0] + new_x_formula(distance)
+                tar_pos[0] = tar_pos[0] + 0.002
 
             if tar_ori[2] > 3.1416:
                 tar_ori[2] = tar_ori[2] - np.pi
@@ -1049,10 +1050,10 @@ class Arm:
                     step_pos = (seg_pos - cur_pos) / num_step
                     step_ori = (seg_ori - cur_ori) / num_step
 
-                    print('this is cur pos', cur_pos)
-                    print('this is seg pos', seg_pos)
-                    print('this is cur ori', cur_ori)
-                    print('this is seg ori', seg_ori)
+                    # print('this is cur pos', cur_pos)
+                    # print('this is seg pos', seg_pos)
+                    # print('this is cur ori', cur_ori)
+                    # print('this is seg ori', seg_ori)
 
                     while True:
                         tar_pos = cur_pos + step_pos
@@ -1068,7 +1069,7 @@ class Arm:
 
                         for motor_index in range(self.num_motor):
                             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                                                    targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
+                                                    targetPosition=ik_angles_sim[motor_index], maxVelocity=7.5)
                         for i in range(40):
                             p.stepSimulation()
 
@@ -1085,7 +1086,6 @@ class Arm:
                         # update cur_pos and cur_ori in several step of each segment
                         cur_pos = tar_pos
                         cur_ori = tar_ori
-                        print('this is cur ori after 0.95', cur_ori)
 
                     sim_xyz = np.asarray(sim_xyz)
 
@@ -1111,7 +1111,7 @@ class Arm:
 
                         for motor_index in range(self.num_motor):
                             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                                                    targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
+                                                    targetPosition=ik_angles_sim[motor_index], maxVelocity=7.5)
                         for i in range(40):
                             p.stepSimulation()
 
@@ -1131,7 +1131,7 @@ class Arm:
                         for motor_index in range(self.num_motor):
                             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
                                                     targetPosition=ik_angles_real[motor_index], maxVelocity=25)
-                        for i in range(40):
+                        for i in range(30):
                             p.stepSimulation()
                         real_xyz = np.append(real_xyz, np.asarray(p.getLinkState(self.arm_id, 9)[0])).reshape(-1, 3)
                         cur_pos = real_xyz[-1]
@@ -1161,7 +1161,7 @@ class Arm:
                                                 targetPosition=ik_angles0[motor_index], maxVelocity=2.5)
                     for i in range(30):
                         p.stepSimulation()
-                        time.sleep(1 / 48)
+                        # time.sleep(1 / 48)
                     if abs(target_pos[0] - tar_pos[0]) < 0.001 and abs(target_pos[1] - tar_pos[1]) < 0.001 and abs(
                             target_pos[2] - tar_pos[2]) < 0.001 and \
                             abs(target_ori[0] - tar_ori[0]) < 0.001 and abs(target_ori[1] - tar_ori[1]) < 0.001 and abs(
@@ -1198,8 +1198,12 @@ class Arm:
 
         def clean_desk():
 
-            gripper_width = 0.032
-            gripper_height = 0.022
+            if self.real_operate == False:
+                gripper_width = 0.024
+                gripper_height = 0.034
+            else:
+                gripper_width = 0.018
+                gripper_height = 0.04
             restrict_gripper_diagonal = np.sqrt(gripper_width ** 2 + gripper_height ** 2)
             barricade_pos = []
             barricade_index = []
@@ -1599,10 +1603,11 @@ class Arm:
                         gripper(trajectory_pos_list[j][0])
 
             # back to the reset pos and ori
-            ik_angles0 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=[0, 0, 0.06],
+            last_pos = move(last_pos, last_ori, rest_pos, rest_ori)
+            last_ori = np.copy(rest_ori)
+            ik_angles0 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=rest_pos,
                                                       maxNumIterations=200,
-                                                      targetOrientation=p.getQuaternionFromEuler(
-                                                          [0, math.pi / 2, 0]))
+                                                      targetOrientation=p.getQuaternionFromEuler(rest_ori))
             for motor_index in range(self.num_motor):
                 p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
                                         targetPosition=ik_angles0[motor_index], maxVelocity=7)
@@ -1763,7 +1768,7 @@ class Arm:
             print(conn)
             print(f"Connected by {addr}")
             table_surface_height = 0.032
-            sim_table_surface_height = 0
+            sim_table_surface_height = -0.01
             num_motor = 5
             # ! reset the pos in both real and sim
             reset_pos = [0.005, 0, 0.1]
@@ -1783,7 +1788,7 @@ class Arm:
         else:
             conn = None
             table_surface_height = 0.032
-            sim_table_surface_height = 0
+            sim_table_surface_height = -0.01
 
         #######################################################################################
         # 1: clean_desk + clean_item, 3: knolling, 4: check_accuracy, 5: get_camera
@@ -1868,7 +1873,7 @@ if __name__ == '__main__':
         gap_block = 0.02
         random_offset = False
         real_operate = False
-        obs_order = 'sim_image_obj'
+        obs_order = 'sim_obj'
         check_dataset_error = False
 
 
