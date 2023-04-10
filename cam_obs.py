@@ -282,7 +282,7 @@ class ToTensor(object):
         return {'image': img_sample,
                 'xyzyaw': label_sample}
 
-def eval_img4Batch(img_array, num_obj):
+def eval_img4Batch(img_array, num_obj, sample_num=100):
 
     # print('this is img_array', img_array)
     # print('this is num_obj', num_obj)
@@ -296,7 +296,7 @@ def eval_img4Batch(img_array, num_obj):
     if criterion == 'lwcossin':
         model = ResNet50(img_channel=3, output_size=4).to(device)
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        model.load_state_dict(torch.load('Model/best_model_401_combine.pt', map_location='cuda:0'))
+        model.load_state_dict(torch.load('Model/best_model_407_combine.pt', map_location='cuda:0'))
         # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
         model.eval()
 
@@ -308,8 +308,8 @@ def eval_img4Batch(img_array, num_obj):
         close_index = int(data_4_train * ratio)
         normal_index = int(data_4_train * (1 - ratio))
 
-        close_label = np.loadtxt('./Dataset/label/label_401_close.csv')[:, :4]
-        normal_label = np.loadtxt('./Dataset/label/label_401_normal.csv')[:, :4]
+        close_label = np.loadtxt('./Dataset/label/label_407_close.csv')[:, :4]
+        normal_label = np.loadtxt('./Dataset/label/label_407_normal.csv')[:, :4]
         test_label = []
 
         for i in range(close_num_test):
@@ -329,17 +329,7 @@ def eval_img4Batch(img_array, num_obj):
         for i in range(num_obj):
             img_array1 = img_array[i].astype(np.float32) / 255
             img_array1[0], img_array1[2] = img_array1[2], img_array1[0]
-            image2 = img_array1
-            # image = plt.imread('real_test/img%s.png' %i)
-            # print(image)
-            # print(image2)
-
-            # if (image == image2).all():
-            #     print('!')
-
-            # print('shape',image.shape)
-            # print('shape', image2.shape)
-            test_data.append(image2)
+            test_data.append(img_array1)
 
         test_dataset = VD_Data(
             img_data=test_data, label_data=test_label, transform=ToTensor())
@@ -354,25 +344,25 @@ def eval_img4Batch(img_array, num_obj):
             for batch in test_loader:
                 img = batch["image"]
 
-                # ############################## test the shape of img ##############################
-                # img_show = img.cpu().detach().numpy()
-                # print(img_show[0].shape)
-                # temp = img_show[0]
-                # temp_shape = temp.shape
-                # temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
-                # print(temp.shape)
-                # cv2.namedWindow("well",0)
-                # cv2.imshow('well', temp)
-                # cv2.waitKey(0)
-                # cv2.destroyAllWindows()
-                # ############################## test the shape of img ##############################
+                ############################## test the shape of img ##############################
+                img_show = img.cpu().detach().numpy()
+                print(img_show[0].shape)
+                temp = img_show[0]
+                temp_shape = temp.shape
+                temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
+                print(temp.shape)
+                cv2.namedWindow("well",0)
+                cv2.imshow('well', temp)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+                ############################## test the shape of img ##############################
 
                 img = img.to(device)
                 pred_lwcossin = model.forward(img)
                 pred_lwcossin = pred_lwcossin.cpu().detach().numpy()
                 # print('this is', pred_x1y1x2y2l)
                 pred_lwcossin = scaler.inverse_transform(pred_lwcossin)
-                # print('this is', pred_x1y1x2y2l)
+                print('this is', pred_lwcossin)
                 # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
 
                 return pred_lwcossin
@@ -500,36 +490,6 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
 
     return img, to_arm
 
-def xyz_resolve_inverse(x,y):
-
-    dist = math.dist([0.154, 0], [x, y])
-
-    cube_h = 10/1000
-
-    add_value = (cube_h * dist) / (0.387 - cube_h)
-
-    along_axis = abs(np.arctan(y/(x-0.154)))
-
-    # sign = lambda x: math.copysign(1, x)
-
-    x_new = x + np.sign(x-0.154) * add_value * math.cos(along_axis)
-    y_new = y + np.sign(y) * add_value * math.sin(along_axis)
-
-    # dist = math.dist([0.154, 0], [x, y])
-    #
-    # cube_h = 10 / 1000
-    #
-    # add_value = (cube_h * dist) / (0.387 - cube_h)
-    #
-    # along_axis = abs(np.arctan(y / (x - 0.154)))
-    #
-    # # sign = lambda x: math.copysign(1, x)
-    #
-    # x_new = x + np.sign(x - 0.154) * add_value * math.cos(along_axis)
-    # y_new = y + np.sign(y) * add_value * math.sin(along_axis)
-
-    return x_new, y_new
-
 def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_operate):
 
     # left-top to right-down
@@ -541,6 +501,9 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_ope
     # find obj position:
     obj_x = int((px_resx1 + px_resx2) / 2)
     obj_y = int((px_resy1 + px_resy2) / 2)
+
+    # obj_x = obj_x * (530 / 0.34) / (1500)
+    # obj_y = obj_y * (530 / 0.34) / (1500)
 
     if real_operate == True:
         mm2px = 530 / 0.34
@@ -578,10 +541,10 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_ope
 
     det_color = color_define(obj_hsv[0][0])
     # make all picture to 96 * 96
-    px_padtop = px_resy1 - 7
-    px_padbot = px_resy2 + 7
-    px_padleft = px_resx1 - 7
-    px_padright = px_resx2 + 7
+    px_padtop = px_resy1
+    px_padbot = px_resy2
+    px_padleft = px_resx1
+    px_padright = px_resx2
     # print(px_padtop, px_padbot, px_padleft, px_padright)
 
     if px_padtop < 0:
@@ -973,9 +936,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_408_combine_real.png', im0)
+                    cv2.imwrite(f'./Test_images/test_408_combine_real_5.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_408_combine_sim.png', im0)
+                    cv2.imwrite(f'./Test_images/test_408_combine_sim_5.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:

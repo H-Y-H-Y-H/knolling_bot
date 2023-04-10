@@ -33,9 +33,9 @@ import torch.nn.functional as F
 from sklearn.preprocessing import MinMaxScaler
 from shapely.geometry import Polygon
 
-torch.manual_seed(42)
-np.random.seed(124)
-random.seed(124)
+torch.manual_seed(45)
+np.random.seed(130)
+random.seed(130)
 
 class Net(nn.Module):
     def __init__(self):
@@ -257,7 +257,7 @@ class Arm:
                 target_cos = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
                 target_sin = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
                 target_compare = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin), axis=1)
-                print('this is the target_compare\n', target_compare)
+
                 target_compare_scaled = scaler.transform(target_compare)
 
                 # structure: x, y, length, width, ori
@@ -273,6 +273,7 @@ class Arm:
                 pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
                 pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
                 pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
+                print('this is the target_compare\n', target_compare)
                 print('this is the pred_compare\n', pred_compare)
                 pred_compare_scaled = scaler.transform(pred_compare)
 
@@ -498,8 +499,8 @@ class Arm:
 
                     rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
                                         random.uniform(self.y_low_obs, self.y_high_obs), 0.0])
-                    # ori = [0, 0, random.uniform(0, math.pi)]
-                    ori = [0, 0, 0]
+                    ori = [0, 0, random.uniform(0, math.pi)]
+                    # ori = [0, 0, 0]
                     collect_ori.append(ori)
                     check_list = np.zeros(last_pos.shape[0])
 

@@ -6,7 +6,7 @@ import numpy as np
 sys.path.append('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/Adjust_images')
 sys.path.append('/home/ubuntu/Desktop/knolling_bot/Adjust_images')
 
-img = cv2.imread("./Adjust_images/326_testpip_3.png")
+img = cv2.imread("./Test_images/.png")
 # img = cv2.dilate(img, np.ones((2, 2), np.uint8))
 # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 # img = np.uint8(np.clip((1.1 * img + 40), 0, 255))
