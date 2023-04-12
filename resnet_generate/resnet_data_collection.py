@@ -8,7 +8,7 @@ import numpy as np
 import random
 import math
 from PIL import Image
-from knolling_env3 import *
+from resnet_data_collection_env import *
 # from create_urdf import *
 # from create_urdf import *
 
@@ -40,11 +40,12 @@ def yolo_box(img, label):
 
 if __name__ == '__main__':
 
+    data_root = '/home/ubuntu/Desktop/knolling_dataset/resnet/'
 
     p.connect(p.GUI)
 
     startnum = 0
-    endnum = 1000
+    endnum = 3
     lebal_list = []
     num_item = 15
 
@@ -205,7 +206,7 @@ if __name__ == '__main__':
             img = cv2.copyMakeBorder(my_im2, pad_top, pad_bot, pad_left, pad_right, cv2.BORDER_CONSTANT,
                                      value=(0, 0, 0))
 
-            cv2.imwrite('../ResNet_data/Dataset/yolo_409_normal/img%s.png'%count_item, img)
+            cv2.imwrite(os.path.join(data_root, 'input/yolo_409_normal/img%s.png') % count_item, img)
             count_item += 1
 
-    np.savetxt("../ResNet_data/Label/Label_segmented/label_409_normal_135000150000.csv", lebal_list)
+    np.savetxt(os.path.join(data_root, "label/segmented_label/label_409_normal_135000150000.csv"), lebal_list)

@@ -68,7 +68,7 @@ class ResNet(nn.Module):
             image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.1)
+        self.dropout = nn.Dropout(p=0)
         self.sigmoid = nn.Sigmoid()
 
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)

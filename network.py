@@ -140,6 +140,7 @@ class ResNet(nn.Module):
         x2 = self.dropout(x2)
         x2 = self.fc8_2(x2)
 
+
         return torch.cat((x1, x2), dim=-1)
         # return x
 
@@ -150,6 +151,36 @@ class ResNet(nn.Module):
         pred_IoU = scaler.inverse_transform(pred)
         target_IoU = scaler.inverse_transform(target)
         device = 'cuda:1'
+
+        # use cv2 to calculate iou
+        # total_area = []
+        # for i in range(len(pred)):
+        #     rect1 = ((0, 0), (pred_IoU[i, 1], pred_IoU[i, 2]), pred_IoU[i, 0])
+        #     # print('pred', rect1)
+        #     rect2 = ((0, 0), (target_IoU[i, 1], target_IoU[i, 2]), target_IoU[i, 0])
+        #     # print('target', rect2)
+        #     int_pts = cv2.rotatedRectangleIntersection(rect1, rect2)[1]
+        #     if int_pts is not None:
+        #         order_pts = cv2.convexHull(int_pts, returnPoints=True)
+        #         int_area = cv2.contourArea(order_pts) / (np.maximum(pred_IoU[i, 1], target_IoU[i, 1]) * np.maximum(pred_IoU[i, 2], target_IoU[i, 2]))
+        #         # if int_area > 0.5:
+        #         #     print('pred', rect1)
+        #         #     print('target', rect2)
+        #         #     print(int_area ** 2)
+        #         # print(int_area)
+        #         if int_area <= 0.3:
+        #             # print(int_pts)
+        #             # print('wtf?!', int_area)
+        #             int_area = 0.00001
+        #         else:
+        #             int_area = int_area ** 2
+        #     else:
+        #         int_area = 0.0000001
+        #     total_area.append(int_area)
+        #
+        # total_area = -np.log(np.asarray(total_area, dtype=np.float32))
+        # total_area = torch.from_numpy(total_area).to(device).reshape((-1, 1))
+        # total_area.requires_grad_()
 
         # use shapely library to calculate iou
         total_iou = []
@@ -211,25 +242,21 @@ class ResNet(nn.Module):
 
         pred_two_points = pred * (scaler[0] - scaler[1]) + scaler[1]
         target_two_points = target * (scaler[0] - scaler[1]) + scaler[1]
-        # print('this is pred points', pred_two_points[0])
-        # print('this is target points', target_two_points[0])
         pred_width = torch.sqrt(torch.square(pred_two_points[:, 1] - pred_two_points[:, 3]) + torch.square(pred_two_points[:, 0] - pred_two_points[:, 2]))
         target_width = torch.sqrt(torch.square(target_two_points[:, 1] - target_two_points[:, 3]) + torch.square(
             target_two_points[:, 0] - target_two_points[:, 2]))
-        # print('this is pred width', pred_width[0])
-        # print('this is target width', target_width[0])
         error = (pred_width - target_width) ** 2
         # print('this is width error', error[0])
 
         return error.reshape((-1, 1)) * 1000
 
 
-    def loss(self, pred, target, scaler):
+    def loss(self, pred, target):
 
         # print(scaler.data_max_)
         # print(scaler.data_min_)
-
-        device = 'cuda:1'
+        # print('this is pred', pred)
+        # print('this is target', target)
 
         value = (pred - target) ** 2
 

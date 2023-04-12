@@ -8,7 +8,7 @@ import numpy as np
 import random
 import math
 from PIL import Image
-from knolling_env3_real_xy import *
+from yolo_data_collection_env import *
 
 # np.random.seed(100)
 # random.seed(100)
@@ -39,7 +39,7 @@ def yolo_box(img, label):
 
 if __name__ == '__main__':
 
-
+    data_root = '/home/ubuntu/Desktop/knolling_dataset/yolo/'
     # p.connect(p.DIRECT)
     p.connect(p.GUI)
 
@@ -87,43 +87,43 @@ if __name__ == '__main__':
 
                 # xpos, ypos = xyz_resolve(xpos1,ypos1)
 
-                corn1, corn2, corn3, corn4 = find_corner(xpos1, ypos1, lucky_list[j], yawori)
-                # print('this is corn after find corner', corn1, corn2, corn3, corn4)
-
-                # corn1, corn2, corn3, corn4 = resolve_img(corn1, corn2, corn3, corn4)
-                # print('this is corn after resolve img', corn1, corn2, corn3, corn4)
-
-                corner_list.append([corn1, corn2, corn3, corn4])
-
-                corns = corner_list[j]
-
-                col_offset = 320
-                # row_offset = (0.15 - (0.3112 - 0.15)) * mm2px + 5
-                row_offset = 0
-
-                col_list = [int(mm2px * corns[0][1] + col_offset), int(mm2px * corns[3][1] + col_offset),
-                            int(mm2px * corns[1][1] + col_offset), int(mm2px * corns[2][1] + col_offset)]
-                row_list = [int(mm2px * corns[0][0] - row_offset), int(mm2px * corns[3][0] - row_offset),
-                            int(mm2px * corns[1][0] - row_offset), int(mm2px * corns[2][0] - row_offset)]
-                # print(col_list)
-                # print(row_list)
-
-                col_list = np.sort(col_list)
-                row_list = np.sort(row_list)
-                col_list[3] = col_list[3] + 7
-                col_list[0] = col_list[0] - 7
-
-                row_list[3] = row_list[3] + 7
-                row_list[0] = row_list[0] - 7
-
-                label_x = ((col_list[0] + col_list[3]) / 2)/640
-                label_y = (((row_list[0] + row_list[3]) / 2)+86)/640
-
-                length = (col_list[3] - col_list[0])/640
-                width = (row_list[3] - row_list[0])/640
-
-                # if lucky_list[j] == 2 and rdm_ori_yaw[j] < 0:
-                #     rdm_ori_yaw[j] = rdm_ori_yaw[j] + np.pi/2
+                # corn1, corn2, corn3, corn4 = find_corner(xpos1, ypos1, lucky_list[j], yawori)
+                # # print('this is corn after find corner', corn1, corn2, corn3, corn4)
+                #
+                # # corn1, corn2, corn3, corn4 = resolve_img(corn1, corn2, corn3, corn4)
+                # # print('this is corn after resolve img', corn1, corn2, corn3, corn4)
+                #
+                # corner_list.append([corn1, corn2, corn3, corn4])
+                #
+                # corns = corner_list[j]
+                #
+                # col_offset = 320
+                # # row_offset = (0.15 - (0.3112 - 0.15)) * mm2px + 5
+                # row_offset = 0
+                #
+                # col_list = [int(mm2px * corns[0][1] + col_offset), int(mm2px * corns[3][1] + col_offset),
+                #             int(mm2px * corns[1][1] + col_offset), int(mm2px * corns[2][1] + col_offset)]
+                # row_list = [int(mm2px * corns[0][0] - row_offset), int(mm2px * corns[3][0] - row_offset),
+                #             int(mm2px * corns[1][0] - row_offset), int(mm2px * corns[2][0] - row_offset)]
+                # # print(col_list)
+                # # print(row_list)
+                #
+                # col_list = np.sort(col_list)
+                # row_list = np.sort(row_list)
+                # col_list[3] = col_list[3] + 7
+                # col_list[0] = col_list[0] - 7
+                #
+                # row_list[3] = row_list[3] + 7
+                # row_list[0] = row_list[0] - 7
+                #
+                # label_x = ((col_list[0] + col_list[3]) / 2)/640
+                # label_y = (((row_list[0] + row_list[3]) / 2)+86)/640
+                #
+                # length = (col_list[3] - col_list[0])/640
+                # width = (row_list[3] - row_list[0])/640
+                #
+                # # if lucky_list[j] == 2 and rdm_ori_yaw[j] < 0:
+                # #     rdm_ori_yaw[j] = rdm_ori_yaw[j] + np.pi/2
 
 
                 element = []
@@ -144,24 +144,11 @@ if __name__ == '__main__':
                 # label.append(element)
 
         # print(label)
-        np.savetxt("../YOLO_data/Label/real_world_label_409/img%s.txt" %epoch, label,fmt='%.8s')
+        np.savetxt(os.path.join(data_root, "label/real_world_label_409/img%s.txt") %epoch, label,fmt='%.8s')
 
         # for nnn in range(1):
         lebal_list.append(element)
         my_im2 = env.get_image()
-
-        # ratio = 34 / 30
-        # x_ratio = 0.975
-        # y_ratio = 480 * x_ratio * ratio / 640
-        # print(int((640 - 640 * y_ratio) / 2), int((480 - 480 * x_ratio) / 2))
-        # print(int((640 - 640 * y_ratio) / 2 + int(640 * y_ratio)), int((480 - 480 * x_ratio) / 2) + int(480 * x_ratio))
-        # my_im2 = cv2.rectangle(my_im2, (int((640 - 640 * y_ratio) / 2), int((480 - 480 * x_ratio) / 2)),
-        #                        (int((640 - 640 * y_ratio) / 2 + int(640 * y_ratio)), int((480 - 480 * x_ratio) / 2) + int(480 * x_ratio)),
-        #                        (255, 0, 0), 1)
-
-        # my_im2 = cv2.rectangle(my_im2, (int((480 - 480 * x_ratio) / 2), int((640 - 640 * y_ratio) / 2)),
-        #                        (int((480 - 480 * x_ratio) / 2) + int(480 * x_ratio), int((640 - 640 * y_ratio) / 2 + int(640 * y_ratio))),
-        #                        (255, 0, 0), 1)
 
         # print(my_im2.shape)
         add = int((640 - 480) / 2)
@@ -171,7 +158,7 @@ if __name__ == '__main__':
         # cv2.imshow('zzz', img)
         # cv2.waitKey(0)
         # cv2.destroyWindow()
-        cv2.imwrite("../YOLO_data/Dataset/image_yolo_409/" + "IMG_test%s.png" % epoch, img)
+        cv2.imwrite(os.path.join(data_root, "input/image_yolo_409/" + "IMG_test%s.png") % epoch, img)
 
         # img = cv2.imread("Dataset/lego_yolo_403_test/" + "IMG_test%s.png" % epoch)
         # # cv2.namedWindow('zzz', 0)

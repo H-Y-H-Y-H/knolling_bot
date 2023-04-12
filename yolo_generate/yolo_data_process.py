@@ -1,14 +1,17 @@
 import numpy as np
-from knolling_env3_real_xy import *
+from yolo_data_collection_env import *
 
 if __name__ == '__main__':
 
+    data_root = '/home/ubuntu/Desktop/knolling_dataset/yolo/'
+
     mm2px = 530 / 0.34  # (1558)
-    total_num = 4000
+    total_num = 20
+    start_index = 2000
     num_item = 15
 
-    for i in range(total_num):
-        real_world_data = np.loadtxt("../YOLO_data/Label/real_world_label_409/img%s.txt" %i)
+    for i in range(start_index, total_num + start_index):
+        real_world_data = np.loadtxt(os.path.join(data_root, "label/real_world_label_409/img%s.txt") % i)
         corner_list = []
         label = []
         for j in range(num_item):
@@ -19,10 +22,6 @@ if __name__ == '__main__':
             yawori = real_world_data[j][3]
 
             corn1, corn2, corn3, corn4 = find_corner(xpos1, ypos1, int(lucky_list), yawori)
-            # print('this is corn after find corner', corn1, corn2, corn3, corn4)
-
-            # corn1, corn2, corn3, corn4 = resolve_img(corn1, corn2, corn3, corn4)
-            # print('this is corn after resolve img', corn1, corn2, corn3, corn4)
 
             corner_list.append([corn1, corn2, corn3, corn4])
 
@@ -31,8 +30,6 @@ if __name__ == '__main__':
             col_offset = 320
             # row_offset = (0.154 - (0.3112 - 0.154)) * mm2px + 5
             row_offset = 0
-            # print(col_offset)
-            # print(row_offset)
 
             col_list = [int(mm2px * corns[0][1] + col_offset), int(mm2px * corns[3][1] + col_offset),
                         int(mm2px * corns[1][1] + col_offset), int(mm2px * corns[2][1] + col_offset)]
@@ -68,4 +65,30 @@ if __name__ == '__main__':
             label.append(element)
             # print(label)
 
-        np.savetxt("../YOLO_data/Label/yolo_label_409/img%s.txt" % i, label, fmt='%.8s')
+        np.savetxt(os.path.join(data_root, "label/yolo_label_409/img%s.txt") % i, label, fmt='%.8s')
+
+    import shutil
+
+    ratio = 0.8
+
+    train_num = int(total_num * ratio)
+    test_num = int(total_num - train_num)
+    print(test_num)
+
+    for i in range(start_index, start_index + train_num):
+        cur_path = os.path.join(data_root, 'input/image_yolo_409/IMG_test%s.png') % (i)
+        tar_path = os.path.join(data_root, 'train_409/images/img%s.png') % i
+        shutil.copy(cur_path, tar_path)
+
+        cur_path = os.path.join(data_root, 'label/yolo_label_409/img%s.txt') % (i)
+        tar_path = os.path.join(data_root, 'train_409/labels/img%s.txt') % i
+        shutil.copy(cur_path, tar_path)
+
+    for i in range(start_index, start_index + test_num):
+        cur_path = os.path.join(data_root, 'input/image_yolo_409/IMG_test%s.png') % (i)
+        tar_path = os.path.join(data_root, 'test_409/images/img%s.png') % i
+        shutil.copy(cur_path, tar_path)
+
+        cur_path = os.path.join(data_root, 'label/yolo_label_409/img%s.txt') % (i)
+        tar_path = os.path.join(data_root, 'test_409/labels/img%s.txt') % i
+        shutil.copy(cur_path, tar_path)

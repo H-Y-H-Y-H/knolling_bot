@@ -27,210 +27,193 @@ from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 import os
 from sklearn.preprocessing import MinMaxScaler
-# from train_img.visual_domain_random import eval_img4Batch
+
+from network import *
 
 
 torch.manual_seed(42)
 criterion = 'lwcossin'
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-class block(nn.Module):
-    def __init__(self, in_channels, intermediate_channels, identity_downsample=None, stride=(1, 1)):
-        super(block, self).__init__()
-        self.expansion = 4
-        self.conv1 = nn.Conv2d(
-            in_channels, intermediate_channels, kernel_size=(1, 1), stride=(1, 1), padding=0, bias=False
-        )
-        self.bn1 = nn.BatchNorm2d(intermediate_channels)
-        self.conv2 = nn.Conv2d(
-            intermediate_channels,
-            intermediate_channels,
-            kernel_size=(3, 3),
-            stride=stride,
-            padding=1,
-            bias=False
-        )
-        self.bn2 = nn.BatchNorm2d(intermediate_channels)
-        self.conv3 = nn.Conv2d(
-            intermediate_channels,
-            intermediate_channels * self.expansion,
-            kernel_size=(1, 1),
-            stride=(1, 1),
-            padding=0,
-            bias=False
-        )
-        self.bn3 = nn.BatchNorm2d(intermediate_channels * self.expansion)
-        self.relu = nn.ReLU()
-
-        self.identity_downsample = identity_downsample
-        self.stride = stride
-
-    def forward(self, x):
-
-        identity = x.clone()
-
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu(x)
-        x = self.conv3(x)
-        x = self.bn3(x)
-
-        if self.identity_downsample is not None:
-            identity = self.identity_downsample(identity)
-
-        x += identity
-        x = self.relu(x)
-        return x
-
-
-class ResNet(nn.Module):
-    def __init__(self, block, layers, image_channels, output_size):
-        super(ResNet, self).__init__()
-        self.in_channels = 64
-        self.conv1 = nn.Conv2d(
-            image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.05)
-        self.sigmoid = nn.Sigmoid()
-
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-
-        # Essentially the entire ResNet architecture are in these 4 lines below
-        self.layer1 = self._make_layer(
-            block, layers[0], intermediate_channels=64, stride=1
-        )
-        self.layer2 = self._make_layer(
-            block, layers[1], intermediate_channels=128, stride=2
-        )
-        self.layer3 = self._make_layer(
-            block, layers[2], intermediate_channels=256, stride=2
-        )
-        self.layer4 = self._make_layer(
-            block, layers[3], intermediate_channels=512, stride=2
-        )
-
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-
-
-        # 306_combine structure
-        self.fc0 = nn.Linear(512 * 4, 512 * 6)
-        self.fc1 = nn.Linear(512 * 6, 256 * 6)
-        self.fc2 = nn.Linear(256 * 6, 256 * 4)
-        self.fc3 = nn.Linear(256 * 4, 512)
-        self.fc4 = nn.Linear(512, 256)
-        self.fc5 = nn.Linear(256, 128)
-        self.fc6_1 = nn.Linear(128, 80)
-        self.fc6_2 = nn.Linear(128, 64)
-        self.fc7_1 = nn.Linear(80, 32)
-        self.fc7_2 = nn.Linear(64, 16)
-        self.fc8_1 = nn.Linear(32, output_size - 2)
-        self.fc8_2 = nn.Linear(16, 2)
-
-    def forward(self, IMG):
-
-        x = self.conv1(IMG)
-        x = self.bn1(x)
-        x = self.maxpool(x)
-        x = self.relu(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-
-        # 306_combine structure
-        x = self.avgpool(x)
-        x = x.reshape(x.shape[0], -1)
-        x = self.relu(self.fc0(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc3(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc4(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc5(x))
-        x = self.dropout(x)
-        x1 = self.relu(self.fc6_1(x))
-        x1 = self.dropout(x1)
-        x1 = self.relu(self.fc7_1(x1))
-        x1 = self.dropout(x1)
-        x1 = self.fc8_1(x1)
-        x2 = self.relu(self.fc6_2(x))
-        x2 = self.dropout(x2)
-        x2 = self.relu(self.fc7_2(x2))
-        x2 = self.dropout(x2)
-        x2 = self.fc8_2(x2)
-
-        # x = self.fc7(x)
-        # print(x1)
-        # print(x2)
-        # print(torch.cat((x1, x2), dim=-1))
-
-        return torch.cat((x1, x2), dim=-1)
-        # return x
-
-    def loss(self, pred, target):
-            value = (pred - target) ** 2
-
-            return torch.mean(value)
-
-    # def loss(self, pred, target):
-
-    #     # index_yaw = 3, 11, 19, 27, 35
-    #     # index_LWH = [4,5,6] [12,13,14] [20,21,22] [28,29,30] [36,37,38]
-    #     weights = np.ones(40)
-    #
-    #     for k in range(5):
-    #         l = target[4 + 8*k]
-    #         w = target[5 + 8*k]
-    #         h = target[6 + 8*k]
-    #         if l == w == h:
-    #             weights[3 + 8*k] = 0.01
-    #
-    #     class_weights = torch.from_numpy(weights)
-    #     loss = nn.CrossEntropyLoss(weight=class_weights)
-    #
-    #     return loss(pred, target)
-
-    def _make_layer(self, block, num_residual_blocks, intermediate_channels, stride):
-        identity_downsample = None
-        layers = []
-
-        # Either if we half the input space for ex, 56x56 -> 28x28 (stride=2), or channels changes
-        # we need to adapt the Identity (skip connection) so it will be able to be added
-        # to the layer that's ahead
-        if stride != 1 or self.in_channels != intermediate_channels * 4:
-            identity_downsample = nn.Sequential(
-                nn.Conv2d(
-                    self.in_channels,
-                    intermediate_channels * 4,
-                    kernel_size=1,
-                    stride=stride,
-                    bias=False
-                ),
-                nn.BatchNorm2d(intermediate_channels * 4),
-            )
-
-        layers.append(
-            block(self.in_channels, intermediate_channels, identity_downsample, stride)
-        )
-
-        # The expansion size is always 4 for ResNet 50,101,152
-        self.in_channels = intermediate_channels * 4
-
-        # For example for first resnet layer: 256 will be mapped to 64 as intermediate layer,
-        # then finally back to 256. Hence no identity downsample is needed, since stride = 1,
-        # and also same amount of channels.
-        for i in range(num_residual_blocks - 1):
-            layers.append(block(self.in_channels, intermediate_channels))
-
-        return nn.Sequential(*layers)
+# class block(nn.Module):
+#     def __init__(self, in_channels, intermediate_channels, identity_downsample=None, stride=(1, 1)):
+#         super(block, self).__init__()
+#         self.expansion = 4
+#         self.conv1 = nn.Conv2d(
+#             in_channels, intermediate_channels, kernel_size=(1, 1), stride=(1, 1), padding=0, bias=False
+#         )
+#         self.bn1 = nn.BatchNorm2d(intermediate_channels)
+#         self.conv2 = nn.Conv2d(
+#             intermediate_channels,
+#             intermediate_channels,
+#             kernel_size=(3, 3),
+#             stride=stride,
+#             padding=1,
+#             bias=False
+#         )
+#         self.bn2 = nn.BatchNorm2d(intermediate_channels)
+#         self.conv3 = nn.Conv2d(
+#             intermediate_channels,
+#             intermediate_channels * self.expansion,
+#             kernel_size=(1, 1),
+#             stride=(1, 1),
+#             padding=0,
+#             bias=False
+#         )
+#         self.bn3 = nn.BatchNorm2d(intermediate_channels * self.expansion)
+#         self.relu = nn.ReLU()
+#
+#         self.identity_downsample = identity_downsample
+#         self.stride = stride
+#
+#     def forward(self, x):
+#
+#         identity = x.clone()
+#
+#         x = self.conv1(x)
+#         x = self.bn1(x)
+#         x = self.relu(x)
+#         x = self.conv2(x)
+#         x = self.bn2(x)
+#         x = self.relu(x)
+#         x = self.conv3(x)
+#         x = self.bn3(x)
+#
+#         if self.identity_downsample is not None:
+#             identity = self.identity_downsample(identity)
+#
+#         x += identity
+#         x = self.relu(x)
+#         return x
+#
+#
+# class ResNet(nn.Module):
+#     def __init__(self, block, layers, image_channels, output_size):
+#         super(ResNet, self).__init__()
+#         self.in_channels = 64
+#         self.conv1 = nn.Conv2d(
+#             image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+#         self.bn1 = nn.BatchNorm2d(64)
+#         self.relu = nn.ReLU()
+#         self.dropout = nn.Dropout(p=0.05)
+#         self.sigmoid = nn.Sigmoid()
+#
+#         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+#
+#         # Essentially the entire ResNet architecture are in these 4 lines below
+#         self.layer1 = self._make_layer(
+#             block, layers[0], intermediate_channels=64, stride=1
+#         )
+#         self.layer2 = self._make_layer(
+#             block, layers[1], intermediate_channels=128, stride=2
+#         )
+#         self.layer3 = self._make_layer(
+#             block, layers[2], intermediate_channels=256, stride=2
+#         )
+#         self.layer4 = self._make_layer(
+#             block, layers[3], intermediate_channels=512, stride=2
+#         )
+#
+#         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+#
+#
+#         # 306_combine structure
+#         self.fc0 = nn.Linear(512 * 4, 512 * 6)
+#         self.fc1 = nn.Linear(512 * 6, 256 * 6)
+#         self.fc2 = nn.Linear(256 * 6, 256 * 4)
+#         self.fc3 = nn.Linear(256 * 4, 512)
+#         self.fc4 = nn.Linear(512, 256)
+#         self.fc5 = nn.Linear(256, 128)
+#         self.fc6_1 = nn.Linear(128, 80)
+#         self.fc6_2 = nn.Linear(128, 64)
+#         self.fc7_1 = nn.Linear(80, 32)
+#         self.fc7_2 = nn.Linear(64, 16)
+#         self.fc8_1 = nn.Linear(32, output_size - 2)
+#         self.fc8_2 = nn.Linear(16, 2)
+#
+#     def forward(self, IMG):
+#
+#         x = self.conv1(IMG)
+#         x = self.bn1(x)
+#         x = self.maxpool(x)
+#         x = self.relu(x)
+#         x = self.layer1(x)
+#         x = self.layer2(x)
+#         x = self.layer3(x)
+#         x = self.layer4(x)
+#
+#         # 306_combine structure
+#         x = self.avgpool(x)
+#         x = x.reshape(x.shape[0], -1)
+#         x = self.relu(self.fc0(x))
+#         x = self.dropout(x)
+#         x = self.relu(self.fc1(x))
+#         x = self.dropout(x)
+#         x = self.relu(self.fc2(x))
+#         x = self.dropout(x)
+#         x = self.relu(self.fc3(x))
+#         x = self.dropout(x)
+#         x = self.relu(self.fc4(x))
+#         x = self.dropout(x)
+#         x = self.relu(self.fc5(x))
+#         x = self.dropout(x)
+#         x1 = self.relu(self.fc6_1(x))
+#         x1 = self.dropout(x1)
+#         x1 = self.relu(self.fc7_1(x1))
+#         x1 = self.dropout(x1)
+#         x1 = self.fc8_1(x1)
+#         x2 = self.relu(self.fc6_2(x))
+#         x2 = self.dropout(x2)
+#         x2 = self.relu(self.fc7_2(x2))
+#         x2 = self.dropout(x2)
+#         x2 = self.fc8_2(x2)
+#
+#         # x = self.fc7(x)
+#         # print(x1)
+#         # print(x2)
+#         # print(torch.cat((x1, x2), dim=-1))
+#
+#         return torch.cat((x1, x2), dim=-1)
+#         # return x
+#
+#     def loss(self, pred, target):
+#             value = (pred - target) ** 2
+#
+#             return torch.mean(value)
+#
+#     def _make_layer(self, block, num_residual_blocks, intermediate_channels, stride):
+#         identity_downsample = None
+#         layers = []
+#
+#         # Either if we half the input space for ex, 56x56 -> 28x28 (stride=2), or channels changes
+#         # we need to adapt the Identity (skip connection) so it will be able to be added
+#         # to the layer that's ahead
+#         if stride != 1 or self.in_channels != intermediate_channels * 4:
+#             identity_downsample = nn.Sequential(
+#                 nn.Conv2d(
+#                     self.in_channels,
+#                     intermediate_channels * 4,
+#                     kernel_size=1,
+#                     stride=stride,
+#                     bias=False
+#                 ),
+#                 nn.BatchNorm2d(intermediate_channels * 4),
+#             )
+#
+#         layers.append(
+#             block(self.in_channels, intermediate_channels, identity_downsample, stride)
+#         )
+#
+#         # The expansion size is always 4 for ResNet 50,101,152
+#         self.in_channels = intermediate_channels * 4
+#
+#         # For example for first resnet layer: 256 will be mapped to 64 as intermediate layer,
+#         # then finally back to 256. Hence no identity downsample is needed, since stride = 1,
+#         # and also same amount of channels.
+#         for i in range(num_residual_blocks - 1):
+#             layers.append(block(self.in_channels, intermediate_channels))
+#
+#         return nn.Sequential(*layers)
 
 def ResNet18(img_channel, output_size):
     return ResNet(block, [2, 2, 2, 2], img_channel, output_size)
@@ -321,7 +304,7 @@ def eval_img4Batch(img_array, num_obj, sample_num=100):
     if criterion == 'lwcossin':
         model = ResNet50(img_channel=3, output_size=4).to(device, dtype=torch.float32)
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        model.load_state_dict(torch.load('Model/best_model_407_combine_2.pt', map_location='cuda:0'))
+        model.load_state_dict(torch.load('./ResNet_data/Model/best_model_407_combine.pt', map_location='cuda:0'))
         # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
         model.eval()
 
@@ -333,16 +316,21 @@ def eval_img4Batch(img_array, num_obj, sample_num=100):
         close_index = int(data_4_train * ratio)
         normal_index = int(data_4_train * (1 - ratio))
 
-        close_label = np.loadtxt('./Dataset/label/label_407_close.csv')[:, :4]
-        normal_label = np.loadtxt('./Dataset/label/label_407_normal.csv')[:, :4]
-        test_label = []
+        close_label = np.loadtxt('./ResNet_data/Label/label_407_close.csv')[:, :4]
+        normal_label = np.loadtxt('./ResNet_data/Label/label_407_normal.csv')[:, :4]
 
+        norm_parameters = np.concatenate((np.min(normal_label, axis=0), np.max(normal_label, axis=0)))
+
+        test_label = []
         for i in range(close_num_test):
             test_label.append(close_label[close_index])
             close_index += 1
         for i in range(normal_num_test):
             test_label.append(normal_label[normal_index])
             normal_index += 1
+
+        # test_label -= norm_parameters[:4]
+        # test_label /= norm_parameters[4:]
 
         scaler = MinMaxScaler()
         scaler.fit(test_label)
@@ -386,6 +374,10 @@ def eval_img4Batch(img_array, num_obj, sample_num=100):
                 pred_lwcossin = model.forward(img)
                 pred_lwcossin = pred_lwcossin.cpu().detach().numpy()
                 # print('this is', pred_x1y1x2y2l)
+
+                # test_label -= norm_parameters[:4]
+                # test_label /= norm_parameters[4:]
+
                 pred_lwcossin = scaler.inverse_transform(pred_lwcossin)
                 print('this is', pred_lwcossin)
                 # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
@@ -607,7 +599,7 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_ope
     blank = np.zeros([h, w, ch], img.dtype)
     # img = cv2.addWeighted(img, 1.1, blank, 0.1, 60)
 
-    cv2.imwrite('img_yolo%s.png' % num_obj, img)
+    # cv2.imwrite('img_yolo%s.png' % num_obj, img)
 
     if det_color == 'undefined':
         obj_color = img[48, 48, :]

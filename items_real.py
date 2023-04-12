@@ -73,35 +73,33 @@ class Sort_objects():
 
         # config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
 
-        if device_product_line == 'L500':
-            config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
-        else:
-            config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
             # config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 6)
         # Start streaming
         pipeline.start(config)
 
+        frames = None
         for _ in range(100):
             # Wait for a coherent pair of frames: depth and color
             frames = pipeline.wait_for_frames()
             # depth_frame = frames.get_depth_frame()
-            color_frame = frames.get_color_frame()
+        color_frame = frames.get_color_frame()
 
-            color_image = np.asanyarray(color_frame.get_data())
+        color_image = np.asanyarray(color_frame.get_data())
 
-            color_colormap_dim = color_image.shape
-            resized_color_image = color_image
+        color_colormap_dim = color_image.shape
+        resized_color_image = color_image
 
-            add = int((640 - 480) / 2)
-            resized_color_image = cv2.copyMakeBorder(resized_color_image, add, add, 0, 0, cv2.BORDER_CONSTANT,
-                                                     None, value=0)
-            cv2.imwrite("Adjust_images/328_testpip.png", resized_color_image)
+        add = int((640 - 480) / 2)
+        resized_color_image = cv2.copyMakeBorder(resized_color_image, add, add, 0, 0, cv2.BORDER_CONSTANT,
+                                                 None, value=0)
+        cv2.imwrite("read_real_cam.png", resized_color_image)
 
-            cv2.waitKey(1)
+        # cv2.waitKey(1)
 
-        img = cv2.imread("Adjust_images/328_testpip.png")
+        # img = cv2.imread("read_real_cam.png")
 
-        results = np.asarray(detect(img, real_operate=True, order_truth=None))
+        results = np.asarray(detect(resized_color_image, real_operate=True, order_truth=None))
         results = np.asarray(results[:, :5]).astype(np.float32)
         # structure: x,y,yaw,length,width
 
@@ -132,40 +130,6 @@ class Sort_objects():
                     print('detect failed!!!')
             if len(kind_index) != 0:
                 all_index.append(kind_index)
-
-        # results = np.asarray(detect(img))
-        # results = np.asarray(results[:, :5]).astype(np.float32)
-        # # results[:, 2] = results[:, 2] * math.pi / 180
-        # print('this is result', results)
-        # print('this is correct', self.correct)
-        # # structure: x,y,yaw,length,width
-        #
-        # all_index = []
-        # new_xyz_list = []
-        # kind = []
-        # new_results = []
-        # z = 0
-        # roll = 0
-        # pitch = 0
-        # num = 0
-        #
-        # for i in range(len(self.correct)):
-        #     kind_index = []
-        #     for j in range(len(results)):
-        #         if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
-        #             kind_index.append(num)
-        #             new_xyz_list.append(self.correct[i])
-        #             num += 1
-        #             if i in kind:
-        #                 pass
-        #             else:
-        #                 kind.append(i)
-        #             new_results.append(results[j])
-        #         else:
-        #             print('detect failed!!!')
-        #     if len(kind_index) != 0:
-        #         print(kind_index)
-        #         all_index.append(kind_index)
 
         new_xyz_list = np.asarray(new_xyz_list)
         new_results = np.asarray(new_results)

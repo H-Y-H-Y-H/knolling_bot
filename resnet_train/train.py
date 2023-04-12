@@ -1,13 +1,15 @@
-from VD_model_ori_cos_sin import *
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import time
 import matplotlib.pyplot as plt
 import os
 from sklearn.preprocessing import MinMaxScaler
+import sys
+sys.path.append('/home/ubuntu/Desktop/knolling_bot')
+sys.path.append('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot')
+from network import *
 
 import wandb
-
 wandb_flag = False
 
 if wandb_flag == True:
@@ -56,18 +58,27 @@ class VD_Data(Dataset):
 if __name__ == "__main__":
 
     if torch.cuda.is_available():
-        device = 'cuda:1'
+        device = 'cuda:0'
     else:
         device = 'cpu'
     print("Device:", device)
-    # torch.cuda.set_device(1)
+
+    finetune_flag = False
+    data_root = '/home/ubuntu/Desktop/knolling_dataset/resnet/'
+    log = 'log_411/'
 
     # eval_model()
 
     ################# choose the ratio of close and normal img #################
-    model_path = '../ResNet_data/Model/'
-    curve_path = '../ResNet_data/Curve/'
-    log_path = '../ResNet_data/Log/'
+    model_path = os.path.join(data_root, log, 'model/')
+    curve_path = os.path.join(data_root, log, 'curve/')
+    log_path = os.path.join(data_root, log, 'log/')
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+    if not os.path.exists(curve_path):
+        os.makedirs(curve_path)
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
 
     data_num = 300000
     data_4_train = int(data_num * 0.8)
@@ -79,15 +90,15 @@ if __name__ == "__main__":
     print('this is num of close', int(close_num_train + close_num_test))
     print('this is num of normal', int(normal_num_train + normal_num_test))
 
-    close_path = "../ResNet_data/Dataset/yolo_409_close/"
-    normal_path = "../ResNet_data/Dataset/yolo_409_normal/"
+    close_path = os.path.join(data_root, "input/yolo_407_close/")
+    normal_path = os.path.join(data_root, "input/yolo_407_normal/")
     close_index = 0
     normal_index = 0
     train_data = []
     test_data = []
 
-    close_label = np.loadtxt('../ResNet_data/Label/label_407_close.csv')
-    normal_label = np.loadtxt('../ResNet_data/Label/label_407_normal.csv')
+    close_label = np.loadtxt(os.path.join(data_root, 'label/label_407_close_train.csv'))
+    normal_label = np.loadtxt(os.path.join(data_root, 'label/label_407_normal_train.csv'))
     # train_label = []
     # test_label = []
 
@@ -117,27 +128,6 @@ if __name__ == "__main__":
         img = plt.imread(normal_path + "img%d.png" % i)
         test_data.append(img)
 
-    # for i in range(int(close_num_train)):
-    #     img = plt.imread(close_path + "img%d.png" % close_index)
-    #     train_label.append(close_label[close_index])
-    #     train_data.append(img)
-    #     close_index += 1
-    # for i in range(int(normal_num_train)):
-    #     img = plt.imread(normal_path + "img%d.png" % normal_index)
-    #     train_label.append(normal_label[normal_index])
-    #     train_data.append(img)
-    #     normal_index += 1
-    # for i in range(int(close_num_test)):
-    #     img = plt.imread(close_path + "img%d.png" % close_index)
-    #     test_label.append(close_label[close_index])
-    #     test_data.append(img)
-    #     close_index += 1
-    # for i in range(int(normal_num_test)):
-    #     img = plt.imread(normal_path + "img%d.png" % normal_index)
-    #     test_label.append(normal_label[normal_index])
-    #     test_data.append(img)
-    #     normal_index += 1
-    #
     # train_label = np.asarray(train_label)
     # test_label = np.asarray(test_label)
     # train_data = np.asarray(train_data)
@@ -164,7 +154,10 @@ if __name__ == "__main__":
                              shuffle=True, num_workers=4)
 
     model = ResNet50(img_channel=3, output_size=4).to(device, dtype=torch.float32)
-    # model.load_state_dict(torch.load('../model/best_model_407_combine.pt'))
+    if finetune_flag == True:
+        model.load_state_dict(torch.load(model_path + 'best_model_407_combine.pt'))
+    else:
+        pass
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=12, gamma = 0.1)
@@ -188,6 +181,7 @@ if __name__ == "__main__":
 
         # Training Procedure
         model.train()
+        # model.eval()
         for batch in train_loader:
 
             img, lwcossin = batch["image"], batch["lwcossin"]
@@ -226,14 +220,14 @@ if __name__ == "__main__":
         all_valid_L.append(avg_valid_L)
 
         scheduler.step()
-        print('this is min_loss', min_loss)
-        print('this is avg_valid_L', avg_valid_L)
+        # print('this is min_loss', min_loss)
+        # print('this is avg_valid_L', avg_valid_L)
         if avg_valid_L < min_loss:
             print('Training_Loss At Epoch ' + str(epoch) + ':\t' + str(avg_train_L))
             print('Testing_Loss At Epoch ' + str(epoch) + ':\t' + str(avg_valid_L))
             min_loss = avg_valid_L
 
-            PATH = model_path + 'best_model_407_combine_2.pt'
+            PATH = model_path + 'best_model_411_combine.pt'
 
             # torch.save({
             #             'model_state_dict': model.state_dict(),
@@ -247,8 +241,8 @@ if __name__ == "__main__":
         if wandb_flag == True:
             wandb.log({'train loss': all_train_L, 'test loss': all_valid_L})
 
-        np.savetxt(log_path + "training_L_yolo_407_combine_2.csv", np.asarray(all_train_L))
-        np.savetxt(log_path + "testing_L_yolo_407_combine_2.csv", np.asarray(all_valid_L))
+        np.savetxt(log_path + "training_L_yolo_411_combine.csv", np.asarray(all_train_L))
+        np.savetxt(log_path + "testing_L_yolo_411_combine.csv", np.asarray(all_valid_L))
         # np.savetxt(log_path + "testing_L_yolo_115_ori.csv", np.asarray(all_valid_L))
 
         if abort_learning > 20:
@@ -263,7 +257,7 @@ if __name__ == "__main__":
     plt.plot(np.arange(len(all_valid_L)), all_valid_L, label='validation')
     plt.title("Learning Curve")
     plt.legend()
-    plt.savefig(curve_path + "lc_407_combine_2.png")
+    plt.savefig(curve_path + "lc_411_combine.png")
     # plt.show()
 
     # wandb.log_artifact(model)
