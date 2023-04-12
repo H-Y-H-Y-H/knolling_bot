@@ -1874,7 +1874,7 @@ if __name__ == '__main__':
         gap_block = 0.02
         random_offset = False
         real_operate = False
-        obs_order = 'sim_obj'
+        obs_order = 'sim_image_obj'
         check_dataset_error = False
 
 

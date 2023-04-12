@@ -238,49 +238,74 @@ def ResNet18(img_channel, output_size):
 def ResNet50(img_channel, output_size):
     return ResNet(block, [3, 4, 6, 3], img_channel, output_size)
 
+# class VD_Data(Dataset):
+#     def __init__(self, img_data, label_data, transform=None):
+#         self.img_data = img_data
+#         self.label_data = label_data
+#         self.transform = transform
+#
+#     def __getitem__(self, idx):
+#         img_sample = self.img_data[idx]
+#         label_sample = self.label_data[idx]
+#
+#         sample = {'image': img_sample, 'xyzyaw': label_sample}
+#
+#         if self.transform:
+#             sample = self.transform(sample)
+#
+#         return sample
+#
+#     def __len__(self):
+#         return len(self.img_data)
+
 class VD_Data(Dataset):
-    def __init__(self, img_data, label_data, transform=None):
+    def __init__(self, img_data, label_data):
         self.img_data = img_data
         self.label_data = label_data
-        self.transform = transform
 
     def __getitem__(self, idx):
         img_sample = self.img_data[idx]
         label_sample = self.label_data[idx]
 
-        sample = {'image': img_sample, 'xyzyaw': label_sample}
+        img_sample = img_sample[:,:,:3]
+        img_sample = img_sample.transpose((2, 0, 1))
 
-        if self.transform:
-            sample = self.transform(sample)
+        # label_sample = scaler.transform(label_sample)
+
+        img_sample = torch.from_numpy(img_sample)
+        label_sample = torch.from_numpy(label_sample)
+
+        sample = {'image': img_sample, 'lwcossin': label_sample}
 
         return sample
 
     def __len__(self):
         return len(self.img_data)
 
-class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
 
-    def __call__(self, sample):
-        img_sample, label_sample= sample['image'], sample['xyzyaw']
-        img_sample = np.asarray([img_sample])
-
-        # print(type(img_sample))
-        # swap color axis because
-        # numpy image: H x W x C
-        # torch image: C X H X W
-        # print(img_sample.shape)
-        img_sample = np.squeeze(img_sample)
-        img_sample = img_sample[:,:,:3]
-        # print(img_sample.shape)
-        # image = img_sample
-        image = img_sample.transpose((2, 0, 1))
-        # print(image.shape)
-        img_sample = torch.from_numpy(image)
-
-
-        return {'image': img_sample,
-                'xyzyaw': label_sample}
+# class ToTensor(object):
+#     """Convert ndarrays in sample to Tensors."""
+#
+#     def __call__(self, sample):
+#         img_sample, label_sample= sample['image'], sample['xyzyaw']
+#         img_sample = np.asarray([img_sample])
+#
+#         # print(type(img_sample))
+#         # swap color axis because
+#         # numpy image: H x W x C
+#         # torch image: C X H X W
+#         # print(img_sample.shape)
+#         img_sample = np.squeeze(img_sample)
+#         img_sample = img_sample[:,:,:3]
+#         # print(img_sample.shape)
+#         # image = img_sample
+#         image = img_sample.transpose((2, 0, 1))
+#         # print(image.shape)
+#         img_sample = torch.from_numpy(image)
+#
+#
+#         return {'image': img_sample,
+#                 'xyzyaw': label_sample}
 
 def eval_img4Batch(img_array, num_obj, sample_num=100):
 
@@ -294,9 +319,9 @@ def eval_img4Batch(img_array, num_obj, sample_num=100):
     print("Device:", device)
 
     if criterion == 'lwcossin':
-        model = ResNet50(img_channel=3, output_size=4).to(device)
+        model = ResNet50(img_channel=3, output_size=4).to(device, dtype=torch.float32)
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        model.load_state_dict(torch.load('Model/best_model_407_combine.pt', map_location='cuda:0'))
+        model.load_state_dict(torch.load('Model/best_model_407_combine_2.pt', map_location='cuda:0'))
         # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
         model.eval()
 
@@ -332,7 +357,7 @@ def eval_img4Batch(img_array, num_obj, sample_num=100):
             test_data.append(img_array1)
 
         test_dataset = VD_Data(
-            img_data=test_data, label_data=test_label, transform=ToTensor())
+            img_data=test_data, label_data=test_label)
 
         BATCH_SIZE = 32
 
@@ -357,7 +382,7 @@ def eval_img4Batch(img_array, num_obj, sample_num=100):
                 cv2.destroyAllWindows()
                 ############################## test the shape of img ##############################
 
-                img = img.to(device)
+                img = img.to(device, dtype=torch.float32)
                 pred_lwcossin = model.forward(img)
                 pred_lwcossin = pred_lwcossin.cpu().detach().numpy()
                 # print('this is', pred_x1y1x2y2l)
