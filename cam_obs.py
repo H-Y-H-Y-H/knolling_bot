@@ -30,216 +30,45 @@ from sklearn.preprocessing import MinMaxScaler
 
 from network import *
 
-
 torch.manual_seed(42)
-criterion = 'lwcossin'
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+data_root = '/home/ubuntu/Desktop/knolling_dataset/resnet/'
+log = 'log_412_norm_2/'
+norm_flag = False
 
-# class block(nn.Module):
-#     def __init__(self, in_channels, intermediate_channels, identity_downsample=None, stride=(1, 1)):
-#         super(block, self).__init__()
-#         self.expansion = 4
-#         self.conv1 = nn.Conv2d(
-#             in_channels, intermediate_channels, kernel_size=(1, 1), stride=(1, 1), padding=0, bias=False
-#         )
-#         self.bn1 = nn.BatchNorm2d(intermediate_channels)
-#         self.conv2 = nn.Conv2d(
-#             intermediate_channels,
-#             intermediate_channels,
-#             kernel_size=(3, 3),
-#             stride=stride,
-#             padding=1,
-#             bias=False
-#         )
-#         self.bn2 = nn.BatchNorm2d(intermediate_channels)
-#         self.conv3 = nn.Conv2d(
-#             intermediate_channels,
-#             intermediate_channels * self.expansion,
-#             kernel_size=(1, 1),
-#             stride=(1, 1),
-#             padding=0,
-#             bias=False
-#         )
-#         self.bn3 = nn.BatchNorm2d(intermediate_channels * self.expansion)
-#         self.relu = nn.ReLU()
-#
-#         self.identity_downsample = identity_downsample
-#         self.stride = stride
-#
-#     def forward(self, x):
-#
-#         identity = x.clone()
-#
-#         x = self.conv1(x)
-#         x = self.bn1(x)
-#         x = self.relu(x)
-#         x = self.conv2(x)
-#         x = self.bn2(x)
-#         x = self.relu(x)
-#         x = self.conv3(x)
-#         x = self.bn3(x)
-#
-#         if self.identity_downsample is not None:
-#             identity = self.identity_downsample(identity)
-#
-#         x += identity
-#         x = self.relu(x)
-#         return x
-#
-#
-# class ResNet(nn.Module):
-#     def __init__(self, block, layers, image_channels, output_size):
-#         super(ResNet, self).__init__()
-#         self.in_channels = 64
-#         self.conv1 = nn.Conv2d(
-#             image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
-#         self.bn1 = nn.BatchNorm2d(64)
-#         self.relu = nn.ReLU()
-#         self.dropout = nn.Dropout(p=0.05)
-#         self.sigmoid = nn.Sigmoid()
-#
-#         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-#
-#         # Essentially the entire ResNet architecture are in these 4 lines below
-#         self.layer1 = self._make_layer(
-#             block, layers[0], intermediate_channels=64, stride=1
-#         )
-#         self.layer2 = self._make_layer(
-#             block, layers[1], intermediate_channels=128, stride=2
-#         )
-#         self.layer3 = self._make_layer(
-#             block, layers[2], intermediate_channels=256, stride=2
-#         )
-#         self.layer4 = self._make_layer(
-#             block, layers[3], intermediate_channels=512, stride=2
-#         )
-#
-#         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-#
-#
-#         # 306_combine structure
-#         self.fc0 = nn.Linear(512 * 4, 512 * 6)
-#         self.fc1 = nn.Linear(512 * 6, 256 * 6)
-#         self.fc2 = nn.Linear(256 * 6, 256 * 4)
-#         self.fc3 = nn.Linear(256 * 4, 512)
-#         self.fc4 = nn.Linear(512, 256)
-#         self.fc5 = nn.Linear(256, 128)
-#         self.fc6_1 = nn.Linear(128, 80)
-#         self.fc6_2 = nn.Linear(128, 64)
-#         self.fc7_1 = nn.Linear(80, 32)
-#         self.fc7_2 = nn.Linear(64, 16)
-#         self.fc8_1 = nn.Linear(32, output_size - 2)
-#         self.fc8_2 = nn.Linear(16, 2)
-#
-#     def forward(self, IMG):
-#
-#         x = self.conv1(IMG)
-#         x = self.bn1(x)
-#         x = self.maxpool(x)
-#         x = self.relu(x)
-#         x = self.layer1(x)
-#         x = self.layer2(x)
-#         x = self.layer3(x)
-#         x = self.layer4(x)
-#
-#         # 306_combine structure
-#         x = self.avgpool(x)
-#         x = x.reshape(x.shape[0], -1)
-#         x = self.relu(self.fc0(x))
-#         x = self.dropout(x)
-#         x = self.relu(self.fc1(x))
-#         x = self.dropout(x)
-#         x = self.relu(self.fc2(x))
-#         x = self.dropout(x)
-#         x = self.relu(self.fc3(x))
-#         x = self.dropout(x)
-#         x = self.relu(self.fc4(x))
-#         x = self.dropout(x)
-#         x = self.relu(self.fc5(x))
-#         x = self.dropout(x)
-#         x1 = self.relu(self.fc6_1(x))
-#         x1 = self.dropout(x1)
-#         x1 = self.relu(self.fc7_1(x1))
-#         x1 = self.dropout(x1)
-#         x1 = self.fc8_1(x1)
-#         x2 = self.relu(self.fc6_2(x))
-#         x2 = self.dropout(x2)
-#         x2 = self.relu(self.fc7_2(x2))
-#         x2 = self.dropout(x2)
-#         x2 = self.fc8_2(x2)
-#
-#         # x = self.fc7(x)
-#         # print(x1)
-#         # print(x2)
-#         # print(torch.cat((x1, x2), dim=-1))
-#
-#         return torch.cat((x1, x2), dim=-1)
-#         # return x
-#
-#     def loss(self, pred, target):
-#             value = (pred - target) ** 2
-#
-#             return torch.mean(value)
-#
-#     def _make_layer(self, block, num_residual_blocks, intermediate_channels, stride):
-#         identity_downsample = None
-#         layers = []
-#
-#         # Either if we half the input space for ex, 56x56 -> 28x28 (stride=2), or channels changes
-#         # we need to adapt the Identity (skip connection) so it will be able to be added
-#         # to the layer that's ahead
-#         if stride != 1 or self.in_channels != intermediate_channels * 4:
-#             identity_downsample = nn.Sequential(
-#                 nn.Conv2d(
-#                     self.in_channels,
-#                     intermediate_channels * 4,
-#                     kernel_size=1,
-#                     stride=stride,
-#                     bias=False
-#                 ),
-#                 nn.BatchNorm2d(intermediate_channels * 4),
-#             )
-#
-#         layers.append(
-#             block(self.in_channels, intermediate_channels, identity_downsample, stride)
-#         )
-#
-#         # The expansion size is always 4 for ResNet 50,101,152
-#         self.in_channels = intermediate_channels * 4
-#
-#         # For example for first resnet layer: 256 will be mapped to 64 as intermediate layer,
-#         # then finally back to 256. Hence no identity downsample is needed, since stride = 1,
-#         # and also same amount of channels.
-#         for i in range(num_residual_blocks - 1):
-#             layers.append(block(self.in_channels, intermediate_channels))
-#
-#         return nn.Sequential(*layers)
+if torch.cuda.is_available():
+    device = 'cuda'
+else:
+    device = 'cpu'
+print("Device:", device)
+
+resnet_model = ResNet50(img_channel=3, output_size=4).to(device, dtype=torch.float32)
+# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+resnet_model.load_state_dict(torch.load(os.path.join(data_root, log, 'model/best_model.pt'), map_location='cuda:0'))
+# add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
+resnet_model.eval()
+
+close_path = os.path.join(data_root, "input/yolo_407_close/")
+normal_path = os.path.join(data_root, "input/yolo_407_normal/")
+close_label = np.loadtxt(os.path.join(data_root, 'label/label_407_close_train.csv'))[:, :4]
+normal_label = np.loadtxt(os.path.join(data_root, 'label/label_407_normal_train.csv'))[:, :4]
+
+data_num = 1000
+data_4_train = int(data_num * 0.8)
+ratio = 0.5  # close3, normal7
+close_num_train = int(data_4_train * ratio)
+normal_num_train = int(data_4_train - close_num_train)
+close_num_test = int((data_num - data_4_train) * ratio)
+normal_num_test = int((data_num - data_4_train) - close_num_test)
+print('this is num of close', int(close_num_train + close_num_test))
+print('this is num of normal', int(normal_num_train + normal_num_test))
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 def ResNet18(img_channel, output_size):
     return ResNet(block, [2, 2, 2, 2], img_channel, output_size)
 
 def ResNet50(img_channel, output_size):
     return ResNet(block, [3, 4, 6, 3], img_channel, output_size)
-
-# class VD_Data(Dataset):
-#     def __init__(self, img_data, label_data, transform=None):
-#         self.img_data = img_data
-#         self.label_data = label_data
-#         self.transform = transform
-#
-#     def __getitem__(self, idx):
-#         img_sample = self.img_data[idx]
-#         label_sample = self.label_data[idx]
-#
-#         sample = {'image': img_sample, 'xyzyaw': label_sample}
-#
-#         if self.transform:
-#             sample = self.transform(sample)
-#
-#         return sample
-#
-#     def __len__(self):
-#         return len(self.img_data)
 
 class VD_Data(Dataset):
     def __init__(self, img_data, label_data):
@@ -265,124 +94,70 @@ class VD_Data(Dataset):
     def __len__(self):
         return len(self.img_data)
 
-
-# class ToTensor(object):
-#     """Convert ndarrays in sample to Tensors."""
-#
-#     def __call__(self, sample):
-#         img_sample, label_sample= sample['image'], sample['xyzyaw']
-#         img_sample = np.asarray([img_sample])
-#
-#         # print(type(img_sample))
-#         # swap color axis because
-#         # numpy image: H x W x C
-#         # torch image: C X H X W
-#         # print(img_sample.shape)
-#         img_sample = np.squeeze(img_sample)
-#         img_sample = img_sample[:,:,:3]
-#         # print(img_sample.shape)
-#         # image = img_sample
-#         image = img_sample.transpose((2, 0, 1))
-#         # print(image.shape)
-#         img_sample = torch.from_numpy(image)
-#
-#
-#         return {'image': img_sample,
-#                 'xyzyaw': label_sample}
-
 def eval_img4Batch(img_array, num_obj, sample_num=100):
 
-    # print('this is img_array', img_array)
-    # print('this is num_obj', num_obj)
+    ############################# manual scaler ##############################
+    norm_parameters = np.concatenate((np.min(normal_label, axis=0), np.max(normal_label, axis=0)))
+    norm_parameters[5] = norm_parameters[1] + 1
+    print(norm_parameters.reshape(2, -1))
+    ############################# manual scaler ##############################
 
-    if torch.cuda.is_available():
-        device = 'cuda'
-    else:
-        device = 'cpu'
-    print("Device:", device)
+    test_label = np.concatenate((close_label[close_num_train:(close_num_train + close_num_test)],
+                                 normal_label[normal_num_train:(normal_num_train + close_num_test)]))
 
-    if criterion == 'lwcossin':
-        model = ResNet50(img_channel=3, output_size=4).to(device, dtype=torch.float32)
-        # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        model.load_state_dict(torch.load('./ResNet_data/Model/best_model_407_combine.pt', map_location='cuda:0'))
-        # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
-        model.eval()
+    # ############################# auto scaler ##############################
+    # scaler = MinMaxScaler()
+    # scaler.fit(test_label)
+    # print(scaler.data_max_)
+    # print(scaler.data_min_)
+    # ############################# auto scaler ##############################
 
-        data_num = 60000
-        data_4_train = int(data_num * 0.8)
-        ratio = 0.5  # close3, normal7
-        close_num_test = int((data_num - data_4_train) * ratio)
-        normal_num_test = int((data_num - data_4_train) - close_num_test)
-        close_index = int(data_4_train * ratio)
-        normal_index = int(data_4_train * (1 - ratio))
+    test_data = []
+    # mm_sc = [[0, 14 / 1000, 14 / 1000], [np.pi, 34 / 1000, 16 / 1000]]
+    for i in range(num_obj):
+        img_array1 = img_array[i].astype(np.float32) / 255
+        # img_array1[0], img_array1[2] = img_array1[2], img_array1[0]
+        # img_array1[:, :, 0], img_array1[:, :, 2] = img_array1[:, :, 2], img_array1[:, :, 0]
+        # print('this is img array 0', img_array1[0])
+        # print('this is img array 2', img_array1[2])
+        test_data.append(img_array1)
 
-        close_label = np.loadtxt('./ResNet_data/Label/label_407_close.csv')[:, :4]
-        normal_label = np.loadtxt('./ResNet_data/Label/label_407_normal.csv')[:, :4]
+    test_dataset = VD_Data(
+        img_data=test_data, label_data=test_label)
 
-        norm_parameters = np.concatenate((np.min(normal_label, axis=0), np.max(normal_label, axis=0)))
+    BATCH_SIZE = 32
 
-        test_label = []
-        for i in range(close_num_test):
-            test_label.append(close_label[close_index])
-            close_index += 1
-        for i in range(normal_num_test):
-            test_label.append(normal_label[normal_index])
-            normal_index += 1
+    test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
+                             shuffle=False, num_workers=0)
 
-        # test_label -= norm_parameters[:4]
-        # test_label /= norm_parameters[4:]
+    with torch.no_grad():
 
-        scaler = MinMaxScaler()
-        scaler.fit(test_label)
-        print(scaler.data_max_)
-        print(scaler.data_min_)
+        for batch in test_loader:
+            img = batch["image"]
 
-        test_data = []
-        # mm_sc = [[0, 14 / 1000, 14 / 1000], [np.pi, 34 / 1000, 16 / 1000]]
-        for i in range(num_obj):
-            img_array1 = img_array[i].astype(np.float32) / 255
-            img_array1[0], img_array1[2] = img_array1[2], img_array1[0]
-            test_data.append(img_array1)
+            # ############################## test the shape of img ##############################
+            # img_show = img.cpu().detach().numpy()
+            # print(img_show[0].shape)
+            # temp = img_show[0]
+            # temp_shape = temp.shape
+            # temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
+            # print(temp.shape)
+            # cv2.namedWindow("well", 0)
+            # cv2.imshow('well', temp)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
+            # ############################## test the shape of img ##############################
 
-        test_dataset = VD_Data(
-            img_data=test_data, label_data=test_label)
+            img = img.to(device, dtype=torch.float32)
+            pred_lwcossin = resnet_model.forward(img)
+            pred_lwcossin = pred_lwcossin.cpu().detach().numpy()
+            # pred_lwcossin = scaler.inverse_transform(pred_lwcossin)
+            pred_lwcossin = pred_lwcossin * (norm_parameters[4:] - norm_parameters[:4]) + norm_parameters[:4]
 
-        BATCH_SIZE = 32
+            print('this is pred_lwcossin', pred_lwcossin)
+            # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
 
-        test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
-                                 shuffle=False, num_workers=0)
-
-        with torch.no_grad():
-
-            for batch in test_loader:
-                img = batch["image"]
-
-                ############################## test the shape of img ##############################
-                img_show = img.cpu().detach().numpy()
-                print(img_show[0].shape)
-                temp = img_show[0]
-                temp_shape = temp.shape
-                temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
-                print(temp.shape)
-                cv2.namedWindow("well",0)
-                cv2.imshow('well', temp)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-                ############################## test the shape of img ##############################
-
-                img = img.to(device, dtype=torch.float32)
-                pred_lwcossin = model.forward(img)
-                pred_lwcossin = pred_lwcossin.cpu().detach().numpy()
-                # print('this is', pred_x1y1x2y2l)
-
-                # test_label -= norm_parameters[:4]
-                # test_label /= norm_parameters[4:]
-
-                pred_lwcossin = scaler.inverse_transform(pred_lwcossin)
-                print('this is', pred_lwcossin)
-                # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
-
-                return pred_lwcossin
+            return pred_lwcossin
 
 def color_define(obj_hsv):
     # obj_HSV = [H,S,V]
@@ -458,56 +233,57 @@ def Plot4Batch(img, xyxy_list, xy_list, img_label, color_label, obj_num, all_tru
     xy_list = xy_list[order_yolo, :]
     ############### order yolo output depend on x, y in the world coordinate system ###############
 
-    if criterion == 'lwcossin':
-        to_arm = []
-        print('this is number of obj', obj_num)
-        for i in range(obj_num):
-            xy = xy_list[i]
-            # my_yaw, my_length, my_width = all_pred[i][0], all_pred[i][1], all_pred[i][2]
-            my_length, my_width, my_cos, my_sin = all_pred[i][0], all_pred[i][1], all_pred[i][2], all_pred[i][3]
-            my_ori = np.arctan2(my_sin, my_cos) / 2
-            if my_length < 0.018:
-                my_ori = np.arctan2(my_sin, my_cos) / 4
-            # pred_label = [xy[0], xy[1], my_yaw, my_length, my_width]
+    to_arm = []
+    print('this is number of obj', obj_num)
+    for i in range(obj_num):
+        xy = xy_list[i]
+        # my_yaw, my_length, my_width = all_pred[i][0], all_pred[i][1], all_pred[i][2]
+        my_length, my_width, my_cos, my_sin = all_pred[i][0], all_pred[i][1], all_pred[i][2], all_pred[i][3]
+        my_ori = np.arctan2(my_sin, my_cos) / 2
+        if my_length < 0.018:
+            my_ori = np.arctan2(my_sin, my_cos) / 4
+        # pred_label = [xy[0], xy[1], my_yaw, my_length, my_width]
 
-            info1 = f'cos: {my_cos:.3f} sin: {my_sin:.3f}, ori: {my_ori}'
-            info2 = f'length: {my_length * 1000:.3f} width: {my_width * 1000:.3f}'
-            # plot_one_box(xyxy, im0, label=label,
-            #              color=colors[int(cls)], line_thickness=1)
-            color_pos = f'color: {color_label[i]} x_pos: {xy[0]:.4f} y_pos: {xy[1]:.4f}'
-            # my_plot_one_box(xyxy_list[i], img, my_yaw, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
-            #                 color=[0, 0, 0], line_thickness=1)
-            check_flag = False
-            center_pred = [int((xyxy_list[i][1] + xyxy_list[i][3]) / 2), int((xyxy_list[i][0] + xyxy_list[i][2]) / 2)]
-            my_plot_one_box_lwcossin(center_pred, img, my_length, my_width, my_ori, label1=info1, label2=color_pos,
-                            label3=info2,
-                            color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
-            my_to_arm = [xy[0], xy[1], my_length, my_width, my_ori, color_label[i]]
-            to_arm.append(my_to_arm)
-            ############################### plot the ground truth ################################
-            if not all_truth is None:
-                length_truth, width_truth, cos_truth, sin_truth, x_truth, y_truth, ori_truth = all_truth[i][:7]
-                # ori_truth = np.arctan2(sin_truth, cos_truth)
-                # message = 'the ground truth is shown below'
-                info1 = f'cos: {cos_truth:.3f} sin: {sin_truth:.3f}, ori: {ori_truth:.3f}'
-                info2 = f'length: {length_truth * 1000:.3f} width: {width_truth * 1000:.3f}'
-                info3 = f'x: {x_truth:.3f} y: {y_truth:.3f}'
-                check_flag = True
-                mm2px = 530 / 0.34
-                # mm2px = 1500
+        info1 = f'cos: {my_cos:.3f} sin: {my_sin:.3f}, ori: {my_ori}'
+        info2 = f'length: {my_length * 1000:.3f} width: {my_width * 1000:.3f}'
+        # plot_one_box(xyxy, im0, label=label,
+        #              color=colors[int(cls)], line_thickness=1)
+        color_pos = f'color: {color_label[i]} x_pos: {xy[0]:.4f} y_pos: {xy[1]:.4f}'
+        # my_plot_one_box(xyxy_list[i], img, my_yaw, my_length, my_width, label1=info1, label2=color_pos, label3=info2,
+        #                 color=[0, 0, 0], line_thickness=1)
+        check_flag = False
+        center_pred = [int((xyxy_list[i][1] + xyxy_list[i][3]) / 2), int((xyxy_list[i][0] + xyxy_list[i][2]) / 2)]
+        my_plot_one_box_lwcossin(center_pred, img, my_length, my_width, my_ori, label1=info1, label2=color_pos,
+                        label3=info2,
+                        color=[0, 0, 0], line_thickness=1, check_flag=check_flag)
+        my_to_arm = [xy[0], xy[1], my_length, my_width, my_ori, color_label[i]]
+        to_arm.append(my_to_arm)
+        ############################### plot the ground truth ################################
+        if not all_truth is None:
+            length_truth, width_truth, cos_truth, sin_truth, x_truth, y_truth, ori_truth = all_truth[i][:7]
+            # ori_truth = np.arctan2(sin_truth, cos_truth)
+            # message = 'the ground truth is shown below'
+            info1 = f'cos: {cos_truth:.3f} sin: {sin_truth:.3f}, ori: {ori_truth:.3f}'
+            info2 = f'length: {length_truth * 1000:.3f} width: {width_truth * 1000:.3f}'
+            info3 = f'x: {x_truth:.3f} y: {y_truth:.3f}'
+            check_flag = True
+            mm2px = 530 / 0.34
+            # mm2px = 1500
 
-                center_ground_truth = [int(x_truth * mm2px + 86), int(y_truth * mm2px + 320)]
-                my_plot_one_box_lwcossin(center_ground_truth, img, length_truth, width_truth, ori_truth,
-                                label1=info1, label2=info2, label3=info3, color=[0, 0, 0], line_thickness=1,
-                                check_flag=check_flag)
-            else:
-                pass
-            ############################### plot the ground truth ################################
+            center_ground_truth = [int(x_truth * mm2px + 86), int(y_truth * mm2px + 320)]
+            my_plot_one_box_lwcossin(center_ground_truth, img, length_truth, width_truth, ori_truth,
+                            label1=info1, label2=info2, label3=info3, color=[0, 0, 0], line_thickness=1,
+                            check_flag=check_flag)
+        else:
+            pass
+        # my_to_arm = [center_ground_truth[1], center_ground_truth[0], my_length, my_width, my_ori, color_label[i]]
+        # to_arm.append(my_to_arm)
+        ############################### plot the ground truth ################################
 
 
     return img, to_arm
 
-def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_operate):
+def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_operate, use_yolo_pos, all_truth):
 
     # left-top to right-down
     px_resx1 = int(xyxy[0].cpu().detach().numpy())  # row
@@ -599,7 +375,7 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_ope
     blank = np.zeros([h, w, ch], img.dtype)
     # img = cv2.addWeighted(img, 1.1, blank, 0.1, 60)
 
-    # cv2.imwrite('img_yolo%s.png' % num_obj, img)
+    cv2.imwrite('img_yolo%s.png' % num_obj, img)
 
     if det_color == 'undefined':
         obj_color = img[48, 48, :]
@@ -613,103 +389,115 @@ def img_modify(my_im2, xyxy, img_label, color_label, xy_label, num_obj, real_ope
     img_label.append(img)
     color_label.append(det_color)
 
-def check_dataset():
+def check_resnet_yolo(obs_img_from=None, results=None, target=None):
 
-    if torch.cuda.is_available():
-        device = 'cuda'
-    else:
-        device = 'cpu'
-    print("Device:", device)
-
-    model = ResNet50(img_channel=3, output_size=5).to(device)
-    # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    model.load_state_dict(torch.load('Model/best_model_223_combine.pt', map_location='cuda:0'))
-    # add map_location='cuda:0' to run this model trained in multi-gpu environment on single-gpu environment
-    model.eval()
-
-    data_num = 60000
-    data_4_train = int(data_num * 0.8)
-    ratio = 0.5  # close3, normal7
-    close_num_test = (data_num - data_4_train) * ratio
-    normal_num_test = (data_num - data_4_train) - close_num_test
-
-    close_path = "./Dataset/yolo_221_2/"
-    normal_path = "./Dataset/yolo_225/"
-    close_index = data_4_train * ratio
-    normal_index = data_4_train * (1 - ratio)
     test_data = []
+    test_label = np.concatenate((close_label[close_num_train:(close_num_train + close_num_test)],
+                                 normal_label[normal_num_train:(normal_num_train + close_num_test)]))
 
-    close_label = np.loadtxt('./Dataset/label/label_221_2.csv')[:, :5]
-    normal_label = np.loadtxt('./Dataset/label/label_225.csv')[:, :5]
-    test_label = []
+    norm_parameters = np.concatenate((np.min(test_label, axis=0), np.max(test_label, axis=0)))
+    norm_parameters[5] = norm_parameters[1] + 1
+    print(norm_parameters.reshape(2, -1))
+    print(norm_parameters[4:] - norm_parameters[:4])
 
-    for i in range(int(close_num_test)):
-        img = plt.imread(close_path + "img%d.png" % close_index)
-        test_label.append(close_label[close_index])
-        test_data.append(img)
-        close_index += 1
-    for i in range(int(normal_num_test)):
-        img = plt.imread(normal_path + "img%d.png" % normal_index)
-        test_label.append(normal_label[normal_index])
-        test_data.append(img)
-        normal_index += 1
-    test_label = np.asarray(test_label)
-    scaler = MinMaxScaler()
-    scaler.fit(test_label)
+    if obs_img_from == 'dataset':
+        for i in range(close_num_train, close_num_train + close_num_test):
+            img = plt.imread(close_path + "img%d.png" % i)
+            test_data.append(img)
 
-    test_dataset = VD_Data(
-        img_data=test_data, label_data=test_label, transform=ToTensor())
+        for i in range(normal_num_train, normal_num_train + normal_num_test):
+            img = plt.imread(normal_path + "img%d.png" % i)
+            test_data.append(img)
 
-    BATCH_SIZE = 32
+        test_label -= norm_parameters[:4]
+        test_label /= (norm_parameters[4:] - norm_parameters[:4])
 
-    test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
-                             shuffle=False, num_workers=0)
+        test_dataset = VD_Data(img_data=test_data, label_data=test_label)
+        ################# choose the ratio of close and normal img #################
 
-    with torch.no_grad():
-        total_loss = []
-        for batch in test_loader:
-            img, x1y1x2y2l = batch["image"], batch["xyzyaw"]
+        num_epochs = 100
+        BATCH_SIZE = 12
+        learning_rate = 1e-4
 
-            # ############################## test the shape of img ##############################
-            # img_show = img.cpu().detach().numpy()
-            # print(img_show[0].shape)
-            # temp = img_show[3]
-            # temp_shape = temp.shape
-            # temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
-            # print(temp.shape)
-            # cv2.namedWindow("affasdf",0)
-            # cv2.imshow('affasdf', temp)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            # ############################## test the shape of img ##############################
+        test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
+                                 shuffle=True, num_workers=4)
+        all_valid_L = []
 
-            img = img.to(device)
-            pred_x1y1x2y2l = model.forward(img)
+        print('begin!')
+        for epoch in range(num_epochs):
+            t0 = time.time()
+            valid_L = []
 
-            target_x1y1x2y2l = scaler.transform(x1y1x2y2l)
-            target_x1y1x2y2l = torch.from_numpy(target_x1y1x2y2l)
-            target_x1y1x2y2l = target_x1y1x2y2l.to(device)
-            # print('this is pred\n', pred_x1y1x2y2l)
-            # print('this is target\n', target_x1y1x2y2l)
-            loss = model.loss(pred_x1y1x2y2l, target_x1y1x2y2l)
+            with torch.no_grad():
+                for batch in test_loader:
+                    img, lwcossin = batch["image"], batch["lwcossin"]
 
-            # if loss.item() < 0.1:
-            #     print(loss)
-            #     pred_x1y1x2y2l = pred_x1y1x2y2l.cpu().detach().numpy()
-            #     # print('this is', pred_x1y1x2y2l)
-            #     pred_x1y1x2y2l = scaler.inverse_transform(pred_x1y1x2y2l)
-            #     print('this is pred after scaler\n', pred_x1y1x2y2l)
-            #     print('this is target after scaler\n', x1y1x2y2l)
+                    ############################# test the shape of img ##############################
+                    img_show = img.cpu().detach().numpy()
+                    for i in range(len(img_show)):
+                        print(img_show[i].shape)
+                        temp = img_show[i]
+                        temp_shape = temp.shape
+                        temp = temp.reshape(temp_shape[1], temp_shape[2], temp_shape[0])
+                        print(temp.shape)
+                        cv2.namedWindow("well", 0)
+                        cv2.imshow('well', temp)
+                        cv2.waitKey(0)
+                        cv2.destroyAllWindows()
+                    # quit()
+                    ############################## test the shape of img ##############################
 
-            # pred_xyzyaw_ori[:, 0] = pred_xyzyaw_ori[:, 0] * np.pi / 180
+                    img = img.to(device, dtype=torch.float32)
+                    lwcossin = lwcossin.to(device, dtype=torch.float32)
+                    # print('this is lwcossin\n', lwcossin)
 
-            total_loss.append(loss.item())
+                    lwcossin_origin = lwcossin.cpu() * (norm_parameters[4:] - norm_parameters[:4]) + norm_parameters[:4]
+                    print('this is lwcossin origin\n', lwcossin_origin)
 
-        total_loss = np.asarray(total_loss)
-        print(np.mean(total_loss))
-        return total_loss
+                    pred_lwcossin = resnet_model.forward(img)
+                    # print('this is pred lwcossin\n', pred_lwcossin)
 
-def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, real_operate=None, all_truth=None, order_truth=None):
+                    pred_lwcossin_origin = pred_lwcossin.cpu() * (
+                            norm_parameters[4:] - norm_parameters[:4]) + norm_parameters[:4]
+                    print('this is pred lwcossin origin\n', pred_lwcossin_origin)
+                    loss = resnet_model.loss(pred_lwcossin, lwcossin)
+                    print('this is loss per batch', loss.item())
+                    valid_L.append(loss.item())
+            avg_valid_L = np.mean(valid_L)
+            all_valid_L.append(avg_valid_L)
+            # print('this is avg_valid_L', avg_valid_L)
+        all_valid_L = np.asarray(all_valid_L)
+        return np.mean(all_valid_L)
+
+    elif obs_img_from == 'env':
+        # for i in range(12):
+        #     img = plt.imread("../img_yolo%d.png" % i)
+        #     test_data.append(img)
+
+        for i in range(len(results)):
+            if results[i][2] < 0.018:
+                results[i][4] = results[i][4] * 2
+        pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
+        pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
+        pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
+        print('this is the target_compare\n', target)
+        print('this is the pred_compare\n', pred_compare)
+        # pred_compare_scaled = scaler.transform(pred_compare)
+        pred_compare_scaled = pred_compare - norm_parameters[:4]
+        pred_compare_scaled /= (norm_parameters[4:] - norm_parameters[:4])
+        target_compare_scaled = target - norm_parameters[:4]
+        target_compare_scaled /= (norm_parameters[4:] - norm_parameters[:4])
+
+        zzz_error_norm = np.mean((pred_compare_scaled - target_compare_scaled) ** 2)
+        # zzz_error = np.mean((pred_compare - target) ** 2)
+        print('this is the scaled error between the target and the pred', zzz_error_norm)
+        # print('this is the error between the target and the pred', zzz_error)
+        return zzz_error_norm
+
+    else:
+        pass
+
+def detect(cam_img,save_img=False, evaluation=None, real_operate=None, all_truth=None, use_yolo_pos=True):
     cam_obs = True
     path = ''
     parser = argparse.ArgumentParser()
@@ -927,21 +715,11 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 xyxy_list = [] # manual
                 for *xyxy, conf, cls in reversed(det):
                     xyxy_list.append(xyxy) # xyxy是yolo框中左上角和右下角的像素位置
-                    # obj_label = []
-                    # one_label = []
-                    # if save_txt:  # Write to file
-                    #     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)
-                    #                       ) / gn).view(-1).tolist()  # normalized xywh
-                    #     # label format
-                    #     line = (
-                    #         cls, *xywh, conf) if opt.save_conf else (cls, *xywh)
-                    #     with open(txt_path + '.txt', 'a') as f:
-                    #         f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
                     if save_img or view_img:  # Add bbox to image
                         label = f'{names[int(cls)]} {conf:.2f}'
 
-                        img_modify(my_im, xyxy, img_label, color_label, xy_list, box_number, real_operate)
+                        img_modify(my_im, xyxy, img_label, color_label, xy_list, box_number, real_operate, use_yolo_pos, all_truth)
 
                         box_number += 1
 
@@ -953,9 +731,9 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
                 cv2.destroyAllWindows()
                 # cv2.imwrite(f'./Test_images/movie_yolo_resnet/{evaluation}.png',im0)
                 if real_operate == True:
-                    cv2.imwrite(f'./Test_images/test_408_combine_real_5.png', im0)
+                    cv2.imwrite(f'./Test_images/test_412_combine_real_2.png', im0)
                 else:
-                    cv2.imwrite(f'./Test_images/test_408_combine_sim_5.png', im0)
+                    cv2.imwrite(f'./Test_images/test_412_combine_sim_2.png', im0)
 
                 # cv2.waitKey(1000)
                 if cam_obs:
@@ -967,35 +745,6 @@ def detect(cam_img,save_img=False, check_dataset_error=None, evaluation=None, re
             if view_img:
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
-            '''
-            # Save results (image with detections)
-            # print(save_img)
-            if save_img:
-                if dataset.mode == 'image':
-                    cv2.imwrite(save_path, im0)
-                    print(
-                        f" The image with the result is saved in: {save_path}")
-                else:  # 'video' or 'stream'
-                    if vid_path != save_path:  # new video
-                        vid_path = save_path
-                        if isinstance(vid_writer, cv2.VideoWriter):
-                            vid_writer.release()  # release previous video writer
-                        if vid_cap:  # video
-                            fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                            w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                            h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                        else:  # stream
-                            fps, w, h = 5, im0.shape[1], im0.shape[0]
-                            save_path += '.mp4'
-                        vid_writer = cv2.VideoWriter(
-                            save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-                    vid_writer.write(im0)
-
-            '''
-
-    # if save_txt or save_img:
-        # s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
-        # print(f"Results saved to {save_dir}{s}")
 
     print(f'Done. ({time.time() - t0:.3f}s)')
 

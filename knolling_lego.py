@@ -33,34 +33,10 @@ import torch.nn.functional as F
 from sklearn.preprocessing import MinMaxScaler
 from shapely.geometry import Polygon
 
-torch.manual_seed(45)
-np.random.seed(130)
-random.seed(130)
+torch.manual_seed(42)
+np.random.seed(202)
+random.seed(202)
 
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        # First fully connected layer
-        self.fc1 = nn.Linear(3, 12)
-        self.fc2 = nn.Linear(12, 32)
-        self.fc3 = nn.Linear(32, 64)
-        self.fc4 = nn.Linear(64, 32)
-        self.fc5 = nn.Linear(32, 12)
-        self.fc6 = nn.Linear(12, 3)
-
-    def forward(self, x):
-        # define forward pass
-        x = self.fc1(x)
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = F.relu(self.fc4(x))
-        x = F.relu(self.fc5(x))
-        x = self.fc6(x)
-        return x
-
-    def loss(self, pred, target):
-        value = (pred - target) ** 2
-        return torch.mean(value)
 
 class Arm:
 
@@ -72,6 +48,7 @@ class Arm:
         self.is_render = is_render
         if self.is_render:
             p.connect(p.GUI, options="--width=1280 --height=720")
+            # p.connect(p.GUI)
         else:
             p.connect(p.DIRECT)
 
@@ -126,9 +103,9 @@ class Arm:
                                     farVal=self.camera_parameters['far'])
 
         if random.uniform(0,1) > 0.5:
-            p.configureDebugVisualizer(lightPosition=[random.randint(3,5), random.randint(3,5), 5])
+            p.configureDebugVisualizer(lightPosition=[random.randint(1,3), random.randint(1,2), 5])
         else:
-            p.configureDebugVisualizer(lightPosition=[random.randint(3,5), random.randint(-5, -3), 5])
+            p.configureDebugVisualizer(lightPosition=[random.randint(1,3), random.randint(-2, -1), 5])
         p.configureDebugVisualizer(lightPosition=[random.randint(1, 3), random.randint(1, 2), 5],
                                    shadowMapResolution=8192, shadowMapIntensity=np.random.randint(5, 8) / 10)
         p.resetDebugVisualizerCamera(cameraDistance=0.5,
@@ -141,7 +118,7 @@ class Arm:
                        total_offset=[0.1, 0, 0.0], grasp_order=[1, 0, 2],
                        gap_item=0.03, gap_block=0.02,
                        real_operate=False, obs_order='1',
-                       random_offset = False, check_obs_error=None):
+                       random_offset = False, check_detection_loss=None, obs_img_from=None, use_yolo_pos=True):
 
         self.num_2x2 = num_2x2
         self.num_2x3 = num_2x3
@@ -155,12 +132,9 @@ class Arm:
         self.obs_order = obs_order
         self.random_offset = random_offset
         self.num_list = np.array([self.num_2x2, self.num_2x3, self.num_2x4, self.num_pencil])
-        self.check_obs_error = check_obs_error
-        if self.check_obs_error == True:
-            total_loss = check_dataset() # run here to check the error of the dataset
-            np.savetxt('check_obs_error', total_loss)
-        else:
-            pass
+        self.check_detection_loss = check_detection_loss
+        self.obs_img_from = obs_img_from
+        self.use_yolo_pos = use_yolo_pos
 
 
     def get_obs(self, order, evaluation):
@@ -187,7 +161,7 @@ class Arm:
                                                             renderer=p.ER_BULLET_HARDWARE_OPENGL)
 
             img = image[:, :,:3]
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             add = int((640-480)/2)
             img = cv2.copyMakeBorder(img, add, add, 0, 0,cv2.BORDER_CONSTANT, None, value = 0)
 
@@ -220,88 +194,98 @@ class Arm:
             ground_truth_xyyaw = ground_truth_xyyaw[order_ground_truth, :]
             ############### order the ground truth depend on x, y in the world coordinate system ###############
 
-            criterion = 'lwcossin'
+            # demo = np.array([[0.032, 0.016, 1, 1],
+            #                  [0.016, 0.016, -1, -1]])
+            # scaler = MinMaxScaler()
+            # scaler.fit(demo)
 
-            if criterion == 'lwcossin':
+            # this is lwyaw ground truth
+            # select the ori for squares to x2
+            ground_truth_xyyaw_plot = np.copy(ground_truth_xyyaw)
+            for i in range(len(ground_truth_xyyaw)):
+                if np.abs(new_xyz_list[i][0] - new_xyz_list[i][1]) < 0.001:
+                    if ground_truth_xyyaw[i][2] > np.pi / 2:
+                        print('square change!')
+                        print(i, ground_truth_xyyaw[i][2])
+                        new_angle = ground_truth_xyyaw[i][2] - int(
+                            ground_truth_xyyaw[i][2] // (np.pi / 2)) * np.pi / 2
+                        print(i, ground_truth_xyyaw[i][2])
+                    elif ground_truth_xyyaw[i][2] < 0:
+                        print('square change!')
+                        print(i, ground_truth_xyyaw[i][2])
+                        new_angle = ground_truth_xyyaw[i][2] + (
+                                int(ground_truth_xyyaw[i][2] // (-np.pi / 2)) + 1) * np.pi / 2
+                        print(i, ground_truth_xyyaw[i][2])
+                    else:
+                        new_angle = np.copy(ground_truth_xyyaw[i][2])
+                    ground_truth_xyyaw[i][2] = new_angle * 2
 
-                demo = np.array([[0.032, 0.016, 1, 1],
-                                 [0.016, 0.016, -1, -1]])
-                scaler = MinMaxScaler()
-                scaler.fit(demo)
+            target_cos_plot = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+            target_sin_plot = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+            target_plot = np.concatenate((new_xyz_list[:, :2], target_cos_plot, target_sin_plot, ground_truth_xyyaw_plot[:, :]), axis=1) # this is the target for plot!!!!!!!!!
+            # structure: length, width, cos(2 * ori), sin(2 * ori)
+            target_cos = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+            target_sin = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
+            target_compare = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin), axis=1)
 
-                # this is lwyaw ground truth
-                # select the ori for squares to x2
-                ground_truth_xyyaw_plot = np.copy(ground_truth_xyyaw)
-                for i in range(len(ground_truth_xyyaw)):
-                    if np.abs(new_xyz_list[i][0] - new_xyz_list[i][1]) < 0.001:
-                        if ground_truth_xyyaw[i][2] > np.pi / 2:
-                            print('square change!')
-                            print(i, ground_truth_xyyaw[i][2])
-                            new_angle = ground_truth_xyyaw[i][2] - int(
-                                ground_truth_xyyaw[i][2] // (np.pi / 2)) * np.pi / 2
-                            print(i, ground_truth_xyyaw[i][2])
-                        elif ground_truth_xyyaw[i][2] < 0:
-                            print('square change!')
-                            print(i, ground_truth_xyyaw[i][2])
-                            new_angle = ground_truth_xyyaw[i][2] + (
-                                    int(ground_truth_xyyaw[i][2] // (-np.pi / 2)) + 1) * np.pi / 2
-                            print(i, ground_truth_xyyaw[i][2])
-                        else:
-                            new_angle = np.copy(ground_truth_xyyaw[i][2])
-                        ground_truth_xyyaw[i][2] = new_angle * 2
+            # target_compare_scaled = scaler.transform(target_compare)
 
-                target_cos_plot = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
-                target_sin_plot = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
-                target_plot = np.concatenate((new_xyz_list[:, :2], target_cos_plot, target_sin_plot, ground_truth_xyyaw_plot[:, :]), axis=1) # this is the target for plot!!!!!!!!!
-                # structure: length, width, cos(2 * ori), sin(2 * ori)
-                target_cos = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
-                target_sin = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
-                target_compare = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin), axis=1)
+            # structure: x, y, length, width, ori
+            ################### the results of object detection has changed the order!!!! ####################
+            results = np.asarray(
+                detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target_plot, use_yolo_pos=self.use_yolo_pos))
+            results = np.asarray(results[:, :5]).astype(np.float32)
+            print('this is the result of yolo+resnet\n', results)
+            ################### the results of object detection has changed the order!!!! ####################
 
-                target_compare_scaled = scaler.transform(target_compare)
 
-                # structure: x, y, length, width, ori
-                ################### the results of object detection has changed the order!!!! ####################
-                results = np.asarray(
-                    detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target_plot, order_truth=order_ground_truth))
-                results = np.asarray(results[:, :5]).astype(np.float32)
-                # print('this is the result of yolo+resnet\n', results)
-                ################### the results of object detection has changed the order!!!! ####################
-                for i in range(len(results)):
-                    if results[i][2] < 0.018:
-                        results[i][4] = results[i][4] * 2
-                pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
-                pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
-                pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
-                print('this is the target_compare\n', target_compare)
-                print('this is the pred_compare\n', pred_compare)
-                pred_compare_scaled = scaler.transform(pred_compare)
+            #################### check the error of resnet and yolo #####################
+            if self.check_detection_loss == True:
+                if self.obs_img_from == 'env':
+                    env_loss = check_resnet_yolo(obs_img_from, results, target_compare)
+                elif self.obs_img_from == 'dataset':
+                    dataset_loss = check_resnet_yolo(obs_img_from, results, target_compare)
+                else:
+                    pass
+            #################### check the error of resnet and yolo #####################
 
-                zzz_error = np.mean((pred_compare_scaled - target_compare_scaled) ** 2)
-                print('this is the error between the target and the pred', zzz_error)
+            # for i in range(len(results)):
+            #     if results[i][2] < 0.018:
+            #         results[i][4] = results[i][4] * 2
+            # pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
+            # pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
+            # pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
+            # print('this is the target_compare\n', target_compare)
+            # print('this is the pred_compare\n', pred_compare)
+            # pred_compare_scaled = scaler.transform(pred_compare)
+            #
+            # zzz_error_norm = np.mean((pred_compare_scaled - target_compare_scaled) ** 2)
+            # zzz_error = np.mean((pred_compare - target_compare) ** 2)
+            # print('this is the scaled error between the target and the pred', zzz_error_norm)
+            # print('this is the error between the target and the pred', zzz_error)
 
-                # arange the sequence based on categories of cubes
-                z = 0
-                roll = 0
-                pitch = 0
-                index = []
-                correct = []
-                for i in range(len(self.grasp_order)):
-                    correct.append(self.xyz_list[self.all_index[i][0]])
-                correct = np.asarray(correct)
-                for i in range(len(correct)):
-                    for j in range(len(results)):
-                        if np.linalg.norm(correct[i][0] - results[j][2]) < 0.003:
-                            index.append(j)
-                manipulator_before = []
-                for i in index:
-                    manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, results[i][4]])
-                manipulator_before = np.asarray(manipulator_before)
-                new_xyz_list = self.xyz_list
-                print('this is manipulator before after the detection \n', manipulator_before)
+            # arange the sequence based on categories of cubes
+            z = 0
+            roll = 0
+            pitch = 0
+            index = []
+            correct = []
+            for i in range(len(self.grasp_order)):
+                correct.append(self.xyz_list[self.all_index[i][0]])
+            correct = np.asarray(correct)
+            for i in range(len(correct)):
+                for j in range(len(results)):
+                    if np.linalg.norm(correct[i][0] - results[j][2]) < 0.003:
+                        index.append(j)
+            manipulator_before = []
+            for i in index:
+                manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, results[i][4]])
+            manipulator_before = np.asarray(manipulator_before)
+            new_xyz_list = self.xyz_list
+            print('this is manipulator before after the detection \n', manipulator_before)
 
             if self.obs_order == 'sim_image_obj_evaluate':
-                return manipulator_before, new_xyz_list, zzz_error
+                return manipulator_before, new_xyz_list, env_loss
             else:
                 return manipulator_before, new_xyz_list
 
@@ -1070,7 +1054,7 @@ class Arm:
 
                         for motor_index in range(self.num_motor):
                             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                                                    targetPosition=ik_angles_sim[motor_index], maxVelocity=7.5)
+                                                    targetPosition=ik_angles_sim[motor_index], maxVelocity=25)
                         for i in range(40):
                             p.stepSimulation()
 
@@ -1159,7 +1143,7 @@ class Arm:
                                                               targetOrientation=p.getQuaternionFromEuler(tar_ori))
                     for motor_index in range(self.num_motor):
                         p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                                                targetPosition=ik_angles0[motor_index], maxVelocity=2.5)
+                                                targetPosition=ik_angles0[motor_index], maxVelocity=25)
                     for i in range(30):
                         p.stepSimulation()
                         # time.sleep(1 / 48)
@@ -1792,8 +1776,8 @@ class Arm:
             sim_table_surface_height = -0.01
 
         #######################################################################################
-        # 1: clean_desk + clean_item, 3: knolling, 4: check_accuracy, 5: get_camera
-        self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
+        # 1: clean_desk + clean_item, 3: knolling, 4: check_accuracy of knolling, 5: get_camera
+        # self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
         # error = self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
         error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
         # self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
@@ -1875,7 +1859,9 @@ if __name__ == '__main__':
         random_offset = False
         real_operate = False
         obs_order = 'sim_image_obj'
-        check_dataset_error = False
+        check_detection_loss = True
+        obs_img_from = 'env'
+        use_yolo_pos = False
 
 
         env = Arm(is_render=True)
@@ -1883,7 +1869,8 @@ if __name__ == '__main__':
                            total_offset=total_offset, grasp_order=grasp_order,
                            gap_item=gap_item, gap_block=gap_block,
                            real_operate=real_operate, obs_order=obs_order,
-                           random_offset=random_offset, check_obs_error=check_dataset_error)
+                           random_offset=random_offset, check_detection_loss=check_detection_loss,
+                           obs_img_from=obs_img_from, use_yolo_pos=use_yolo_pos)
         evaluations = 1
 
         for i in range(evaluations):
@@ -1893,7 +1880,7 @@ if __name__ == '__main__':
 
     if command == 'evaluate_object_detection':
 
-        evaluations = 50
+        evaluations = 15
         error_min = 100
         evaluation_min = 0
         error_list = []
@@ -1908,14 +1895,16 @@ if __name__ == '__main__':
             random_offset = True
             real_operate = False
             obs_order = 'sim_image_obj_evaluate'
-            check_obs_error = False
+            check_detection_loss = False
+            obs_img_from = 'env'
 
             env = Arm(is_render=False)
             env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4,
                                total_offset=total_offset, grasp_order=grasp_order,
                                gap_item=gap_item, gap_block=gap_block,
                                real_operate=real_operate, obs_order=obs_order,
-                               random_offset=random_offset, check_obs_error=check_obs_error)
+                               random_offset=random_offset, check_detection_loss=check_detection_loss,
+                               obs_img_from=obs_img_from)
             image_trim = env.change_config()
             _ = env.reset()
             error = env.step(i)

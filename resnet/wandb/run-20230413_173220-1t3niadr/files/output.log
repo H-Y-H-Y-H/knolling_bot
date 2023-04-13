@@ -1,0 +1,6 @@
+Device: cuda:1
+this is num of close 1000
+this is num of normal 1000
+begin!
+Training_Loss At Epoch 0:	0.0665789251960814
+Testing_Loss At Epoch 0:	0.09956944897770882

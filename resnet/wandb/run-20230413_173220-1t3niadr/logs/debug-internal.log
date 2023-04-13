@@ -1,0 +1,81 @@
+2023-04-13 17:32:20,220 INFO    StreamThr :502437 [internal.py:wandb_internal():88] W&B internal server running at pid: 502437, started at: 2023-04-13 17:32:20.219945
+2023-04-13 17:32:20,224 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: status
+2023-04-13 17:32:20,226 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: status
+2023-04-13 17:32:20,229 DEBUG   SenderThread:502437 [sender.py:send():303] send: header
+2023-04-13 17:32:20,229 INFO    WriterThread:502437 [datastore.py:open_for_write():75] open: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/run-1t3niadr.wandb
+2023-04-13 17:32:20,235 DEBUG   SenderThread:502437 [sender.py:send():303] send: run
+2023-04-13 17:32:20,523 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: check_version
+2023-04-13 17:32:20,545 INFO    SenderThread:502437 [dir_watcher.py:__init__():216] watching files in: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files
+2023-04-13 17:32:20,545 INFO    SenderThread:502437 [sender.py:_start_run_threads():928] run started: 1t3niadr with start time 1681421540.212707
+2023-04-13 17:32:20,545 DEBUG   SenderThread:502437 [sender.py:send():303] send: summary
+2023-04-13 17:32:20,546 INFO    SenderThread:502437 [sender.py:_save_file():1171] saving file wandb-summary.json with policy end
+2023-04-13 17:32:20,546 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: check_version
+2023-04-13 17:32:20,626 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: run_start
+2023-04-13 17:32:20,640 DEBUG   HandlerThread:502437 [meta.py:__init__():34] meta init
+2023-04-13 17:32:20,640 DEBUG   HandlerThread:502437 [meta.py:__init__():49] meta init done
+2023-04-13 17:32:20,640 DEBUG   HandlerThread:502437 [meta.py:probe():215] probe
+2023-04-13 17:32:20,647 DEBUG   HandlerThread:502437 [meta.py:_setup_git():205] setup git
+2023-04-13 17:32:20,670 DEBUG   HandlerThread:502437 [meta.py:_setup_git():212] setup git done
+2023-04-13 17:32:20,670 DEBUG   HandlerThread:502437 [meta.py:_save_pip():53] save pip
+2023-04-13 17:32:20,671 DEBUG   HandlerThread:502437 [meta.py:_save_pip():67] save pip done
+2023-04-13 17:32:20,671 DEBUG   HandlerThread:502437 [meta.py:_save_conda():74] save conda
+2023-04-13 17:32:21,551 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_created():275] file/dir created: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/wandb-summary.json
+2023-04-13 17:32:21,552 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_created():275] file/dir created: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/requirements.txt
+2023-04-13 17:32:21,552 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_created():275] file/dir created: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/conda-environment.yaml
+2023-04-13 17:32:23,551 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/conda-environment.yaml
+2023-04-13 17:32:23,615 DEBUG   HandlerThread:502437 [meta.py:_save_conda():84] save conda done
+2023-04-13 17:32:23,615 DEBUG   HandlerThread:502437 [meta.py:probe():253] probe done
+2023-04-13 17:32:23,644 DEBUG   SenderThread:502437 [sender.py:send():303] send: files
+2023-04-13 17:32:23,645 INFO    SenderThread:502437 [sender.py:_save_file():1171] saving file wandb-metadata.json with policy now
+2023-04-13 17:32:23,654 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:32:23,654 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:32:23,815 DEBUG   SenderThread:502437 [sender.py:send():303] send: telemetry
+2023-04-13 17:32:24,200 INFO    Thread-17 :502437 [upload_job.py:push():143] Uploaded file /tmp/tmp47hyor6ywandb/40miifxa-wandb-metadata.json
+2023-04-13 17:32:24,551 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_created():275] file/dir created: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/wandb-metadata.json
+2023-04-13 17:32:24,552 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_created():275] file/dir created: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/output.log
+2023-04-13 17:32:26,552 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/output.log
+2023-04-13 17:32:38,818 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:32:38,819 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:32:49,252 DEBUG   SenderThread:502437 [sender.py:send():303] send: stats
+2023-04-13 17:32:50,564 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/output.log
+2023-04-13 17:32:50,564 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/config.yaml
+2023-04-13 17:32:53,901 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:32:53,901 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:33:08,990 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:33:08,991 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:33:19,883 DEBUG   SenderThread:502437 [sender.py:send():303] send: stats
+2023-04-13 17:33:24,069 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:33:24,070 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:33:39,169 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:33:39,170 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:33:50,506 DEBUG   SenderThread:502437 [sender.py:send():303] send: stats
+2023-04-13 17:33:54,364 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:33:54,365 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:34:09,454 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:34:09,454 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:34:21,134 DEBUG   SenderThread:502437 [sender.py:send():303] send: stats
+2023-04-13 17:34:24,538 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:34:24,538 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:34:39,115 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: partial_history
+2023-04-13 17:34:39,117 DEBUG   SenderThread:502437 [sender.py:send():303] send: history
+2023-04-13 17:34:39,118 DEBUG   SenderThread:502437 [sender.py:send():303] send: summary
+2023-04-13 17:34:39,123 INFO    SenderThread:502437 [sender.py:_save_file():1171] saving file wandb-summary.json with policy end
+2023-04-13 17:34:39,617 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/wandb-summary.json
+2023-04-13 17:34:39,646 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:34:39,646 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:34:40,618 INFO    Thread-13 :502437 [dir_watcher.py:_on_file_modified():292] file/dir modified: /home/ubuntu/Desktop/knolling_bot/resnet/wandb/run-20230413_173220-1t3niadr/files/output.log
+2023-04-13 17:34:51,726 DEBUG   SenderThread:502437 [sender.py:send():303] send: stats
+2023-04-13 17:34:54,738 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:34:54,739 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:35:09,844 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:35:09,844 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:35:22,417 DEBUG   SenderThread:502437 [sender.py:send():303] send: stats
+2023-04-13 17:35:24,952 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:35:24,953 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:35:40,042 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:35:40,042 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:35:53,087 DEBUG   SenderThread:502437 [sender.py:send():303] send: stats
+2023-04-13 17:35:55,137 DEBUG   HandlerThread:502437 [handler.py:handle_request():138] handle_request: stop_status
+2023-04-13 17:35:55,137 DEBUG   SenderThread:502437 [sender.py:send_request():317] send_request: stop_status
+2023-04-13 17:36:03,686 INFO    MainThread:502437 [internal.py:handle_exit():78] Internal process exited
+2023-04-13 17:36:03,686 WARNING MsgRouterThr:502437 [router.py:message_loop():74] EOFError seen in message_loop

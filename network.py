@@ -68,7 +68,7 @@ class ResNet(nn.Module):
             image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0)
+        self.dropout = nn.Dropout(p=0.0)
         self.sigmoid = nn.Sigmoid()
 
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -89,19 +89,11 @@ class ResNet(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # 306_combine structure
-        self.fc0 = nn.Linear(512 * 4, 512 * 6)
-        self.fc1 = nn.Linear(512 * 6, 256 * 6)
-        self.fc2 = nn.Linear(256 * 6, 256 * 4)
-        self.fc3 = nn.Linear(256 * 4, 512)
-        self.fc4 = nn.Linear(512, 256)
-        self.fc5 = nn.Linear(256, 128)
-        self.fc6_1 = nn.Linear(128, 80)
-        self.fc6_2 = nn.Linear(128, 64)
-        self.fc7_1 = nn.Linear(80, 32)
-        self.fc7_2 = nn.Linear(64, 16)
-        self.fc8_1 = nn.Linear(32, output_size - 2)
-        self.fc8_2 = nn.Linear(16, 2)
+        # 412_combine structure
+        self.fc0 = nn.Linear(512 * 4, 512 * 4)
+        self.fc1 = nn.Linear(512 * 4, 512 * 2)
+        self.fc2 = nn.Linear(512 * 2, output_size)
+
 
     def forward(self, IMG):
 
@@ -114,35 +106,19 @@ class ResNet(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        # 306_combine structure
+        # 412_combine structure
         x = self.avgpool(x)
         x = x.reshape(x.shape[0], -1)
         x = self.relu(self.fc0(x))
         x = self.dropout(x)
         x = self.relu(self.fc1(x))
         x = self.dropout(x)
-        x = self.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc3(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc4(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc5(x))
-        x = self.dropout(x)
-        x1 = self.relu(self.fc6_1(x))
-        x1 = self.dropout(x1)
-        x1 = self.relu(self.fc7_1(x1))
-        x1 = self.dropout(x1)
-        x1 = self.fc8_1(x1)
-        x2 = self.relu(self.fc6_2(x))
-        x2 = self.dropout(x2)
-        x2 = self.relu(self.fc7_2(x2))
-        x2 = self.dropout(x2)
-        x2 = self.fc8_2(x2)
+        x = self.fc2(x)
 
 
-        return torch.cat((x1, x2), dim=-1)
-        # return x
+
+        # return torch.cat((x1, x2), dim=-1)
+        return x
 
     def calculate_riou(self, pred, target, scaler):
 
@@ -151,36 +127,6 @@ class ResNet(nn.Module):
         pred_IoU = scaler.inverse_transform(pred)
         target_IoU = scaler.inverse_transform(target)
         device = 'cuda:1'
-
-        # use cv2 to calculate iou
-        # total_area = []
-        # for i in range(len(pred)):
-        #     rect1 = ((0, 0), (pred_IoU[i, 1], pred_IoU[i, 2]), pred_IoU[i, 0])
-        #     # print('pred', rect1)
-        #     rect2 = ((0, 0), (target_IoU[i, 1], target_IoU[i, 2]), target_IoU[i, 0])
-        #     # print('target', rect2)
-        #     int_pts = cv2.rotatedRectangleIntersection(rect1, rect2)[1]
-        #     if int_pts is not None:
-        #         order_pts = cv2.convexHull(int_pts, returnPoints=True)
-        #         int_area = cv2.contourArea(order_pts) / (np.maximum(pred_IoU[i, 1], target_IoU[i, 1]) * np.maximum(pred_IoU[i, 2], target_IoU[i, 2]))
-        #         # if int_area > 0.5:
-        #         #     print('pred', rect1)
-        #         #     print('target', rect2)
-        #         #     print(int_area ** 2)
-        #         # print(int_area)
-        #         if int_area <= 0.3:
-        #             # print(int_pts)
-        #             # print('wtf?!', int_area)
-        #             int_area = 0.00001
-        #         else:
-        #             int_area = int_area ** 2
-        #     else:
-        #         int_area = 0.0000001
-        #     total_area.append(int_area)
-        #
-        # total_area = -np.log(np.asarray(total_area, dtype=np.float32))
-        # total_area = torch.from_numpy(total_area).to(device).reshape((-1, 1))
-        # total_area.requires_grad_()
 
         # use shapely library to calculate iou
         total_iou = []
@@ -314,7 +260,6 @@ def ResNet101(img_channel, output_size):
 
 def ResNet152(img_channel, output_size):
     return ResNet(block, [3, 8, 36, 3], img_channel, output_size)
-
 
 if __name__ == "__main__":
     import time

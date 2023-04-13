@@ -58,14 +58,14 @@ class VD_Data(Dataset):
 if __name__ == "__main__":
 
     if torch.cuda.is_available():
-        device = 'cuda:0'
+        device = 'cuda:1'
     else:
         device = 'cpu'
     print("Device:", device)
 
     finetune_flag = False
     data_root = '/home/ubuntu/Desktop/knolling_dataset/resnet/'
-    log = 'log_411/'
+    log = 'log_412_norm_2/'
 
     # eval_model()
 
@@ -106,11 +106,14 @@ if __name__ == "__main__":
     test_label  = np.concatenate((close_label[close_num_train:(close_num_train + close_num_test)],
                                   normal_label[normal_num_train:(normal_num_train + close_num_test)]))
 
-    # norm_parameters = np.concatenate((np.min(train_label,axis=0),np.max(train_label,axis=0)))
-    # train_label -= norm_parameters[:4]
-    # train_label /= norm_parameters[4:]
-    # test_label -= norm_parameters[:4]
-    # test_label /= norm_parameters[4:]
+    norm_parameters = np.concatenate((np.min(train_label,axis=0),np.max(train_label,axis=0)))
+    norm_parameters[5] = norm_parameters[1] + 1
+    print(norm_parameters.reshape(2, -1))
+    print(norm_parameters[4:] - norm_parameters[:4])
+    train_label -= norm_parameters[:4]
+    train_label /= (norm_parameters[4:] - norm_parameters[:4])
+    test_label -= norm_parameters[:4]
+    test_label /= (norm_parameters[4:] - norm_parameters[:4])
 
     for i in range(close_num_train):
         img = plt.imread(close_path + "img%d.png" % i)
@@ -155,7 +158,7 @@ if __name__ == "__main__":
 
     model = ResNet50(img_channel=3, output_size=4).to(device, dtype=torch.float32)
     if finetune_flag == True:
-        model.load_state_dict(torch.load(model_path + 'best_model_407_combine.pt'))
+        model.load_state_dict(torch.load(model_path + 'best_model.pt'))
     else:
         pass
 
@@ -227,7 +230,7 @@ if __name__ == "__main__":
             print('Testing_Loss At Epoch ' + str(epoch) + ':\t' + str(avg_valid_L))
             min_loss = avg_valid_L
 
-            PATH = model_path + 'best_model_411_combine.pt'
+            PATH = model_path + 'best_model.pt'
 
             # torch.save({
             #             'model_state_dict': model.state_dict(),
@@ -241,8 +244,8 @@ if __name__ == "__main__":
         if wandb_flag == True:
             wandb.log({'train loss': all_train_L, 'test loss': all_valid_L})
 
-        np.savetxt(log_path + "training_L_yolo_411_combine.csv", np.asarray(all_train_L))
-        np.savetxt(log_path + "testing_L_yolo_411_combine.csv", np.asarray(all_valid_L))
+        np.savetxt(log_path + "training_L_yolo.csv", np.asarray(all_train_L))
+        np.savetxt(log_path + "testing_L_yolo.csv", np.asarray(all_valid_L))
         # np.savetxt(log_path + "testing_L_yolo_115_ori.csv", np.asarray(all_valid_L))
 
         if abort_learning > 20:
@@ -257,7 +260,7 @@ if __name__ == "__main__":
     plt.plot(np.arange(len(all_valid_L)), all_valid_L, label='validation')
     plt.title("Learning Curve")
     plt.legend()
-    plt.savefig(curve_path + "lc_411_combine.png")
+    plt.savefig(curve_path + "lc_411.png")
     # plt.show()
 
     # wandb.log_artifact(model)
