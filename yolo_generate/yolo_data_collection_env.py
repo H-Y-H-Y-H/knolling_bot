@@ -333,7 +333,7 @@ class Arm_env(gym.Env):
             rot_parallel = [[np.cos(rdm_ori_yaw[0]), -np.sin(rdm_ori_yaw[0])],[np.sin(rdm_ori_yaw[0]), np.cos(rdm_ori_yaw[0])]]
             rot_parallel = np.asarray(rot_parallel)
 
-            xy_parallel = np.dot(rot_parallel, np.asarray([np.random.uniform(-0.015, 0.015), 0.032/2]))
+            xy_parallel = np.dot(rot_parallel, np.asarray([np.random.uniform(-0.015, 0.015), 0.036/2]))
 
             xy_parallel = np.add(xy_parallel, np.asarray([rdm_pos_x[0], rdm_pos_y[0]]))
             # print(xy_parallel)

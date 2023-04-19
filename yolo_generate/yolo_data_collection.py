@@ -39,12 +39,13 @@ def yolo_box(img, label):
 
 if __name__ == '__main__':
 
-    data_root = '/home/ubuntu/Desktop/knolling_dataset/yolo/'
+    # data_root = '/home/ubuntu/Desktop/knolling_dataset/yolo/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo-pose/'
     # p.connect(p.DIRECT)
     p.connect(p.GUI)
 
-    startnum = 2000
-    endnum = 4000
+    startnum = 1500
+    endnum = 2000
     lebal_list = []
     reset_flag = True
     num_reset = True
@@ -57,7 +58,7 @@ if __name__ == '__main__':
         # num_item = 4
 
         env = Arm_env(max_step=1, is_render=False, num_objects=num_item)
-        if random.random() < 0.5:
+        if random.random() < 0:
             state, rdm_pos_x, rdm_pos_y, rdm_pos_z, rdm_ori_yaw, lucky_list = env.reset_table(close_flag=True)
         else:
             state, rdm_pos_x, rdm_pos_y, rdm_pos_z, rdm_ori_yaw, lucky_list = env.reset_table(close_flag=False)
@@ -144,21 +145,22 @@ if __name__ == '__main__':
                 # label.append(element)
 
         # print(label)
-        np.savetxt(os.path.join(data_root, "label/real_world_label_409/img%s.txt") %epoch, label,fmt='%.8s')
+        np.savetxt(os.path.join(data_root, "label/real_world_label_418/%012d.txt") %epoch, label,fmt='%.8s')
 
         # for nnn in range(1):
         lebal_list.append(element)
         my_im2 = env.get_image()
 
         # print(my_im2.shape)
-        add = int((640 - 480) / 2)
-        img = cv2.copyMakeBorder(my_im2, add, add, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0, 255))
+        # add = int((640 - 480) / 2)
+        # img = cv2.copyMakeBorder(my_im2, add, add, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0, 255))
+        img = my_im2
         # print(img.shape)
         # img = yolo_box(img,label) # draw the box of each lego
         # cv2.imshow('zzz', img)
         # cv2.waitKey(0)
         # cv2.destroyWindow()
-        cv2.imwrite(os.path.join(data_root, "input/image_yolo_409/" + "IMG_test%s.png") % epoch, img)
+        cv2.imwrite(os.path.join(data_root, "input/image_yolo_418/" + "%012d.png") % epoch, img)
 
         # img = cv2.imread("Dataset/lego_yolo_403_test/" + "IMG_test%s.png" % epoch)
         # # cv2.namedWindow('zzz', 0)
