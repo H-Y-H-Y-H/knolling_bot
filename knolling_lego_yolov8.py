@@ -20,13 +20,13 @@
 
 import numpy as np
 import pyrealsense2 as rs
-from items_real import Sort_objects
+from items_real_yolov8 import Sort_objects
 import pybullet_data as pd
 import math
 from turdf import *
 import socket
 import cv2
-from cam_obs import *
+from cam_obs_yolov8 import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -161,9 +161,8 @@ class Arm:
                                                             renderer=p.ER_BULLET_HARDWARE_OPENGL)
 
             img = image[:, :,:3]
-            # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            add = int((640-480)/2)
-            img = cv2.copyMakeBorder(img, add, add, 0, 0,cv2.BORDER_CONSTANT, None, value = 0)
+            img_path = 'Test_images/image_sim'
+            cv2.imwrite(img_path + '.png', img)
 
             ############### order the ground truth depend on x, y in the world coordinate system ###############
             new_xyz_list = self.xyz_list
@@ -175,94 +174,46 @@ class Arm:
                 new_ori_before.append(p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.obj_idx[i])[1])[2])
             new_pos_before = np.asarray(new_pos_before)
             new_ori_before = np.asarray(new_ori_before)
-            ground_truth_xyyaw = np.concatenate((new_pos_before, new_ori_before.reshape((-1, 1))), axis=1)
-            # ground_truth_xyyaw = np.concatenate((self.check_pos, self.check_ori.reshape((-1, 1))), axis=1)
-            order_ground_truth = np.lexsort((ground_truth_xyyaw[:, 1], ground_truth_xyyaw[:, 0]))
 
-            ground_truth_xyyaw_test = np.copy(ground_truth_xyyaw[order_ground_truth, :])
+            ground_truth_pose = data_preprocess(new_pos_before, new_xyz_list[:, :2], new_ori_before)
+            # structure of ground_truth_pose: yolo-pose label!!!!!!!
+            order_ground_truth = np.lexsort((ground_truth_pose[:, 2], ground_truth_pose[:, 1]))
+
+            ground_truth_pose_test = np.copy(ground_truth_pose[order_ground_truth, :])
             for i in range(len(order_ground_truth) - 1):
-                if np.abs(ground_truth_xyyaw_test[i, 0] - ground_truth_xyyaw_test[i+1, 0]) < 0.003:
-                    if ground_truth_xyyaw_test[i, 1] < ground_truth_xyyaw_test[i+1, 1]:
-                        # ground_truth_xyyaw[order_ground_truth[i]], ground_truth_xyyaw[order_ground_truth[i+1]] = ground_truth_xyyaw[order_ground_truth[i+1]], ground_truth_xyyaw[order_ground_truth[i]]
+                if np.abs(ground_truth_pose_test[i, 1] - ground_truth_pose_test[i+1, 1]) < 0.003:
+                    if ground_truth_pose_test[i, 2] < ground_truth_pose_test[i+1, 2]:
+                        # ground_truth_pose[order_ground_truth[i]], ground_truth_pose[order_ground_truth[i+1]] = ground_truth_pose[order_ground_truth[i+1]], ground_truth_pose[order_ground_truth[i]]
                         order_ground_truth[i], order_ground_truth[i+1] = order_ground_truth[i+1], order_ground_truth[i]
                         print('truth change the order!')
                     else:
                         pass
             print('this is the ground truth order', order_ground_truth)
-            print('this is the ground truth before changing the order\n', ground_truth_xyyaw)
+            print('this is the ground truth before changing the order\n', ground_truth_pose)
             new_xyz_list = new_xyz_list[order_ground_truth, :]
-            ground_truth_xyyaw = ground_truth_xyyaw[order_ground_truth, :]
+            ground_truth_pose = ground_truth_pose[order_ground_truth, :]
             ############### order the ground truth depend on x, y in the world coordinate system ###############
 
-            # demo = np.array([[0.032, 0.016, 1, 1],
-            #                  [0.016, 0.016, -1, -1]])
-            # scaler = MinMaxScaler()
-            # scaler.fit(demo)
 
-            # this is lwyaw ground truth
-            # select the ori for squares to x2
-            ground_truth_xyyaw_plot = np.copy(ground_truth_xyyaw)
-            for i in range(len(ground_truth_xyyaw)):
-                if np.abs(new_xyz_list[i][0] - new_xyz_list[i][1]) < 0.001:
-                    if ground_truth_xyyaw[i][2] > np.pi / 2:
-                        print('square change!')
-                        print(i, ground_truth_xyyaw[i][2])
-                        new_angle = ground_truth_xyyaw[i][2] - int(
-                            ground_truth_xyyaw[i][2] // (np.pi / 2)) * np.pi / 2
-                        print(i, ground_truth_xyyaw[i][2])
-                    elif ground_truth_xyyaw[i][2] < 0:
-                        print('square change!')
-                        print(i, ground_truth_xyyaw[i][2])
-                        new_angle = ground_truth_xyyaw[i][2] + (
-                                int(ground_truth_xyyaw[i][2] // (-np.pi / 2)) + 1) * np.pi / 2
-                        print(i, ground_truth_xyyaw[i][2])
-                    else:
-                        new_angle = np.copy(ground_truth_xyyaw[i][2])
-                    ground_truth_xyyaw[i][2] = new_angle * 2
 
-            target_cos_plot = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
-            target_sin_plot = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
-            target_plot = np.concatenate((new_xyz_list[:, :2], target_cos_plot, target_sin_plot, ground_truth_xyyaw_plot[:, :]), axis=1) # this is the target for plot!!!!!!!!!
-            # structure: length, width, cos(2 * ori), sin(2 * ori)
-            target_cos = np.cos(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
-            target_sin = np.sin(2 * ground_truth_xyyaw[:, 2].reshape((-1, 1)))
-            target_compare = np.concatenate((new_xyz_list[:, :2], target_cos, target_sin), axis=1)
-
-            # target_compare_scaled = scaler.transform(target_compare)
-
-            # structure: x, y, length, width, ori
             ################### the results of object detection has changed the order!!!! ####################
-            results = np.asarray(
-                detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=target_plot, use_yolo_pos=self.use_yolo_pos))
-            results = np.asarray(results[:, :5]).astype(np.float32)
-            print('this is the result of yolo+resnet\n', results)
+            # structure of results: x, y, length, width, ori
+            results = yolov8_predict(img_path=img_path,
+                                     real_flag=self.real_operate,
+                                     target=ground_truth_pose)
+            print('this is the result of yolo-pose\n', results)
             ################### the results of object detection has changed the order!!!! ####################
 
 
-            #################### check the error of resnet and yolo #####################
-            if self.check_detection_loss == True:
-                if self.obs_img_from == 'env':
-                    env_loss = check_resnet_yolo(obs_img_from, results, target_compare)
-                elif self.obs_img_from == 'dataset':
-                    dataset_loss = check_resnet_yolo(obs_img_from, results, target_compare)
-                else:
-                    pass
-            #################### check the error of resnet and yolo #####################
-
-            # for i in range(len(results)):
-            #     if results[i][2] < 0.018:
-            #         results[i][4] = results[i][4] * 2
-            # pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
-            # pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
-            # pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
-            # print('this is the target_compare\n', target_compare)
-            # print('this is the pred_compare\n', pred_compare)
-            # pred_compare_scaled = scaler.transform(pred_compare)
-            #
-            # zzz_error_norm = np.mean((pred_compare_scaled - target_compare_scaled) ** 2)
-            # zzz_error = np.mean((pred_compare - target_compare) ** 2)
-            # print('this is the scaled error between the target and the pred', zzz_error_norm)
-            # print('this is the error between the target and the pred', zzz_error)
+            # #################### check the error of resnet and yolo #####################
+            # if self.check_detection_loss == True:
+            #     if self.obs_img_from == 'env':
+            #         env_loss = check_resnet_yolo(obs_img_from, results, target_compare)
+            #     elif self.obs_img_from == 'dataset':
+            #         dataset_loss = check_resnet_yolo(obs_img_from, results, target_compare)
+            #     else:
+            #         pass
+            # #################### check the error of resnet and yolo #####################
 
             # arange the sequence based on categories of cubes
             z = 0
@@ -275,7 +226,7 @@ class Arm:
             correct = np.asarray(correct)
             for i in range(len(correct)):
                 for j in range(len(results)):
-                    if np.linalg.norm(correct[i][0] - results[j][2]) < 0.003:
+                    if np.linalg.norm(correct[i][0] - results[j][2]) < 0.004:
                         index.append(j)
             manipulator_before = []
             for i in index:
@@ -337,33 +288,19 @@ class Arm:
                 frames = pipeline.wait_for_frames()
                 # depth_frame = frames.get_depth_frame()
                 color_frame = frames.get_color_frame()
-
                 color_image = np.asanyarray(color_frame.get_data())
-
                 color_colormap_dim = color_image.shape
                 resized_color_image = color_image
 
-                # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-                # cv2.imshow('RealSense', resized_color_image)
-                # cv2.imwrite("img.png",resized_color_image[112:368, 192:448])
-                add = int((640 - 480) / 2)
-                resized_color_image = cv2.copyMakeBorder(resized_color_image, add, add, 0, 0, cv2.BORDER_CONSTANT,
-                                                         None, value=0)
-                cv2.imwrite("test_without_marker.png", resized_color_image)
-
+                img_path = 'Test_images/image_real'
+                cv2.imwrite(img_path + '.png', resized_color_image)
                 cv2.waitKey(1)
 
-            img = cv2.imread("test_without_marker.png")
-
             # structure: x,y,length,width,yaw
-            results = np.asarray(
-                detect(img, evaluation=evaluation, real_operate=self.real_operate, all_truth=None, order_truth=None))
-            results = np.asarray(results[:, :5]).astype(np.float32)
-            print('this is the result of yolo+resnet', results)
-            pred_cos = np.cos(2 * results[:, 4].reshape((-1, 1)))
-            pred_sin = np.sin(2 * results[:, 4].reshape((-1, 1)))
-            pred_compare = np.concatenate((results[:, 2:4], pred_cos, pred_sin), axis=1)
-            pred_compare_2 = np.concatenate((results[:, 2:4], -pred_cos, -pred_sin), axis=1)
+            results = yolov8_predict(img_path=img_path,
+                                     real_flag=self.real_operate,
+                                     target=None)
+            print('this is the result of yolo-pose', results)
 
             # arange the sequence based on categories of cubes
             all_index = []
@@ -379,7 +316,7 @@ class Arm:
                 kind_index = []
                 for j in range(len(results)):
                     # if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
-                    if np.linalg.norm(self.correct[i][0] - results[j][2]) < 0.003:
+                    if np.linalg.norm(self.correct[i][0] - results[j][2]) < 0.004:
                         kind_index.append(num)
                         new_xyz_list.append(self.correct[i])
                         num += 1
@@ -563,13 +500,13 @@ class Arm:
         for i in range(60):
             p.stepSimulation()
 
-        ####################### try the corner pos and ori to calibrate the camera ####################
-        test_pos = []
-        for i in range(4):
-            test_pos.append(p.getBasePositionAndOrientation(self.obj_idx[i])[0])
-        test_pos = np.asarray(test_pos)
-        print('this is test of cube pos\n', test_pos)
-        ####################### try the corner pos and ori to calibrate the camera ####################
+        # ####################### try the corner pos and ori to calibrate the camera ####################
+        # test_pos = []
+        # for i in range(4):
+        #     test_pos.append(p.getBasePositionAndOrientation(self.obj_idx[i])[0])
+        # test_pos = np.asarray(test_pos)
+        # print('this is test of cube pos\n', test_pos)
+        # ####################### try the corner pos and ori to calibrate the camera ####################
 
         return self.get_obs('images', None)
 
@@ -958,47 +895,43 @@ class Arm:
 
             # add the offset manually
             if self.real_operate == True:
-
-                # # automatically add bias
-                # R = np.array([0, 0.10, 0.185, 0.225, 0.27])
-                # x_bias = np.array([0.001, 0.004, 0.0055, 0.007, 0.01])
-                # y_bias = np.array([0, -0.0005, -0.002, 0, +0.001])
-                # # R = np.array([0.15, 0.185, 0.225, 0.27])
-                # # x_bias = np.array([0.003, 0.006, 0.010, 0.014])
-                # # y_bias = np.array([0.002, 0.003, 0.006, 0.008])
-                # x_parameters = np.polyfit(R, x_bias, 3)
-                # y_parameters = np.polyfit(R, y_bias, 3)
-                # new_x_formula = np.poly1d(x_parameters)
-                # new_y_formula = np.poly1d(y_parameters)
-                #
-                # distance = np.linalg.norm(tar_pos - np.array([0, 0, tar_pos[2]]))
-                # tar_pos[0] = tar_pos[0] + new_x_formula(distance)
-                # if tar_pos[1] < 0:
-                #     tar_pos[1] = tar_pos[1] - new_y_formula(distance)
-                # else:
-                #     tar_pos[1] = tar_pos[1] + new_y_formula(distance)
-
-                # automatically add z and x bias
-                d = np.array([0, 0.10, 0.185, 0.225, 0.27])
-                z_bias = np.array([-0.005, 0.0, 0.005, 0.01, 0.015])
-                # x_bias = np.array([0, 0.0025, 0.005, 0.075, 0.01])
-                z_parameters = np.polyfit(d, z_bias, 3)
-                # x_parameters = np.polyfit(d, x_bias, 3)
+                # # automatically add z and x bias
+                # d_z = np.array([0, 0.10, 0.185, 0.225, 0.3])
+                d_z = np.array([0, 0.3])
+                d_x = np.array([0, 0.3])
+                d_y = np.array([0, 0.3])
+                z_bias = np.array([-0.005, 0.015])
+                # z_bias = np.array([-0.005, 0.0, 0.005, 0.01, 0.015])
+                x_bias = np.array([0.001, 0.007])
+                y_bias = np.array([0, 0.005])
+                z_parameters = np.polyfit(d_z, z_bias, 3)
+                x_parameters = np.polyfit(d_x, x_bias, 1)
+                y_parameters = np.polyfit(d_y, y_bias, 1)
                 new_z_formula = np.poly1d(z_parameters)
-                # new_x_formula = np.poly1d(x_parameters)
+                new_x_formula = np.poly1d(x_parameters)
+                new_y_formula = np.poly1d(y_parameters)
+                #
+                distance_z = tar_pos[0]
+                distance_x = tar_pos[0]
+                distance_y = np.sqrt(tar_pos[0] ** 2 + tar_pos[1] ** 2)
+                # print('this is tar before poly', tar_pos)
+                tar_pos[2] = tar_pos[2] + new_z_formula(distance_z)
+                # tar_pos[0] = tar_pos[0] + 0.003
+                # if tar_pos[1] < 0:
+                #     tar_pos[1] = tar_pos[1] - new_y_formula(distance_y)
+                # else:
+                #     tar_pos[1] = tar_pos[1] + new_y_formula(distance_y)
+                # print('this is tar after poly', tar_pos)
 
-                distance = tar_pos[0]
-                tar_pos[2] = tar_pos[2] + new_z_formula(distance)
-                # tar_pos[0] = tar_pos[0] + new_x_formula(distance)
-                tar_pos[0] = tar_pos[0] + 0.002
+                pass
 
-            if tar_ori[2] > 3.1416:
+            if tar_ori[2] > 3.1416 / 2:
                 tar_ori[2] = tar_ori[2] - np.pi
                 print('tar ori is too large')
-            elif tar_ori[2] < -3.1416:
+            elif tar_ori[2] < -3.1416 / 2:
                 tar_ori[2] = tar_ori[2] + np.pi
                 print('tar ori is too small')
-            print('this is tar ori', tar_ori)
+            # print('this is tar ori', tar_ori)
 
             if cur_ori[0] > 0.1:
                 print('aaaaaa')
@@ -1009,15 +942,23 @@ class Arm:
                 move_slice = 0.006
             else:
                 # horizontal, choose a large slice
-                move_slice = 0.008
+                move_slice = 0.01
 
             if self.real_operate == True:
                 tar_pos = tar_pos + np.array([0, 0, real_height])
                 target_pos = np.copy(tar_pos)
                 target_ori = np.copy(tar_ori)
                 # target_pos[2] = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )[2] # remove nn offset temporary
-                mark_ratio = 0.95
-                seg_time = 0
+
+                if np.abs(target_pos[2] - cur_pos[2]) > 0.01 \
+                        and np.abs(target_pos[0] - cur_pos[0]) < 0.01 \
+                        and np.abs(target_pos[1] - cur_pos[1]) < 0.01:
+                    print('we dont need feedback control')
+                    mark_ratio = 1
+                    seg_time = -1
+                else:
+                    mark_ratio = 0.95
+                    seg_time = 0
 
                 while True:
                     plot_cmd = []
@@ -1045,7 +986,7 @@ class Arm:
                         tar_ori = cur_ori + step_ori
                         sim_xyz.append(tar_pos)
                         sim_ori.append(tar_ori)
-                        print(tar_ori)
+                        # print(tar_ori)
 
                         ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
                                                                      maxNumIterations=200,
@@ -1088,7 +1029,7 @@ class Arm:
 
                     if seg_time > 0:
                         seg_flag = False
-                        # print('segment fail, try to tune!')
+                        print('segment fail, try to tune!')
                         ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=target_pos,
                                                                      maxNumIterations=200,
                                                                      targetOrientation=p.getQuaternionFromEuler(
@@ -1121,6 +1062,18 @@ class Arm:
                         real_xyz = np.append(real_xyz, np.asarray(p.getLinkState(self.arm_id, 9)[0])).reshape(-1, 3)
                         cur_pos = real_xyz[-1]
                         # print(real_xyz)
+                        break
+                    else:
+                        print('this is the shape of angles real', angles_real.shape)
+                        for i in range(len(angles_real)):
+                            ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
+                            for motor_index in range(self.num_motor):
+                                p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                                                        targetPosition=ik_angles_real[motor_index], maxVelocity=25)
+                            for i in range(40):
+                                p.stepSimulation()
+                            real_xyz = np.append(real_xyz, np.asarray(p.getLinkState(self.arm_id, 9)[0])).reshape(-1, 3)
+                        cur_pos = real_xyz[-1]
                         break
 
             else:
@@ -1546,7 +1499,8 @@ class Arm:
             rest_pos = np.array([0, 0, 0.05])
             rest_ori = np.array([0, 1.57, 0])
             offset_low = np.array([0, 0, 0])
-            offset_high = np.array([0, 0, 0.04])
+            offset_high = np.array([0, 0, 0.03])
+            offset_highest = np.array([0, 0, 0.05])
 
             for i in range(len(self.obj_idx)):
 
@@ -1554,11 +1508,11 @@ class Arm:
                                        offset_high + start_end[i][:3],
                                        offset_low + start_end[i][:3],
                                        [0.0273],
-                                       offset_high + start_end[i][:3],
+                                       offset_highest + start_end[i][:3],
                                        offset_high + start_end[i][6:9],
                                        offset_low + start_end[i][6:9],
                                        [0.025],
-                                       offset_high + start_end[i][6:9]]
+                                       offset_highest + start_end[i][6:9]]
 
                 trajectory_ori_list = [rest_ori + start_end[i][3:6],
                                        rest_ori + start_end[i][3:6],
@@ -1857,9 +1811,9 @@ if __name__ == '__main__':
         gap_item = 0.015
         gap_block = 0.02
         random_offset = False
-        real_operate = False
-        obs_order = 'sim_image_obj'
-        check_detection_loss = True
+        real_operate = True
+        obs_order = 'real_image_obj'
+        check_detection_loss = False
         obs_img_from = 'env'
         use_yolo_pos = False
 

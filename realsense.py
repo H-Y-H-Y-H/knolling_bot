@@ -9,6 +9,7 @@ import time
 import pyrealsense2 as rs
 import numpy as np
 import cv2
+import os
 
 # Configure depth and color streams
 pipeline = rs.pipeline()
@@ -46,7 +47,7 @@ try:
         color_image = np.asanyarray(color_frame.get_data())
 
         color_colormap_dim = color_image.shape
-        resized_color_image = color_image
+        resized_color_image = np.copy(color_image)
 
         #### add line
 
@@ -67,15 +68,22 @@ try:
 
         # visualize_img = cv2.resize(resized_color_image,(1280,960),interpolation = cv2.INTER_AREA)
         # Show images
+
+
         cv2.namedWindow('RealSense', 0)
-        cv2.imshow('RealSense', resized_color_image)
+        # cv2.imshow('RealSense', resized_color_image)
+        cv2.imshow('RealSense', color_image)
         # cv2.imwrite("img.png",resized_color_image[112:368, 192:448])
-        add = int((640 - 480) / 2)
-        resized_color_image = resized_color_image[9:470, 58: 581]
+        # add = int((640 - 480) / 2)
+        # resized_color_image = resized_color_image[9:470, 58: 581]
         # resized_color_image = cv2.copyMakeBorder(resized_color_image, add, add, 0, 0, cv2.BORDER_CONSTANT, None, value=0)
-        cv2.imwrite("img_4.png",resized_color_image)
+        # cv2.imwrite("img_4.png",resized_color_image)
 
         cv2.waitKey(1)
+
+        os.makedirs('real_image_collect/', exist_ok=True)
+        path = 'real_image_collect/'
+        cv2.imwrite(path + 'img_4.png', color_image)
         #
         # if count//300 == 1:
         #     print("go")

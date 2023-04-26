@@ -67,7 +67,7 @@ if __name__ == '__main__':
         obs = env.reset()
         for i in range(10000):
 
-            a, _ = model.predict(obs)
+            a, _ = model.yolov8_predict(obs)
             print(f'action {a}')
             obs, reward, done, _ = env.step(a)
             # print(f'ee_pos {obs[:3]}')

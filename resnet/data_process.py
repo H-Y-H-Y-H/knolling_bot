@@ -100,10 +100,10 @@ if __name__ == '__main__':
 
     # dataset format: bool, x, y, length, width, ori
     # data_root = '/home/ubuntu/Desktop/knolling_dataset/resnet_super/label/'
-    data_root = '/home/zhizhuo/ADDdisk/knolling_dataset/resnet_super/label/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo-pose-small/labels/'
 
     # data = label_combine(data_root)
-    num_label = num_img = 15000
+    num_label = num_img = 10
 
     # for j in range(num_label):
     #
@@ -112,7 +112,7 @@ if __name__ == '__main__':
     #     change_yaw(data_root, input_label_path, output_label_path)
 
     # data_root = '/home/ubuntu/Desktop/knolling_dataset/resnet_super/input/'
-    for j in range(num_img):
-        input_img_path = 'normal_409_img/img%d.png' % j
-        output_img_path = 'normal_409_img_train/img%d.png' % j
-        rm_black_border(data_root, input_img_path, output_img_path)
+    for j in range(num_label):
+        input_label_path = '%012d.txt' % j
+        output_label_path = 'new/%012d.txt' % j
+        change_yaw(data_root, input_label_path, output_label_path)

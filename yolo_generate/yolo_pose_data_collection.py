@@ -8,7 +8,7 @@ import numpy as np
 import random
 import math
 from PIL import Image
-from data_collection_env import *
+from yolo_pose_data_collection_env import *
 # from create_urdf import *
 # from create_urdf import *
 
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     p.connect(p.GUI)
 
     startnum = 0
-    endnum = 10
+    endnum = 100
     lebal_list = []
 
     num_reset = True

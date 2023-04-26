@@ -88,61 +88,61 @@ if __name__ == '__main__':
 
                 # xpos, ypos = xyz_resolve(xpos1,ypos1)
 
-                # corn1, corn2, corn3, corn4 = find_corner(xpos1, ypos1, lucky_list[j], yawori)
-                # # print('this is corn after find corner', corn1, corn2, corn3, corn4)
-                #
-                # # corn1, corn2, corn3, corn4 = resolve_img(corn1, corn2, corn3, corn4)
-                # # print('this is corn after resolve img', corn1, corn2, corn3, corn4)
-                #
-                # corner_list.append([corn1, corn2, corn3, corn4])
-                #
-                # corns = corner_list[j]
-                #
-                # col_offset = 320
-                # # row_offset = (0.15 - (0.3112 - 0.15)) * mm2px + 5
-                # row_offset = 0
-                #
-                # col_list = [int(mm2px * corns[0][1] + col_offset), int(mm2px * corns[3][1] + col_offset),
-                #             int(mm2px * corns[1][1] + col_offset), int(mm2px * corns[2][1] + col_offset)]
-                # row_list = [int(mm2px * corns[0][0] - row_offset), int(mm2px * corns[3][0] - row_offset),
-                #             int(mm2px * corns[1][0] - row_offset), int(mm2px * corns[2][0] - row_offset)]
-                # # print(col_list)
-                # # print(row_list)
-                #
-                # col_list = np.sort(col_list)
-                # row_list = np.sort(row_list)
-                # col_list[3] = col_list[3] + 7
-                # col_list[0] = col_list[0] - 7
-                #
-                # row_list[3] = row_list[3] + 7
-                # row_list[0] = row_list[0] - 7
-                #
-                # label_x = ((col_list[0] + col_list[3]) / 2)/640
-                # label_y = (((row_list[0] + row_list[3]) / 2)+86)/640
-                #
-                # length = (col_list[3] - col_list[0])/640
-                # width = (row_list[3] - row_list[0])/640
-                #
-                # # if lucky_list[j] == 2 and rdm_ori_yaw[j] < 0:
-                # #     rdm_ori_yaw[j] = rdm_ori_yaw[j] + np.pi/2
+                corn1, corn2, corn3, corn4 = find_corner(xpos1, ypos1, lucky_list[j], yawori)
+                # print('this is corn after find corner', corn1, corn2, corn3, corn4)
 
+                # corn1, corn2, corn3, corn4 = resolve_img(corn1, corn2, corn3, corn4)
+                # print('this is corn after resolve img', corn1, corn2, corn3, corn4)
 
-                element = []
-                element.append(xpos1)
-                element.append(ypos1)
-                element.append(lucky_list[j])
-                element.append(yawori)
-                element = np.asarray(element)
-                label.append(element)
+                corner_list.append([corn1, corn2, corn3, corn4])
+
+                corns = corner_list[j]
+
+                col_offset = 320
+                # row_offset = (0.15 - (0.3112 - 0.15)) * mm2px + 5
+                row_offset = 0
+
+                col_list = [int(mm2px * corns[0][1] + col_offset), int(mm2px * corns[3][1] + col_offset),
+                            int(mm2px * corns[1][1] + col_offset), int(mm2px * corns[2][1] + col_offset)]
+                row_list = [int(mm2px * corns[0][0] - row_offset), int(mm2px * corns[3][0] - row_offset),
+                            int(mm2px * corns[1][0] - row_offset), int(mm2px * corns[2][0] - row_offset)]
+                # print(col_list)
+                # print(row_list)
+
+                col_list = np.sort(col_list)
+                row_list = np.sort(row_list)
+                col_list[3] = col_list[3] + 7
+                col_list[0] = col_list[0] - 7
+
+                row_list[3] = row_list[3] + 7
+                row_list[0] = row_list[0] - 7
+
+                label_x = ((col_list[0] + col_list[3]) / 2)/640
+                label_y = (((row_list[0] + row_list[3]) / 2)+86)/640
+
+                length = (col_list[3] - col_list[0])/640
+                width = (row_list[3] - row_list[0])/640
+
+                # if lucky_list[j] == 2 and rdm_ori_yaw[j] < 0:
+                #     rdm_ori_yaw[j] = rdm_ori_yaw[j] + np.pi/2
+
 
                 # element = []
-                # element.append(0)
-                # element.append(label_x)
-                # element.append(label_y)
-                # element.append(length)
-                # element.append(width)
+                # element.append(xpos1)
+                # element.append(ypos1)
+                # element.append(lucky_list[j])
+                # element.append(yawori)
                 # element = np.asarray(element)
                 # label.append(element)
+
+                element = []
+                element.append(0)
+                element.append(label_x)
+                element.append(label_y)
+                element.append(length)
+                element.append(width)
+                element = np.asarray(element)
+                label.append(element)
 
         # print(label)
         np.savetxt(os.path.join(data_root, "label/real_world_label_418/%012d.txt") %epoch, label,fmt='%.8s')
@@ -151,15 +151,15 @@ if __name__ == '__main__':
         lebal_list.append(element)
         my_im2 = env.get_image()
 
-        # print(my_im2.shape)
-        # add = int((640 - 480) / 2)
-        # img = cv2.copyMakeBorder(my_im2, add, add, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0, 255))
-        img = my_im2
+        print(my_im2.shape)
+        add = int((640 - 480) / 2)
+        img = cv2.copyMakeBorder(my_im2, add, add, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0, 255))
+        # img = my_im2
         # print(img.shape)
-        # img = yolo_box(img,label) # draw the box of each lego
-        # cv2.imshow('zzz', img)
-        # cv2.waitKey(0)
-        # cv2.destroyWindow()
+        img = yolo_box(img,label) # draw the box of each lego
+        cv2.imshow('zzz', img)
+        cv2.waitKey(0)
+        cv2.destroyWindow()
         cv2.imwrite(os.path.join(data_root, "input/image_yolo_418/" + "%012d.png") % epoch, img)
 
         # img = cv2.imread("Dataset/lego_yolo_403_test/" + "IMG_test%s.png" % epoch)

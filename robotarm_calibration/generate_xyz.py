@@ -8,7 +8,6 @@ import math
 from turdf import *
 import socket
 import cv2
-from cam_obs import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -278,13 +277,13 @@ class Arm:
             lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
             lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
 
-        baseid = p.loadURDF(("plane_1.urdf"), basePosition=[-10.11, -3.0165, 0], useFixedBase=1,
+        baseid = p.loadURDF(os.path.join(self.urdf_path, "plane_1.urdf"), basePosition=[-10.11, -3.0165, 0], useFixedBase=1,
                             flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         self.arm_id = p.loadURDF(os.path.join(self.urdf_path, "robot_arm928/robot_arm1.urdf"),
                                  basePosition=[-0.08, 0, 0.02], useFixedBase=True,
                                  flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
-        textureId = p.loadTexture("../img_1.png")
+        textureId = p.loadTexture(os.path.join(self.urdf_path, "img_1.png"))
         p.changeDynamics(baseid, -1, lateralFriction=1, spinningFriction=1, rollingFriction=0.002, linearDamping=0.5, angularDamping=0.5)
         p.changeDynamics(self.arm_id, 7, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=0, angularDamping=0)
         p.changeDynamics(self.arm_id, 8, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=0, angularDamping=0)
@@ -364,10 +363,12 @@ class Arm:
             # if self.test_error_motion == True:
             #     target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )
             # automatically add z and x bias
-            d = np.array([0, 0.10, 0.185, 0.225, 0.27])
-            z_bias = np.array([-0.005, 0.0, 0.005, 0.01, 0.015])
-            # x_bias = np.array([0, 0.0025, 0.005, 0.075, 0.01])
-            z_parameters = np.polyfit(d, z_bias, 3)
+            # d = np.array([0, 0.10, 0.185, 0.225, 0.27])
+            d = np.array([0, 0.3])
+            z_bias = np.array([-0.01, 0.015])
+            x_bias = np.array([0.001, 0.007])
+            # z_parameters = np.polyfit(d, z_bias, 3)
+            z_parameters = np.polyfit(d, z_bias, 1)
             # x_parameters = np.polyfit(d, x_bias, 3)
             new_z_formula = np.poly1d(z_parameters)
             # new_x_formula = np.poly1d(x_parameters)
@@ -375,7 +376,7 @@ class Arm:
             distance = tar_pos[0]
             tar_pos[2] = tar_pos[2] + new_z_formula(distance)
             # tar_pos[0] = tar_pos[0] + new_x_formula(distance)
-            tar_pos[0] = tar_pos[0] + 0.002
+            # tar_pos[0] = tar_pos[0] + 0.003
 
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
                 # vertical, choose a small slice
@@ -389,8 +390,18 @@ class Arm:
                 target_pos = np.copy(tar_pos)
                 target_ori = np.copy(tar_ori)
                 # target_pos[2] = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )[2] # remove nn offset temporary
-                mark_ratio = 0.95
-                seg_time = 0
+
+                print('this is tar pos', target_pos)
+                print('this is cur pos', cur_pos)
+                if np.abs(target_pos[2] - cur_pos[2]) > 0.01 \
+                        and np.abs(target_pos[0] - cur_pos[0]) < 0.01\
+                        and np.abs(target_pos[1] - cur_pos[1]) < 0.01:
+                    print('we dont need feedback control')
+                    mark_ratio = 1
+                    seg_time = -1
+                else:
+                    mark_ratio = 0.95
+                    seg_time = 0
 
                 while True:
                     plot_cmd = []
@@ -471,6 +482,7 @@ class Arm:
                     #     seg_flag = True
                     #     break
                     # print('this is seg_time', seg_time)
+                    print(seg_time)
                     if seg_time > 0:
                         seg_flag = False
                         print('segment fail, try to tune!')
@@ -496,6 +508,7 @@ class Arm:
                         final_angles_real = conn.recv(4096)
                         # print('received')
                         final_angles_real = np.frombuffer(final_angles_real, dtype=np.float32).reshape(-1, 6)
+                        print('this is the shape of final angles real', final_angles_real.shape)
 
                         ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(final_angles_real)), dtype=np.float32)
                         for motor_index in range(self.num_motor):
@@ -507,48 +520,18 @@ class Arm:
                         cur_pos = real_xyz[-1]
                         # print(real_xyz)
                         break
-
-
-                        # for i in range(1, 10):
-                        #     plot_cmd = []
-                        #     real_xyz = []
-                        #     tar_pos = cur_pos + (target_pos - cur_pos) * i / 3
-                        #     ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
-                        #                                                  maxNumIterations=200,
-                        #                                                  targetOrientation=p.getQuaternionFromEuler(
-                        #                                                      tar_ori))
-                        #
-                        #     for motor_index in range(self.num_motor):
-                        #         p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                        #                                 targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
-                        #     for i in range(20):
-                        #         p.stepSimulation()
-                        #
-                        #     angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
-                        #     plot_cmd.append(angle_sim)
-                        #     plot_cmd = np.asarray(plot_cmd)
-                        #     conn.sendall(plot_cmd.tobytes())
-                        #     angles_real = conn.recv(4096)
-                        #     angles_real = np.frombuffer(angles_real, dtype=np.float32).reshape(-1, 6)
-                        #     ik_angles_real = []
-                        #     for i in range(len(angles_real)):
-                        #         ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
-                        #         for motor_index in range(self.num_motor):
-                        #             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-                        #                                     targetPosition=ik_angles_real[motor_index], maxVelocity=25)
-                        #         for i in range(40):
-                        #             p.stepSimulation()
-                        #         real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
-                        #     real_xyz = np.asarray(real_xyz)
-                        #
-                        #     cur_pos = real_xyz[-1]
-                        #     print('this is tar pos while moving', tar_pos)
-                        #     print('this is cur pos while moving', cur_pos)
-                        #     if abs(target_pos[0] - cur_pos[0]) < 0.001 and abs(target_pos[1] - cur_pos[1]) < 0.001 and abs(
-                        #             target_pos[2] - cur_pos[2]) < 0.001:
-                        #         print('tune success!')
-                        #         break
-
+                    else:
+                        print('this is the shape of angles real', angles_real.shape)
+                        for i in range(len(angles_real)):
+                            ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
+                            for motor_index in range(self.num_motor):
+                                p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
+                                                        targetPosition=ik_angles_real[motor_index], maxVelocity=25)
+                            for i in range(40):
+                                p.stepSimulation()
+                            real_xyz = np.append(real_xyz, np.asarray(p.getLinkState(self.arm_id, 9)[0])).reshape(-1, 3)
+                        cur_pos = real_xyz[-1]
+                        break
 
                 if self.test_error_motion == True:
                     with open(file="nn_data_xyz/free_2/cmd_xyz_nn.csv", mode="a", encoding="utf-8") as f:
@@ -581,113 +564,6 @@ class Arm:
                         f.write('\n')
 
                 return cur_pos # return cur pos to let the manipualtor remember the improved pos
-
-            # target_pos = np.copy(tar_pos)
-            # target_ori = np.copy(tar_ori)
-            #
-            # if self.test_error_motion == True:
-            #     target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )
-            #
-            # if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
-            #     # vertical, choose a small slice
-            #     move_slice = 0.006
-            # else:
-            #     # horizontal, choose a large slice
-            #     move_slice = 0.01
-            # distance = np.linalg.norm(tar_pos - cur_pos)
-            # num_step = np.ceil(distance / move_slice)
-            #
-            # step_pos = (target_pos - cur_pos) / num_step
-            # step_ori = (target_ori - cur_ori) / num_step
-            #
-            # if self.real_operate == True:
-            #     print('this is real xyz before nn', tar_pos)
-            #     print('this is real xyz after nn', target_pos)
-            #     print('this is cur pos', cur_pos)
-            #     while True:
-            #         tar_pos = cur_pos + step_pos
-            #         tar_ori = cur_ori + step_ori
-            #         sim_xyz.append(tar_pos)
-            #         sim_ori.append(tar_ori)
-            #
-            #         ik_angles_sim = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=tar_pos,
-            #                                                      maxNumIterations=200,
-            #                                                      targetOrientation=p.getQuaternionFromEuler(tar_ori))
-            #
-            #         for motor_index in range(self.num_motor):
-            #             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-            #                                     targetPosition=ik_angles_sim[motor_index], maxVelocity=2.5)
-            #         for i in range(20):
-            #             p.stepSimulation()
-            #
-            #         angle_sim = np.asarray(real_cmd2tarpos(rad2cmd(ik_angles_sim[0:5])), dtype=np.float32)
-            #         plot_cmd.append(angle_sim)
-            #
-            #         if abs(target_pos[0] - tar_pos[0]) < 0.001 and abs(target_pos[1] - tar_pos[1]) < 0.001 and abs(
-            #                 target_pos[2] - tar_pos[2]) < 0.001 and \
-            #                 abs(target_ori[0] - tar_ori[0]) < 0.001 and abs(target_ori[1] - tar_ori[1]) < 0.001 and abs(
-            #             target_ori[2] - tar_ori[2]) < 0.001:
-            #             break
-            #
-            #         cur_pos = tar_pos
-            #         cur_ori = tar_ori
-            #
-            #     sim_xyz = np.asarray(sim_xyz)
-            #
-            #     plot_step = np.arange(num_step)
-            #     plot_cmd = np.asarray(plot_cmd)
-            #     # print('this is plot cmd\n', plot_cmd)
-            #     print('this is the shape of cmd', plot_cmd.shape)
-            #     print('this is the shape of xyz', sim_xyz.shape)
-            #     # print('this is the motor pos sent', plot_cmd[-1])
-            #     conn.sendall(plot_cmd.tobytes())
-            #     # print('waiting the manipulator')
-            #     angles_real = conn.recv(4096)
-            #     # print('received')
-            #     angles_real = np.frombuffer(angles_real, dtype=np.float32)
-            #     angles_real = angles_real.reshape(-1, 6)
-            #     ik_angles_real = []
-            #     for i in range(len(angles_real)):
-            #         ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(angles_real[i])), dtype=np.float32)
-            #         for motor_index in range(self.num_motor):
-            #             p.setJointMotorControl2(self.arm_id, motor_index, p.POSITION_CONTROL,
-            #                                     targetPosition=ik_angles_real[motor_index], maxVelocity=25)
-            #         for i in range(40):
-            #             p.stepSimulation()
-            #         real_xyz.append(p.getLinkState(self.arm_id, 9)[0])
-            #     real_xyz = np.asarray(real_xyz)
-            #
-            #     if self.test_error_motion == True:
-            #         with open(file="nn_data_xyz/free_2/cmd_xyz_nn.csv", mode="a", encoding="utf-8") as f:
-            #             sim_xyz = sim_xyz.tolist()
-            #             for i in range(len(sim_xyz)):
-            #                 list_zzz = [str(j) for j in sim_xyz[i]]
-            #                 f.writelines(' '.join(list_zzz))
-            #                 f.write('\n')
-            #         with open(file="nn_data_xyz/free_2/real_xyz_nn.csv", mode="a", encoding="utf-8") as f:
-            #             real_xyz = real_xyz.tolist()
-            #             for i in range(len(real_xyz)):
-            #                 list_zzz = [str(j) for j in real_xyz[i]]
-            #                 f.writelines(' '.join(list_zzz))
-            #                 f.write('\n')
-            #         with open(file="nn_data_xyz/free_2/cmd_nn.csv", mode="a", encoding="utf-8") as f:
-            #             plot_cmd = plot_cmd.tolist()
-            #             for i in range(len(plot_cmd)):
-            #                 list_zzz = [str(j) for j in plot_cmd[i]]
-            #                 f.writelines(' '.join(list_zzz))
-            #                 f.write('\n')
-            #         with open(file="nn_data_xyz/free_2/real_nn.csv", mode="a", encoding="utf-8") as f:
-            #             angles_real = angles_real.tolist()
-            #             for i in range(len(angles_real)):
-            #                 list_zzz = [str(j) for j in angles_real[i]]
-            #                 f.writelines(' '.join(list_zzz))
-            #                 f.write('\n')
-            #         with open(file="step.txt", mode="a", encoding="utf-8") as f:
-            #             list_zzz = [str(j) for j in plot_step]
-            #             f.writelines(' '.join(list_zzz))
-            #             f.write('\n')
-            #
-            #     return cur_pos  # return cur pos to let the manipualtor remember the improved pos
 
         def gripper(gap):
             if self.real_operate == True:
@@ -724,23 +600,23 @@ class Arm:
             last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
 
             if self.test_error_motion == True:
-                trajectory_pos_list = np.array([[0.05, 0.17, 0.03],
-                                                [0.05, 0.17, 0.005],
-                                                [0.05, -0.17, 0.03],
-                                                [0.05, -0.17, 0.005],
-                                                [0.23, 0.17, 0.03],
-                                                [0.23, 0.17, 0.005],
-                                                [0.23, -0.17, 0.03],
-                                                [0.23, -0.17, 0.005]])
-                # trajectory_pos_list = np.array([[0.23, -0.17, 0.03],
-                #                                 [0.23, -0.17, 0.01],
+                # trajectory_pos_list = np.array([[0.05, 0.17, 0.03],
+                #                                 [0.05, 0.17, 0.005],
+                #                                 [0.23, -0.17, 0.03],
+                #                                 [0.23, -0.17, 0.005],
                 #                                 [0.23, 0.17, 0.03],
-                #                                 [0.23, 0.17, 0.01]])
+                #                                 [0.23, 0.17, 0.005],
+                #                                 [0.05, -0.17, 0.03],
+                #                                 [0.05, -0.17, 0.005]])
+                trajectory_pos_list = np.array([[0.24, -0.122, 0.03],
+                                                [0.24, -0.122, 0.01],
+                                                [0.24, 0.122, 0.03],
+                                                [0.24, 0.122, 0.01]])
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], rest_ori)
-                        # if trajectory_pos_list[j][2] < 0.05:
+                        # if trajectory_pos_list[j][2] < 0.02:
                         #     time.sleep(2)
                         time.sleep(5)
                         last_ori = np.copy(rest_ori)
@@ -756,7 +632,7 @@ class Arm:
                     if len(trajectory_pos_list) == 3:
                         print('ready to move', trajectory_pos_list)
                         last_pos = move(last_pos, last_ori, trajectory_pos_list, rest_ori)
-                        time.sleep(5)
+                        # time.sleep(5)
                         # last_pos = np.copy(trajectory_pos_list)
                         last_ori = np.copy(rest_ori)
 
@@ -793,7 +669,7 @@ class Arm:
                 f.truncate(0)
             with open(file="nn_data_xyz/free_2/cmd_nn.csv", mode="w", encoding="utf-8") as f:
                 f.truncate(0)
-            with open(file="nn_data_xyz/free_2/real_nn.csv", mode="w", encoding="utf-8") as f:
+            with open(file="nn_data_xyz/free_2/real_nn.csv", mode   ="w", encoding="utf-8") as f:
                 f.truncate(0)
             with open(file="step.txt", mode="w", encoding="utf-8") as f:
                 f.truncate(0)
