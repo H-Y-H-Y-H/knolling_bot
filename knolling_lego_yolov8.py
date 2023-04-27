@@ -40,10 +40,10 @@ random.seed(202)
 
 class Arm:
 
-    def __init__(self, is_render=True):
+    def __init__(self, is_render=True, urdf_path=None):
 
         self.kImageSize = {'width': 480, 'height': 480}
-        self.urdf_path = 'urdf'
+        self.urdf_path = urdf_path
         self.pybullet_path = pd.getDataPath()
         self.is_render = is_render
         if self.is_render:
@@ -405,7 +405,7 @@ class Arm:
         if self.real_operate == False:
             self.xyz_list, _, _, self.all_index = items_sort.get_data_virtual(self.grasp_order, self.num_2x2,
                                                                               self.num_2x3, self.num_2x4,
-                                                                              self.num_pencil)
+                                                                              self.num_pencil, self.urdf_path)
             restrict = np.max(self.xyz_list)
             gripper_height = 0.012
             last_pos = np.array([[0, 0, 1]])
@@ -508,7 +508,8 @@ class Arm:
         # print('this is test of cube pos\n', test_pos)
         # ####################### try the corner pos and ori to calibrate the camera ####################
 
-        return self.get_obs('images', None)
+        # return self.get_obs('images', None)
+        return self.check_pos, self.check_ori, self.xyz_list
 
     def change_config(self):  # this is main function!!!!!!!!!
 
@@ -545,7 +546,7 @@ class Arm:
         if self.real_operate == False:
             self.xyz_list, _, _, self.all_index = items_sort.get_data_virtual(self.grasp_order, self.num_2x2,
                                                                               self.num_2x3, self.num_2x4,
-                                                                              self.num_pencil)
+                                                                              self.num_pencil, self.urdf_path)
         else:
             self.xyz_list, self.pos_before, self.ori_before, self.all_index, self.kind = items_sort.get_data_real()
         print(f'this is standard trim xyz list\n {self.xyz_list}')
@@ -1773,7 +1774,7 @@ if __name__ == '__main__':
         real_operate = False
         obs_order = 'images'
 
-        env = Arm(is_render=True)
+        env = Arm(is_render=True, urdf_path='./urdf/')
         env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4,
                            total_offset=total_offset, grasp_order=grasp_order,
                            gap_item=gap_item, gap_block=gap_block,
@@ -1803,22 +1804,22 @@ if __name__ == '__main__':
 
     if command == 'knolling':
 
-        num_2x2 = 4
+        num_2x2 = 0
         num_2x3 = 4
         num_2x4 = 4
         total_offset = [0.15, 0.1, 0]
-        grasp_order = [0, 1, 2]
+        grasp_order = [1, 2]
         gap_item = 0.015
         gap_block = 0.02
         random_offset = False
-        real_operate = True
-        obs_order = 'real_image_obj'
+        real_operate = False
+        obs_order = 'sim_image_obj'
         check_detection_loss = False
         obs_img_from = 'env'
         use_yolo_pos = False
 
 
-        env = Arm(is_render=True)
+        env = Arm(is_render=True, urdf_path='./urdf/')
         env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4,
                            total_offset=total_offset, grasp_order=grasp_order,
                            gap_item=gap_item, gap_block=gap_block,
@@ -1852,7 +1853,7 @@ if __name__ == '__main__':
             check_detection_loss = False
             obs_img_from = 'env'
 
-            env = Arm(is_render=False)
+            env = Arm(is_render=False, urdf_path='./urdf/')
             env.get_parameters(num_2x2=num_2x2, num_2x3=num_2x3, num_2x4=num_2x4,
                                total_offset=total_offset, grasp_order=grasp_order,
                                gap_item=gap_item, gap_block=gap_block,

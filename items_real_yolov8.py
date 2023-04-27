@@ -22,7 +22,7 @@ class Sort_objects():
 
         self.error_rate = 0.08
 
-    def get_data_virtual(self, order_kinds, num_2x2, num_2x3, num_2x4, num_pencil):
+    def get_data_virtual(self, order_kinds, num_2x2, num_2x3, num_2x4, num_pencil, urdf_path):
         
         #! don't motify
         names = globals()
@@ -35,16 +35,16 @@ class Sort_objects():
         self.num_pencil = num_pencil
 
         for i in range(self.num_2x2):
-            names[f'cube_{i}_dimension'] = mesh.Mesh.from_file('urdf/item_0/2x2.STL')
+            names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_0/2x2.STL')
             xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
         for i in range(self.num_2x3):
-            names[f'cube_{i}_dimension'] = mesh.Mesh.from_file('urdf/item_1/2x3.STL')
+            names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_1/2x3.STL')
             xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
         for i in range(self.num_2x4):
-            names[f'cube_{i}_dimension'] = mesh.Mesh.from_file('urdf/item_2/2x4.STL')
+            names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_2/2x4.STL')
             xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
         for i in range(self.num_pencil):
-            names[f'cube_{i}_dimension'] = mesh.Mesh.from_file('urdf/item_3/%d.STL' % i)
+            names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_3/%d.STL' % i)
             xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
         xyz_list = np.asarray(xyz_list, dtype=np.float32)
         print(xyz_list)
