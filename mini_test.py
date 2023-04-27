@@ -28,4 +28,16 @@ for i, data in enumerate(lego_dict):
     key_index.append(i)
 print(key_index)
 
-print(lego_dict[key_index])
+
+all_num = 7
+fac = []  # 定义一个列表存放因子
+for i in range(1, all_num + 1):
+    if all_num % i == 0:
+        fac.append(i)
+        continue
+print(fac)
+
+arr = np.array([1,2,3])
+
+index = np.array([1,1,1])
+print(arr[index])

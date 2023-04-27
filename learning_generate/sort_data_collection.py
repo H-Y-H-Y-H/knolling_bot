@@ -41,7 +41,7 @@ class Sort_objects():
         xyz_list = []
         pos_list = []
         ori_list = []
-        print(lego_num)
+        # print(lego_num)
         for i in range(len(lego_num)):
             for j in range(lego_num[i]):
                 xyz_list.append(self.correct[i])
@@ -59,7 +59,7 @@ class Sort_objects():
         #     names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_3/%d.STL' % i)
         #     xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
         xyz_list = np.asarray(xyz_list, dtype=np.float32)
-        print(xyz_list)
+        # print(xyz_list)
 
         return self.judge(xyz_list, pos_list, ori_list, order_kinds)
     
