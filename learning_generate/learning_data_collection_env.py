@@ -671,11 +671,11 @@ class Arm:
 
 if __name__ == '__main__':
 
-    command = 'knolling'
-    before_after = 'after'
+    command = 'recover'
+    before_after = 'before'
 
-    evaluations = 10000
-    range_low = 4
+    evaluations = 10
+    range_low = 15
     range_high = 16
 
     if command == 'recover':
@@ -684,10 +684,10 @@ if __name__ == '__main__':
         for i in range(range_low, range_high):
 
             target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data/'
-            images_before_path = target_path + 'images_reset/'
-            images_after_path = target_path + 'images_knolling/'
-            labels_before_path = target_path + 'labels_reset/'
-            labels_after_path = target_path + 'labels_knolling/'
+            images_before_path = target_path + 'images_before/'
+            images_after_path = target_path + 'images_after/'
+            labels_before_path = target_path + 'labels_before/'
+            labels_after_path = target_path + 'labels_after/'
             os.makedirs(images_before_path, exist_ok=True)
             os.makedirs(images_after_path, exist_ok=True)
 
@@ -722,8 +722,8 @@ if __name__ == '__main__':
     if command == 'knolling':
 
         target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data/'
-        before_path = target_path + 'labels_reset/'
-        after_path = target_path + 'labels_knolling/'
+        before_path = target_path + 'labels_before/'
+        after_path = target_path + 'labels_after/'
         os.makedirs(before_path, exist_ok=True)
         os.makedirs(after_path, exist_ok=True)
 
