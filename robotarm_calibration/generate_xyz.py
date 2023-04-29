@@ -365,22 +365,34 @@ class Arm:
             # automatically add z and x bias
             # d = np.array([0, 0.10, 0.185, 0.225, 0.27])
             d = np.array([0, 0.3])
-            z_bias = np.array([-0.01, 0.015])
-            x_bias = np.array([0.001, 0.007])
+            d_y = np.array((0, 0.17, 0.30))
+            z_bias = np.array([-0.005, 0.015])
+            x_bias = np.array([-0.005, -0.003])
+            y_bias = np.array([0, -0.008, 0.003])
             # z_parameters = np.polyfit(d, z_bias, 3)
             z_parameters = np.polyfit(d, z_bias, 1)
-            # x_parameters = np.polyfit(d, x_bias, 3)
+            x_parameters = np.polyfit(d, x_bias, 1)
+            y_parameters = np.polyfit(d_y, y_bias, 3)
             new_z_formula = np.poly1d(z_parameters)
-            # new_x_formula = np.poly1d(x_parameters)
+            new_x_formula = np.poly1d(x_parameters)
+            new_y_formula = np.poly1d(y_parameters)
 
             distance = tar_pos[0]
             tar_pos[2] = tar_pos[2] + new_z_formula(distance)
-            # tar_pos[0] = tar_pos[0] + new_x_formula(distance)
+            tar_pos[0] = tar_pos[0] + new_x_formula(distance)
+            distance_y = np.linalg.norm(tar_pos[:2])
+            tar_pos[1] += new_y_formula(distance_y)
+            # if tar_pos[1] > 0:
+            #     distance_y = tar_pos[1]
+            #     tar_pos[1] += new_y_formula(distance_y)
+            # else:
+            #     distance_y = -tar_pos[1]
+            #     tar_pos[1] -= new_y_formula(distance_y)
             # tar_pos[0] = tar_pos[0] + 0.003
 
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
                 # vertical, choose a small slice
-                move_slice = 0.006
+                move_slice = 0.01
             else:
                 # horizontal, choose a large slice
                 move_slice = 0.01
@@ -391,14 +403,16 @@ class Arm:
                 target_ori = np.copy(tar_ori)
                 # target_pos[2] = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )[2] # remove nn offset temporary
 
+                vertical_flag = False
                 print('this is tar pos', target_pos)
                 print('this is cur pos', cur_pos)
                 if np.abs(target_pos[2] - cur_pos[2]) > 0.01 \
                         and np.abs(target_pos[0] - cur_pos[0]) < 0.01\
                         and np.abs(target_pos[1] - cur_pos[1]) < 0.01:
                     print('we dont need feedback control')
-                    mark_ratio = 1
-                    seg_time = -1
+                    mark_ratio = 0.9
+                    vertical_flag = True
+                    seg_time = 0
                 else:
                     mark_ratio = 0.95
                     seg_time = 0
@@ -424,6 +438,7 @@ class Arm:
 
                     while True:
                         tar_pos = cur_pos + step_pos
+                        print(tar_pos)
                         tar_ori = cur_ori + step_ori
                         sim_xyz.append(tar_pos)
                         sim_ori.append(tar_ori)
@@ -459,6 +474,9 @@ class Arm:
                     print('this is the shape of xyz', sim_xyz.shape)
                     # print('this is the motor pos sent', plot_cmd[-1])
                     conn.sendall(plot_cmd.tobytes())
+                    # if vertical_flag == True:
+                    #     print('sleep')
+                    #     time.sleep(5)
                     # print('waiting the manipulator')
                     angles_real = conn.recv(4096)
                     # print('received')
@@ -482,7 +500,6 @@ class Arm:
                     #     seg_flag = True
                     #     break
                     # print('this is seg_time', seg_time)
-                    print(seg_time)
                     if seg_time > 0:
                         seg_flag = False
                         print('segment fail, try to tune!')
@@ -600,18 +617,18 @@ class Arm:
             last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
 
             if self.test_error_motion == True:
-                # trajectory_pos_list = np.array([[0.05, 0.17, 0.03],
-                #                                 [0.05, 0.17, 0.005],
-                #                                 [0.23, -0.17, 0.03],
-                #                                 [0.23, -0.17, 0.005],
-                #                                 [0.23, 0.17, 0.03],
-                #                                 [0.23, 0.17, 0.005],
-                #                                 [0.05, -0.17, 0.03],
-                #                                 [0.05, -0.17, 0.005]])
-                trajectory_pos_list = np.array([[0.24, -0.122, 0.03],
-                                                [0.24, -0.122, 0.01],
-                                                [0.24, 0.122, 0.03],
-                                                [0.24, 0.122, 0.01]])
+                trajectory_pos_list = np.array([[0.00, 0.17, 0.03],
+                                                [0.00, 0.17, 0.005],
+                                                [0.24, -0.17, 0.03],
+                                                [0.24, -0.17, 0.005],
+                                                [0.24, 0.17, 0.03],
+                                                [0.24, 0.17, 0.005],
+                                                [0.00, -0.17, 0.03],
+                                                [0.00, -0.17, 0.005]])
+                # trajectory_pos_list = np.array([[0.24, -0.17, 0.03],
+                #                                 [0.24, -0.17, 0.005],
+                #                                 [0.0, 0.17, 0.03],
+                #                                 [0.0, 0.17, 0.005]                                                ])
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
@@ -675,7 +692,7 @@ class Arm:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8880 # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.

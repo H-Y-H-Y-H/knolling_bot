@@ -508,8 +508,8 @@ class Arm:
         # print('this is test of cube pos\n', test_pos)
         # ####################### try the corner pos and ori to calibrate the camera ####################
 
-        # return self.get_obs('images', None)
-        return self.check_pos, self.check_ori, self.xyz_list
+        return self.get_obs('images', None)
+        # return self.check_pos, self.check_ori, self.xyz_list
 
     def change_config(self):  # this is main function!!!!!!!!!
 
@@ -853,45 +853,6 @@ class Arm:
 
             return start_end
 
-        def Cartesian_offset_nn(xyz_input):
-
-            # input:(n, 3), output: (n, 3)
-
-            input_sc = [[-0.01, -0.201, -0.01],
-                        [0.30, 0.201, 0.0601]]
-            output_sc = [[-0.01, -0.201, -0.01],
-                        [0.30, 0.201, 0.0601]]
-            input_sc = np.load('Test_and_Calibration/nn_data_xyz/all_distance_free_new/real_scale.npy')
-            output_sc = np.load('Test_and_Calibration/nn_data_xyz/all_distance_free_new/cmd_scale.npy')
-
-            scaler_output = MinMaxScaler()
-            scaler_input = MinMaxScaler()
-            scaler_output.fit(output_sc)
-            scaler_input.fit(input_sc)
-
-            model = Net().to(device)
-            model.load_state_dict(torch.load("Test_and_Calibration/model_pt_xyz/all_distance_free_new.pt"))
-            # print(model)
-            model.eval()
-            with torch.no_grad():
-                xyz_input_scaled = scaler_input.transform(xyz_input).astype(np.float32)
-                xyz_input_scaled = torch.from_numpy(xyz_input_scaled)
-                xyz_input_scaled = xyz_input_scaled.to(device)
-                pred_xyz = model.forward(xyz_input_scaled)
-                # print(pred_angle)
-                pred_xyz = pred_xyz.cpu().data.numpy()
-                xyz_output = scaler_output.inverse_transform(pred_xyz)
-                # # !!!!!!!!!!!!!!!!!!!! unify the differences!!!!!!!!!!!!!!!!!!!!!!
-                # if split_flag == True:
-                #     angle_output = np.insert(angle_output, 0, values=cmd[:, 0], axis=1)
-                #     angle_output = np.column_stack((angle_output, cmd[:, 5]))
-                #     angle_output[:, 1] = angle_output[:, 2]
-                # else:
-                #     angle_output[:, 1] = angle_output[:, 2]
-                # # !!!!!!!!!!!!!!!!!!!! unify the differences!!!!!!!!!!!!!!!!!!!!!!
-
-            return xyz_output
-
         def move(cur_pos, cur_ori, tar_pos, tar_ori):
 
             # add the offset manually
@@ -901,29 +862,22 @@ class Arm:
                 d_z = np.array([0, 0.3])
                 d_x = np.array([0, 0.3])
                 d_y = np.array([0, 0.3])
-                z_bias = np.array([-0.005, 0.015])
+                z_bias = np.array([-0.005, 0.01])
                 # z_bias = np.array([-0.005, 0.0, 0.005, 0.01, 0.015])
                 x_bias = np.array([0.001, 0.007])
                 y_bias = np.array([0, 0.005])
-                z_parameters = np.polyfit(d_z, z_bias, 3)
-                x_parameters = np.polyfit(d_x, x_bias, 1)
-                y_parameters = np.polyfit(d_y, y_bias, 1)
+                z_parameters = np.polyfit(d_z, z_bias, 1)
+                # x_parameters = np.polyfit(d_x, x_bias, 1)
+                # y_parameters = np.polyfit(d_y, y_bias, 1)
                 new_z_formula = np.poly1d(z_parameters)
-                new_x_formula = np.poly1d(x_parameters)
-                new_y_formula = np.poly1d(y_parameters)
+                # new_x_formula = np.poly1d(x_parameters)
+                # new_y_formula = np.poly1d(y_parameters)
                 #
                 distance_z = tar_pos[0]
-                distance_x = tar_pos[0]
-                distance_y = np.sqrt(tar_pos[0] ** 2 + tar_pos[1] ** 2)
+                # distance_x = tar_pos[0]
+                # distance_y = np.sqrt(tar_pos[0] ** 2 + tar_pos[1] ** 2)
                 # print('this is tar before poly', tar_pos)
-                tar_pos[2] = tar_pos[2] + new_z_formula(distance_z)
-                # tar_pos[0] = tar_pos[0] + 0.003
-                # if tar_pos[1] < 0:
-                #     tar_pos[1] = tar_pos[1] - new_y_formula(distance_y)
-                # else:
-                #     tar_pos[1] = tar_pos[1] + new_y_formula(distance_y)
-                # print('this is tar after poly', tar_pos)
-
+                # tar_pos[2] = tar_pos[2] + new_z_formula(distance_z)
                 pass
 
             if tar_ori[2] > 3.1416 / 2:
@@ -940,10 +894,17 @@ class Arm:
             #################### use feedback control ###################
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
                 # vertical, choose a small slice
-                move_slice = 0.006
+                move_slice = 0.01
             else:
                 # horizontal, choose a large slice
                 move_slice = 0.01
+
+            # ###### zzz set time sleep ######
+            # if cur_pos[2] - tar_pos[2] > 0.02:
+            #     print(cur_pos)
+            #     print(tar_pos)
+            #     print('this is time sleep')
+            #     time.sleep(1)
 
             if self.real_operate == True:
                 tar_pos = tar_pos + np.array([0, 0, real_height])
@@ -955,8 +916,8 @@ class Arm:
                         and np.abs(target_pos[0] - cur_pos[0]) < 0.01 \
                         and np.abs(target_pos[1] - cur_pos[1]) < 0.01:
                     print('we dont need feedback control')
-                    mark_ratio = 1
-                    seg_time = -1
+                    mark_ratio = 0.9
+                    seg_time = 0
                 else:
                     mark_ratio = 0.95
                     seg_time = 0
@@ -1499,7 +1460,7 @@ class Arm:
 
             rest_pos = np.array([0, 0, 0.05])
             rest_ori = np.array([0, 1.57, 0])
-            offset_low = np.array([0, 0, 0])
+            offset_low = np.array([0, 0, 0.005])
             offset_high = np.array([0, 0, 0.03])
             offset_highest = np.array([0, 0, 0.05])
 
@@ -1509,11 +1470,11 @@ class Arm:
                                        offset_high + start_end[i][:3],
                                        offset_low + start_end[i][:3],
                                        [0.0273],
-                                       offset_highest + start_end[i][:3],
+                                       offset_high + start_end[i][:3],
                                        offset_high + start_end[i][6:9],
                                        offset_low + start_end[i][6:9],
                                        [0.025],
-                                       offset_highest + start_end[i][6:9]]
+                                       offset_high + start_end[i][6:9]]
 
                 trajectory_ori_list = [rest_ori + start_end[i][3:6],
                                        rest_ori + start_end[i][3:6],
@@ -1533,7 +1494,7 @@ class Arm:
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
-                        # print('ready to move', trajectory_ori_list[j])
+                        print('ready to move', trajectory_pos_list[j])
                         # print('ready to move cur ori', last_ori)
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
                         last_ori = np.copy(trajectory_ori_list[j])
@@ -1697,7 +1658,7 @@ class Arm:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8880  # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.
@@ -1812,8 +1773,8 @@ if __name__ == '__main__':
         gap_item = 0.015
         gap_block = 0.02
         random_offset = False
-        real_operate = False
-        obs_order = 'sim_image_obj'
+        real_operate = True
+        obs_order = 'real_image_obj'
         check_detection_loss = False
         obs_img_from = 'env'
         use_yolo_pos = False
