@@ -35,9 +35,18 @@ for i in range(1, all_num + 1):
     if all_num % i == 0:
         fac.append(i)
         continue
-print(fac)
+# print(fac)
 
 arr = np.array([1,2,3])
 
 index = np.array([1,1,1])
-print(arr[index])
+# print(arr[index])
+
+
+rest_index = np.arange(6)
+
+rest_index = np.delete(rest_index, np.where(rest_index == 2))
+print(rest_index)
+
+rest_index = np.delete(rest_index, np.where(rest_index == 4))
+print(rest_index)

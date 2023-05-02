@@ -161,6 +161,9 @@ class Arm:
                                                             renderer=p.ER_BULLET_HARDWARE_OPENGL)
 
             img = image[:, :,:3]
+            temp = np.copy(img[:, :, 0]) # change rgb image to bgr for opencv to save
+            img[:, :, 0] = img[:, :, 2]
+            img[:, :, 2] = temp
             img_path = 'Test_images/image_sim'
             cv2.imwrite(img_path + '.png', img)
 
@@ -294,7 +297,7 @@ class Arm:
 
                 img_path = 'Test_images/image_real'
                 cv2.imwrite(img_path + '.png', resized_color_image)
-                cv2.waitKey(1)
+                # cv2.waitKey(1)
 
             # structure: x,y,length,width,yaw
             results = yolov8_predict(img_path=img_path,
@@ -789,7 +792,8 @@ class Arm:
                                           random.uniform(self.y_low_obs + y_length / 2, self.y_high_obs - y_length / 2), 0.0])
         else:
             pass
-        self.items_pos_list = self.items_pos_list + self.total_offset - center
+        # self.items_pos_list = self.items_pos_list + self.total_offset - center
+        self.items_pos_list = self.items_pos_list + self.total_offset
         self.manipulator_after = np.concatenate((self.items_pos_list, self.items_ori_list), axis=1)
         print('this is manipulation after', self.manipulator_after)
 
@@ -858,27 +862,41 @@ class Arm:
             # add the offset manually
             if self.real_operate == True:
                 # # automatically add z and x bias
-                # d_z = np.array([0, 0.10, 0.185, 0.225, 0.3])
-                d_z = np.array([0, 0.3])
-                d_x = np.array([0, 0.3])
-                d_y = np.array([0, 0.3])
-                z_bias = np.array([-0.005, 0.01])
-                # z_bias = np.array([-0.005, 0.0, 0.005, 0.01, 0.015])
-                x_bias = np.array([0.001, 0.007])
-                y_bias = np.array([0, 0.005])
-                z_parameters = np.polyfit(d_z, z_bias, 1)
-                # x_parameters = np.polyfit(d_x, x_bias, 1)
-                # y_parameters = np.polyfit(d_y, y_bias, 1)
+                d = np.array([0, 0.3])
+                d_y = np.array((0, 0.17, 0.21, 0.30))
+                d_y = d
+                z_bias = np.array([-0.005, 0.004])
+                x_bias = np.array([-0.002, 0.00])# yolo error is +2mm along x axis!
+                y_bias = np.array([0, -0.004, -0.001, 0.004])
+                y_bias = np.array([0.002, 0.006])
+                # z_parameters = np.polyfit(d, z_bias, 3)
+                z_parameters = np.polyfit(d, z_bias, 1)
+                x_parameters = np.polyfit(d, x_bias, 1)
+                y_parameters = np.polyfit(d_y, y_bias, 1)
                 new_z_formula = np.poly1d(z_parameters)
-                # new_x_formula = np.poly1d(x_parameters)
-                # new_y_formula = np.poly1d(y_parameters)
-                #
-                distance_z = tar_pos[0]
-                # distance_x = tar_pos[0]
-                # distance_y = np.sqrt(tar_pos[0] ** 2 + tar_pos[1] ** 2)
-                # print('this is tar before poly', tar_pos)
-                # tar_pos[2] = tar_pos[2] + new_z_formula(distance_z)
-                pass
+                new_x_formula = np.poly1d(x_parameters)
+                new_y_formula = np.poly1d(y_parameters)
+
+                distance = tar_pos[0]
+                distance_y = tar_pos[0]
+                tar_pos[2] = tar_pos[2] + new_z_formula(distance)
+                print('this is z', new_z_formula(distance))
+                tar_pos[0] = tar_pos[0] + new_x_formula(distance)
+                print('this is x', new_x_formula(distance))
+                if tar_pos[1] > 0:
+                    tar_pos[1] += new_y_formula(distance_y) * np.clip((5 * (tar_pos[1] + 0.01)), 0, 1)
+                else:
+                    tar_pos[1] -= new_y_formula(distance_y) * np.clip((5 * (tar_pos[1] - 0.01)), 0, 1)
+
+                # if tar_pos[1] > 0:
+                #     distance_y = np.linalg.norm(tar_pos[:2])
+                #     print('this is y', new_y_formula(distance_y))
+                #     tar_pos[1] += new_y_formula(distance_y)
+                # else:
+                #     distance_y = np.linalg.norm(tar_pos[:2])
+                #     print('this is y', new_y_formula(distance_y))
+                #     tar_pos[1] -= new_y_formula(distance_y)
+                print('this is tar pos after manual', tar_pos)
 
             if tar_ori[2] > 3.1416 / 2:
                 tar_ori[2] = tar_ori[2] - np.pi
@@ -894,7 +912,7 @@ class Arm:
             #################### use feedback control ###################
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
                 # vertical, choose a small slice
-                move_slice = 0.01
+                move_slice = 0.004
             else:
                 # horizontal, choose a large slice
                 move_slice = 0.01
@@ -916,10 +934,10 @@ class Arm:
                         and np.abs(target_pos[0] - cur_pos[0]) < 0.01 \
                         and np.abs(target_pos[1] - cur_pos[1]) < 0.01:
                     print('we dont need feedback control')
-                    mark_ratio = 0.9
+                    mark_ratio = 0.8
                     seg_time = 0
                 else:
-                    mark_ratio = 0.95
+                    mark_ratio = 0.99
                     seg_time = 0
 
                 while True:
@@ -1460,8 +1478,8 @@ class Arm:
 
             rest_pos = np.array([0, 0, 0.05])
             rest_ori = np.array([0, 1.57, 0])
-            offset_low = np.array([0, 0, 0.005])
-            offset_high = np.array([0, 0, 0.03])
+            offset_low = np.array([0, 0, 0.002])
+            offset_high = np.array([0, 0, 0.035])
             offset_highest = np.array([0, 0, 0.05])
 
             for i in range(len(self.obj_idx)):
@@ -1658,7 +1676,7 @@ class Arm:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8880  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.
@@ -1727,7 +1745,8 @@ if __name__ == '__main__':
         num_2x3 = 4
         num_2x4 = 3
         num_pencil = 0
-        total_offset = [0.1, -0.1, 0]
+        # total_offset = [0.1, -0.1, 0]
+        total_offset = [0.016, -0.17 + 0.016, 0]
         grasp_order = [1, 0, 2]
         gap_item = 0.015
         gap_block = 0.02
@@ -1768,13 +1787,14 @@ if __name__ == '__main__':
         num_2x2 = 0
         num_2x3 = 4
         num_2x4 = 4
-        total_offset = [0.15, 0.1, 0]
+        # total_offset = [0.15, 0.1, 0]
+        total_offset = [0.016, -0.17 + 0.016, 0]
         grasp_order = [1, 2]
         gap_item = 0.015
         gap_block = 0.02
         random_offset = False
-        real_operate = True
-        obs_order = 'real_image_obj'
+        real_operate = False
+        obs_order = 'sim_image_obj'
         check_detection_loss = False
         obs_img_from = 'env'
         use_yolo_pos = False

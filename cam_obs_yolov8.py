@@ -225,8 +225,8 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, data_path=N
     # source_pth = data_path + img_path
     # source_pth = data_path + 'real_image_collect/'
     # source_pth = data_path + 'yolo_pose4keypoints/images/val/'
-    img_path = img_path + '.png'
-    args = dict(model=model, source=img_path, conf=0.5)
+    img_path_input = img_path + '.png'
+    args = dict(model=model, source=img_path_input, conf=0.7)
     use_python = True
     if use_python:
         from ultralytics import YOLO
@@ -239,7 +239,7 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, data_path=N
 
     for i in range(len(images)):
 
-        origin_img = cv2.imread(img_path)
+        origin_img = cv2.imread(img_path_input)
         # origin_img = cv2.imread(source_pth + 'img_%s.png' % int(i))
         # origin_img = cv2.imread(source_pth + img_path)
 
@@ -315,7 +315,8 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, data_path=N
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-    cv2.imwrite(img_path + '_pred.png', origin_img)
+    img_path_output = img_path + '_pred.png'
+    cv2.imwrite(img_path_output, origin_img)
 
     print('this is key point')
     pred_result = np.asarray(pred_result)

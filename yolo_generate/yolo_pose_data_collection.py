@@ -40,7 +40,8 @@ def yolo_box(img, label):
 
 if __name__ == '__main__':
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_small/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_2/'
+    os.makedirs(data_root, exist_ok=True)
 
     p.connect(p.GUI)
 
@@ -50,6 +51,7 @@ if __name__ == '__main__':
 
     num_reset = True
     CLOSE_FLAG = False
+    texture_flag = True
     max_lego_num = 15
     mm2px = 530 / 0.34
 
@@ -60,7 +62,7 @@ if __name__ == '__main__':
         # num_item = 3
 
         env = Arm_env(max_step=1, is_render=False, num_objects=num_item)
-        state, rdm_pos_x, rdm_pos_y, rdm_pos_z, rdm_ori_yaw, lucky_list = env.reset_table(close_flag=CLOSE_FLAG)
+        state, rdm_pos_x, rdm_pos_y, rdm_pos_z, rdm_ori_yaw, lucky_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag)
 
         label = np.zeros((num_item, 6))
 
@@ -80,21 +82,36 @@ if __name__ == '__main__':
                 yawori = all_ori[2+3*j]
 
                 if lucky_list[j] == 0:
-                    l = 16/1000
-                    w = 16/1000
+                    l, w = 16/1000, 16/1000
                 if lucky_list[j] == 1:
-                    l = 24/1000
-                    w = 16/1000
+                    l, w = 20/1000, 16/1000
                 if lucky_list[j] == 2:
-                    l = 32/1000
-                    w = 16/1000
-
-                # if xpos1 > 0.29 or ypos1 < -0.2 or ypos1 > 0.2:
-                #     print('???')
+                    l, w = 20/1000, 20/1000
+                if lucky_list[j] == 3:
+                    l, w = 24/1000, 16/1000
+                if lucky_list[j] == 4:
+                    l, w = 24/1000, 20/1000
+                if lucky_list[j] == 5:
+                    l, w = 24/1000, 24/1000
+                if lucky_list[j] == 6:
+                    l, w = 28/1000, 16/1000
+                if lucky_list[j] == 7:
+                    l, w = 28/1000, 20/1000
+                if lucky_list[j] == 8:
+                    l, w = 28/1000, 24/1000
+                if lucky_list[j] == 9:
+                    l, w = 32/1000, 16/1000
+                if lucky_list[j] == 10:
+                    l, w = 32/1000, 20/1000
+                if lucky_list[j] == 11:
+                    l, w = 32/1000, 24/1000
                 element = np.array([1, xpos1, ypos1, l, w, yawori])
 
             label[j] = element
-        my_im2 = env.get_image()
+        my_im2 = env.get_image()[:, :, :3]
+        temp = np.copy(my_im2[:, :, 0])  # change rgb image to bgr for opencv to save
+        my_im2[:, :, 0] = my_im2[:, :, 2]
+        my_im2[:, :, 2] = temp
         # add = int((640 - 480) / 2)
         # img = cv2.copyMakeBorder(my_im2, add, add, 0, 0, cv2.BORDER_CONSTANT, None, value=(0, 0, 0, 255))
 
