@@ -70,22 +70,22 @@ class Arm:
             ],  # the direction is from the light source position to the origin of the world frame.
         }
         self.view_matrix = p.computeViewMatrixFromYawPitchRoll(
-                                    cameraTargetPosition=[0.15, 0, 0],
-                                    distance=0.4,
-                                    yaw=90,
-                                    pitch=-90,
-                                    roll=0,
-                                    upAxisIndex=2)
+            cameraTargetPosition=[0.15, 0, 0],
+            distance=0.4,
+            yaw=90,
+            pitch=-90,
+            roll=0,
+            upAxisIndex=2)
         self.projection_matrix = p.computeProjectionMatrixFOV(
-                                    fov=self.camera_parameters['fov'],
-                                    aspect=self.camera_parameters['width'] / self.camera_parameters['height'],
-                                    nearVal=self.camera_parameters['near'],
-                                    farVal=self.camera_parameters['far'])
+            fov=self.camera_parameters['fov'],
+            aspect=self.camera_parameters['width'] / self.camera_parameters['height'],
+            nearVal=self.camera_parameters['near'],
+            farVal=self.camera_parameters['far'])
 
-        if random.uniform(0,1) > 0.5:
-            p.configureDebugVisualizer(lightPosition=[random.randint(1,3), random.randint(1,2), 5])
+        if random.uniform(0, 1) > 0.5:
+            p.configureDebugVisualizer(lightPosition=[random.randint(1, 3), random.randint(1, 2), 5])
         else:
-            p.configureDebugVisualizer(lightPosition=[random.randint(1,3), random.randint(-2, -1), 5])
+            p.configureDebugVisualizer(lightPosition=[random.randint(1, 3), random.randint(-2, -1), 5])
         p.configureDebugVisualizer(lightPosition=[random.randint(1, 3), random.randint(1, 2), 5],
                                    shadowMapResolution=8192, shadowMapIntensity=np.random.randint(5, 8) / 10)
         p.resetDebugVisualizerCamera(cameraDistance=0.5,
@@ -98,7 +98,7 @@ class Arm:
                        total_offset=None,
                        gap_item=0.03, gap_block=0.02,
                        real_operate=False, obs_order='1',
-                       random_offset = False, check_detection_loss=None, obs_img_from=None, use_yolo_pos=True):
+                       random_offset=False, check_detection_loss=None, obs_img_from=None, use_yolo_pos=True):
 
         # self.lego_num = lego_num
         self.total_offset = total_offset
@@ -115,11 +115,9 @@ class Arm:
         self.use_yolo_pos = use_yolo_pos
         self.boxes_index = boxes_index
 
-
     def get_obs(self, order, evaluation):
 
         def get_images():
-
             (width, length, image, _, _) = p.getCameraImage(width=640,
                                                             height=480,
                                                             viewMatrix=self.view_matrix,
@@ -130,6 +128,7 @@ class Arm:
         if order == 'images':
             image = get_images()
             return image
+
     def label2image(self, labels_data, index_flag):
         print(index_flag)
         index_flag = index_flag.reshape(2, -1)
@@ -164,10 +163,13 @@ class Arm:
         #                          flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
 
         textureId = p.loadTexture(self.urdf_path + "img_1.png")
-        p.changeDynamics(baseid, -1, lateralFriction=1, spinningFriction=1, rollingFriction=0.002, linearDamping=0.5, angularDamping=0.5)
+        p.changeDynamics(baseid, -1, lateralFriction=1, spinningFriction=1, rollingFriction=0.002, linearDamping=0.5,
+                         angularDamping=0.5)
         # p.changeDynamics(self.arm_id, 7, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=0, angularDamping=0)
         # p.changeDynamics(self.arm_id, 8, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=0, angularDamping=0)
-        p.changeVisualShape(baseid, -1, textureUniqueId=textureId,rgbaColor=[np.random.uniform(0.9,1), np.random.uniform(0.9,1),np.random.uniform(0.9,1), 1])
+        p.changeVisualShape(baseid, -1, textureUniqueId=textureId,
+                            rgbaColor=[np.random.uniform(0.9, 1), np.random.uniform(0.9, 1), np.random.uniform(0.9, 1),
+                                       1])
 
         ################### recover urdf boxes based on lw_data ###################
         boxes = []
@@ -183,8 +185,10 @@ class Arm:
         lego_idx = []
         for i in range(len(lw_data)):
             for j in range(len(xyz_list)):
-                if (np.abs(xyz_list[j][0] - lw_data[i][0]) < 0.0001 and np.abs(xyz_list[j][1] - lw_data[i][1]) < 0.0001) or \
-                        np.abs(xyz_list[j][1] - lw_data[i][0]) < 0.0001 and np.abs(xyz_list[j][0] - lw_data[i][1]) < 0.0001:
+                if (np.abs(xyz_list[j][0] - lw_data[i][0]) < 0.0001 and np.abs(
+                        xyz_list[j][1] - lw_data[i][1]) < 0.0001) or \
+                        np.abs(xyz_list[j][1] - lw_data[i][0]) < 0.0001 and np.abs(
+                    xyz_list[j][0] - lw_data[i][1]) < 0.0001:
                     print(f'this is matching urdf{j}')
                     print(pos_data[i])
                     print(xyz_list[j])
@@ -205,7 +209,10 @@ class Arm:
         items_sort = Sort_objects()
         self.obj_idx = []
         if self.real_operate == False:
-            self.xyz_list, _, _, self.all_index, self.transform_flag = items_sort.get_data_virtual(self.area_num, self.ratio_num, self.num_list, self.boxes_index)
+            self.xyz_list, _, _, self.all_index, self.transform_flag = items_sort.get_data_virtual(self.area_num,
+                                                                                                   self.ratio_num,
+                                                                                                   self.num_list,
+                                                                                                   self.boxes_index)
             restrict = np.max(self.xyz_list)
             gripper_height = 0.012
             last_pos = np.array([[0, 0, 1]])
@@ -217,9 +224,9 @@ class Arm:
 
             for i in range(len(self.all_index)):
                 for j in range(len(self.all_index[i])):
-            #         pass
-            # for i in range(len(self.grasp_order)):
-            #     for j in range(self.num_list[self.grasp_order[i]]):
+                    #         pass
+                    # for i in range(len(self.grasp_order)):
+                    #     for j in range(self.num_list[self.grasp_order[i]]):
 
                     rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
                                         random.uniform(self.y_low_obs, self.y_high_obs), 0.0])
@@ -277,12 +284,18 @@ class Arm:
         p.changeDynamics(baseid, -1, lateralFriction=self.lateral_friction, frictionAnchor=True)
         # p.changeDynamics(self.arm_id, 7, lateralFriction=self.lateral_friction, frictionAnchor=True)
         # p.changeDynamics(self.arm_id, 8, lateralFriction=self.lateral_friction, frictionAnchor=True)
-        p.changeVisualShape(baseid, -1, textureUniqueId=textureId,rgbaColor=[np.random.uniform(0.9,1), np.random.uniform(0.9,1),np.random.uniform(0.9,1), 1])
+        p.changeVisualShape(baseid, -1, textureUniqueId=textureId,
+                            rgbaColor=[np.random.uniform(0.9, 1), np.random.uniform(0.9, 1), np.random.uniform(0.9, 1),
+                                       1])
 
         # get the standard xyz and corresponding index from files in the computer
         items_sort = Sort_objects()
         if self.real_operate == False:
-            self.xyz_list, _, _, self.all_index, self.transform_flag = items_sort.get_data_virtual(self.area_num, self.ratio_num, self.num_list, self.boxes_index)
+            self.xyz_list, _, _, self.all_index, self.transform_flag = items_sort.get_data_virtual(self.area_num,
+                                                                                                   self.ratio_num,
+                                                                                                   self.num_list,
+                                                                                                   self.boxes_index)
+
         # print(f'this is standard trim xyz list\n {self.xyz_list}')
         # print(f'this is standard trim index list\n {self.all_index}')
 
@@ -340,7 +353,7 @@ class Arm:
 
             return min_xy, best_item_config, item_odd_flag
 
-        def calculate_block(): # first: calculate, second: reorder!
+        def calculate_block():  # first: calculate, second: reorder!
 
             min_result = []
             best_config = []
@@ -373,7 +386,7 @@ class Arm:
                     fac.append(i)
                     continue
 
-            if all_num % 2 != 0 and len(fac) == 2: # its odd! we should generate the factor again!
+            if all_num % 2 != 0 and len(fac) == 2:  # its odd! we should generate the factor again!
                 all_num += 1
                 odd_flag = True
                 fac = []  # 定义一个列表存放因子
@@ -444,7 +457,7 @@ class Arm:
             if item_odd_flag == True:
                 item_pos = np.zeros([len(item_index) + 1, 3])
                 item_ori = np.zeros([len(item_index) + 1, 3])
-                item_xyz = np.append(item_xyz, item_xyz[-1]).reshape(-1, 3)
+                item_xyz = np.append(item_xyz, item_xyz[-1]).reshape(-1, 2)
                 index_temp = np.arange(item_pos.shape[0] - 1)
                 index_temp = np.append(index_temp, index_temp[-1]).reshape(item_row, item_column)
             else:
@@ -491,13 +504,15 @@ class Arm:
 
             for m in range(item_row):
                 new_row = item_xyz[index_temp[m, :]]
-                start_item_x = np.append(start_item_x, (previous_start_item_x + np.max(new_row, axis=0)[0] + self.gap_item))
+                start_item_x = np.append(start_item_x,
+                                         (previous_start_item_x + np.max(new_row, axis=0)[0] + self.gap_item))
                 previous_start_item_x = (previous_start_item_x + np.max(new_row, axis=0)[0] + self.gap_item)
             start_item_x = np.delete(start_item_x, -1)
 
             for n in range(item_column):
                 new_column = item_xyz[index_temp[:, n]]
-                start_item_y = np.append(start_item_y, (previous_start_item_y + np.max(new_column, axis=0)[1] + self.gap_item))
+                start_item_y = np.append(start_item_y,
+                                         (previous_start_item_y + np.max(new_column, axis=0)[1] + self.gap_item))
                 previous_start_item_y = (previous_start_item_y + np.max(new_column, axis=0)[1] + self.gap_item)
             start_item_y = np.delete(start_item_y, -1)
 
@@ -505,7 +520,7 @@ class Arm:
 
             for j in range(item_row):
                 for k in range(item_column):
-                    if item_odd_flag == True and j == item_row - 1 and k ==item_column - 1:
+                    if item_odd_flag == True and j == item_row - 1 and k == item_column - 1:
                         break
                     ################### check whether to transform for each item in each block!################
                     if self.transform_flag[item_index[index_temp[j][k]]] == 1:
@@ -565,7 +580,7 @@ class Arm:
             for m in range(num_all_row):
                 for n in range(num_all_column):
                     if odd_flag == True and m == num_all_row - 1 and n == num_all_column - 1:
-                        break # this is the redundancy block
+                        break  # this is the redundancy block
                     item_index = self.all_index[best_all_config[m][n]]  # determine the index of blocks
 
                     # print('try', item_index)
@@ -575,7 +590,8 @@ class Arm:
                     index_block = best_all_config[m][n]
                     rotate_flag = best_rotate_flag[m][n]
 
-                    ori, pos = reorder_item(best_config, start_pos, index_block, item_index, item_xyz, rotate_flag, item_odd_list)
+                    ori, pos = reorder_item(best_config, start_pos, index_block, item_index, item_xyz, rotate_flag,
+                                            item_odd_list)
                     # print('tryori', ori)
                     # print('trypos', pos)
                     item_pos[item_index] = pos
@@ -595,7 +611,8 @@ class Arm:
         # print(x_low, x_high, y_low, y_high)
         if self.random_offset == True:
             self.total_offset = np.array([random.uniform(self.x_low_obs + x_length / 2, self.x_high_obs - x_length / 2),
-                                          random.uniform(self.y_low_obs + y_length / 2, self.y_high_obs - y_length / 2), 0.0])
+                                          random.uniform(self.y_low_obs + y_length / 2, self.y_high_obs - y_length / 2),
+                                          0.0])
         else:
             pass
         self.items_pos_list = self.items_pos_list + self.total_offset
@@ -618,25 +635,17 @@ if __name__ == '__main__':
     area_num = 3
     ratio_num = 2
 
+    target_path = '../data/learning_data_502/'
+    images_log_path = target_path + 'images_%s/' % before_after
+    os.makedirs(images_log_path, exist_ok=True)
+
     if command == 'recover':
 
         env = Arm(is_render=True)
         for i in range(range_low, range_high):
+            data = np.loadtxt(target_path + 'labels_%s/num_%d.txt' % (before_after, i))
+            index_flag = np.loadtxt(target_path + 'index_flag/num_%s_flag.txt' % i).reshape(-1, i * 2)
 
-            target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_502/'
-            images_before_path = target_path + 'images_before/'
-            images_after_path = target_path + 'images_after/'
-            labels_before_path = target_path + 'labels_before/'
-            labels_after_path = target_path + 'labels_after/'
-            index_flag_path = target_path + 'index_flag/'
-            os.makedirs(images_before_path, exist_ok=True)
-            os.makedirs(images_after_path, exist_ok=True)
-
-            if before_after == 'before':
-                data = np.loadtxt(labels_before_path + 'num_%s.txt' % i)
-            else:
-                data = np.loadtxt(labels_after_path + 'num_%s.txt' % i)
-            index_flag = np.loadtxt(index_flag_path + 'num_%s_flag.txt' % i).reshape(-1, i * 2)
             if len(data.shape) == 1:
                 data = data.reshape(1, len(data))
 
@@ -658,10 +667,7 @@ if __name__ == '__main__':
                 cv2.waitKey()
                 cv2.destroyAllWindows()
 
-                if before_after == 'before':
-                    cv2.imwrite(images_before_path + 'image_%s/%s.png' % (i, j), image)
-                else:
-                    cv2.imwrite(images_after_path + 'image_%s/%s.png' % (i, j), image)
+                cv2.imwrite(images_log_path + '%d_%d.png' % (i, j), image)
 
     if command == 'knolling':
 
@@ -697,7 +703,6 @@ if __name__ == '__main__':
                 obs_img_from = 'env'
                 use_yolo_pos = False
 
-
                 env.get_parameters(lego_num=lego_num, area_num=area_num, ratio_num=ratio_num, boxes_index=boxes_index,
                                    total_offset=total_offset,
                                    gap_item=gap_item, gap_block=gap_block,
@@ -706,7 +711,8 @@ if __name__ == '__main__':
                                    obs_img_from=obs_img_from, use_yolo_pos=use_yolo_pos)
 
                 pos_before, ori_before, xy_before, transform_before = env.reset()
-                data_before.append(np.concatenate((pos_before, xy_before, ori_before.reshape(-1, 1)), axis=1).reshape(-1,))
+                data_before.append(
+                    np.concatenate((pos_before, xy_before, ori_before.reshape(-1, 1)), axis=1).reshape(-1, ))
                 pos_after, ori_after, xy_after, transform_after = env.change_config()
                 data_after.append(np.concatenate((pos_after, xy_after, ori_after.reshape(-1, 1)), axis=1).reshape(-1))
 
