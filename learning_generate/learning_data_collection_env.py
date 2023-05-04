@@ -444,7 +444,7 @@ class Arm:
             if item_odd_flag == True:
                 item_pos = np.zeros([len(item_index) + 1, 3])
                 item_ori = np.zeros([len(item_index) + 1, 3])
-                item_xyz = np.append(item_xyz, item_xyz[-1]).reshape(-1, 3)
+                item_xyz = np.append(item_xyz, item_xyz[-1]).reshape(-1, 2)
                 index_temp = np.arange(item_pos.shape[0] - 1)
                 index_temp = np.append(index_temp, index_temp[-1]).reshape(item_row, item_column)
             else:
