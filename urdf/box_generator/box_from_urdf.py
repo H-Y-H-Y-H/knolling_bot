@@ -18,3 +18,9 @@ for i in range(num_box):
     lego_cube.links[0].collisions[0].geometry.box.size[1] = np.around(width_range, decimals=3)
 
     lego_cube.save('box_%d.urdf' % i)
+
+for i in range(num_box):
+    lego_cube = URDF.load('box_%d.urdf' % i)
+    # print(lego_cube.links[0].collisions[0].geometry.box.size)
+    lego_cube.links[0].collisions[0].origin[2, 3] = 0
+    lego_cube.save('box_%d.urdf' % i)

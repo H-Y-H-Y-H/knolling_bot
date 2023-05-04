@@ -24,37 +24,27 @@ class Sort_objects():
 
         self.error_rate = 0.05
 
-    def get_data_virtual(self, order_kinds, lego_num):
-        
-        #! don't motify
-        names = globals()
+    def get_data_virtual(self, area_num, ratio_num, lego_num, boxes_index):
+
+        boxes = []
         xyz_list = []
+        # for i in range(lego_num):
+        #     boxes.append(URDF.load('../urdf/box_generator/box_%d.urdf' % i))
+        #     xyz_list.append(boxes[i].links[0].visuals[0].geometry.box.size)
+        # print(boxes_index)
+        for i in range(len(boxes_index)):
+            # print(boxes_index[i])
+            boxes.append(URDF.load('./urdf/box_generator/box_%d.urdf' % boxes_index[i]))
+            xyz_list.append(boxes[i].links[0].visuals[0].geometry.box.size)
+
         pos_list = []
         ori_list = []
-        # print(lego_num)
-        for i in range(len(lego_num)):
-            for j in range(lego_num[i]):
-                xyz_list.append(self.correct[i])
-
-        # for i in range(self.num_2x2):
-        #     names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_0/2x2.STL')
-        #     xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
-        # for i in range(self.num_2x3):
-        #     names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_1/2x3.STL')
-        #     xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
-        # for i in range(self.num_2x4):
-        #     names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_2/2x4.STL')
-        #     xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
-        # for i in range(self.num_pencil):
-        #     names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_3/%d.STL' % i)
-        #     xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
         xyz_list = np.asarray(xyz_list, dtype=np.float32)
         # print(xyz_list)
 
-        return self.judge(xyz_list, pos_list, ori_list, order_kinds)
+        return self.judge(xyz_list, pos_list, ori_list, area_num, ratio_num, boxes_index)
 
-    def get_data_real(self):
-        # 没法指定顺序了！只能234
+    def get_data_real(self, area_num, ratio_num, lego_num):
         pipeline = rs.pipeline()
         config = rs.config()
 
@@ -99,71 +89,185 @@ class Sort_objects():
 
         # img = cv2.imread("read_real_cam.png")
 
+        # structure of results: x, y, length, width, ori
         results = yolov8_predict(img_path=img_path,
                                  real_flag=True,
                                  target=None)
-        # structure of results: x, y, length, width, ori
 
+        item_pos = results[:, :2]
+        item_lw = results[:, 2:4]
+        item_ori = results[:, 4]
 
+        ##################### generate customize boxes based on the result of yolo ######################
+        temp_box = URDF.load('./urdf/box_generator/template.urdf')
+        for i in range(len(results)):
+            temp_box.links[0].collisions[0].origin[2, 3] = 0
+            length = item_lw[i, 0]
+            width = item_lw[i, 1]
+            height = 0.012
+            temp_box.links[0].visuals[0].geometry.box.size = [length, width, height]
+            temp_box.links[0].collisions[0].geometry.box.size = [length, width, height]
+            temp_box.save('./urdf/knolling_box/knolling_box_%d.urdf' % i)
+        ##################### generate customize boxes based on the result of yolo ######################
+
+        category_num = int(area_num * ratio_num + 1)
+        s = item_lw[:, 0] * item_lw[:, 1]
+        s_min, s_max = np.min(s), np.max(s)
+        s_range = np.linspace(s_max, s_min, int(area_num + 1))
+        lw_ratio = item_lw[:, 0] / item_lw[:, 1]
+        ratio_min, ratio_max = np.min(lw_ratio), np.max(lw_ratio)
+        ratio_range = np.linspace(ratio_max, ratio_min, int(ratio_num * 2 + 1))
+
+        # ! initiate the number of items
         all_index = []
-        new_xyz_list = []
-        kind = []
-        new_results = []
-        z = 0
-        roll = 0
-        pitch = 0
-        num = 0
-        for i in range(len(self.correct)):
-            kind_index = []
-            for j in range(len(results)):
-                # if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
-                if np.abs(self.correct[i][0] - results[j][0]) < 0.002 and np.abs(self.correct[i][1] - results[j][1]) < 0.002:
-                    kind_index.append(num)
-                    new_xyz_list.append(self.correct[i])
-                    num += 1
-                    if i in kind:
-                        pass
-                    else:
-                        kind.append(i)
-                    new_results.append(results[j])
-                else:
-                    pass
-            if len(kind_index) != 0:
-                all_index.append(kind_index)
+        new_item_lw = []
+        new_item_pos = []
+        new_item_ori = []
+        new_urdf_index = []
+        transform_flag = []
+        rest_index = np.arange(len(item_lw))
+        index = 0
 
-        new_xyz_list = np.asarray(new_xyz_list)
-        new_results = np.asarray(new_results)
-        kind = np.asarray(kind)
-        print('this is kind', kind)
-        print('this is all index', all_index)
-        print(new_xyz_list)
+        for i in range(area_num):
+            for j in range(ratio_num):
+                kind_index = []
+                for m in range(len(item_lw)):
+                    if m not in rest_index:
+                        continue
+                    elif s_range[i] >= s[m] >= s_range[i + 1]:
+                        if ratio_range[j] >= lw_ratio[m] >= ratio_range[j + 1]:
+                            transform_flag.append(0)
+                            # print(f'boxes{m} matches in area{i}, ratio{j}!')
+                            kind_index.append(index)
+                            new_item_lw.append(item_lw[m])
+                            new_item_pos.append(item_pos[m])
+                            new_item_ori.append(item_ori[m])
+                            new_urdf_index.append(m)
+                            index += 1
+                            rest_index = np.delete(rest_index, np.where(rest_index == m))
+                        elif ratio_range[ratio_num * 2 - j] <= lw_ratio[m] <= ratio_range[ratio_num * 2 - j - 1]:
+                            transform_flag.append(1)
+                            # print(f'boxes{m} matches in area{i}, ratio{j}, remember to rotate the ori after knolling!')
+                            item_lw[m, [0, 1]] = item_lw[m, [1, 0]]
+                            kind_index.append(index)
+                            new_item_lw.append(item_lw[m])
+                            new_item_pos.append(item_pos[m])
+                            new_item_ori.append(item_ori[m])
+                            new_urdf_index.append(m)
+                            index += 1
+                            rest_index = np.delete(rest_index, np.where(rest_index == m))
+                if len(kind_index) != 0:
+                    all_index.append(kind_index)
 
-        # 按照234重新将result排序
-        pos_before = np.concatenate((new_results[:, :2], np.zeros(len(new_results).reshape(-1, 1))), axis=1)
-        ori_before = np.concatenate((np.zeros((len(new_results)), 2), new_results[:, 4]), axis=1)
+        new_item_lw = np.asarray(new_item_lw).reshape(-1, 2)
+        new_item_pos = np.asarray(new_item_pos)
+        new_item_ori = np.asarray(new_item_ori)
+        new_item_pos = np.concatenate((new_item_pos, np.zeros((len(new_item_pos), 1))), axis=1)
+        new_item_ori = np.concatenate((np.zeros((len(new_item_pos), 2)), new_item_ori.reshape(len(new_item_ori), 1)), axis=1)
+        transform_flag = np.asarray(transform_flag)
+        if len(rest_index) != 0:
+            # we should implement the rest of boxes!
+            rest_xyz = item_lw[rest_index]
+            new_item_lw = np.concatenate((new_item_lw, rest_xyz), axis=0)
+            all_index.append(list(np.arange(index, len(item_lw))))
+            transform_flag = np.append(transform_flag, np.zeros(len(item_lw) - index))
 
-        return new_xyz_list, pos_before, ori_before, all_index, kind
-    
-    def judge(self, item_xyz, item_pos, item_ori, order_kinds):
+        return new_item_lw, new_item_pos, new_item_ori, all_index, transform_flag, new_urdf_index
 
-        #! initiate the number of items
+        # all_index = []
+        # new_xyz_list = []
+        # kind = []
+        # new_results = []
+        # z = 0.006
+        # roll = 0
+        # pitch = 0
+        # num = 0
+        # for i in range(len(self.correct)):
+        #     kind_index = []
+        #     for j in range(len(results)):
+        #         # if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
+        #         if np.abs(self.correct[i][0] - results[j][0]) < 0.002 and np.abs(self.correct[i][1] - results[j][1]) < 0.002:
+        #             kind_index.append(num)
+        #             new_xyz_list.append(self.correct[i])
+        #             num += 1
+        #             if i in kind:
+        #                 pass
+        #             else:
+        #                 kind.append(i)
+        #             new_results.append(results[j])
+        #         else:
+        #             pass
+        #     if len(kind_index) != 0:
+        #         all_index.append(kind_index)
+        #
+        # new_xyz_list = np.asarray(new_xyz_list)
+        # new_results = np.asarray(new_results)
+        # kind = np.asarray(kind)
+        # print('this is kind', kind)
+        # print('this is all index', all_index)
+        # print(new_xyz_list)
+        #
+        # # 按照234重新将result排序
+        # pos_before = np.concatenate((new_results[:, :2], np.zeros(len(new_results).reshape(-1, 1))), axis=1)
+        # ori_before = np.concatenate((np.zeros((len(new_results)), 2), new_results[:, 4]), axis=1)
+        #
+        # return new_xyz_list, pos_before, ori_before, all_index, kind
+
+    def judge(self, item_xyz, item_pos, item_ori, area_num, ratio_num, boxes_index):
+
+        category_num = int(area_num * ratio_num + 1)
+        s = item_xyz[:, 0] * item_xyz[:, 1]
+        s_min, s_max = np.min(s), np.max(s)
+        s_range = np.linspace(s_max, s_min, int(area_num + 1))
+        lw_ratio = item_xyz[:, 0] / item_xyz[:, 1]
+        ratio_min, ratio_max = np.min(lw_ratio), np.max(lw_ratio)
+        ratio_range = np.linspace(ratio_max, ratio_min, int(ratio_num * 2 + 1))
+
+        # ! initiate the number of items
         all_index = []
         new_item_xyz = []
+        transform_flag = []
+        new_urdf_index = []
+        rest_index = np.arange(len(item_xyz))
+        index = 0
 
-        items_names = globals()
-        for i in range(len(order_kinds)):
-            items_names[f'item_{order_kinds[i]}'] = []
-            items_names[f'xyz_{order_kinds[i]}'] = []
-            for j in range(item_xyz.shape[0]):
-                if np.abs(item_xyz[j, 0] - self.correct[order_kinds[i], 0]) < np.sum(self.correct[order_kinds[i], 0]) * self.error_rate and \
-                        np.abs(item_xyz[j, 1] - self.correct[order_kinds[i], 1]) < np.sum(self.correct[order_kinds[i], 1]) * self.error_rate:
-                    items_names[f'item_{order_kinds[i]}'].append(len(new_item_xyz))
-                    new_item_xyz.append(list(item_xyz[j]))
-                    # items_names[f'xyz_{i}'].append(list(item_xyz[j]))
-            all_index.append(items_names[f'item_{order_kinds[i]}'])
+        for i in range(area_num):
+            for j in range(ratio_num):
+                kind_index = []
+                for m in range(len(item_xyz)):
+                    if m not in rest_index:
+                        continue
+                    elif s_range[i] >= s[m] >= s_range[i + 1]:
+                        if ratio_range[j] >= lw_ratio[m] >= ratio_range[j + 1]:
+                            transform_flag.append(0)
+                            # print(f'boxes{m} matches in area{i}, ratio{j}!')
+                            kind_index.append(index)
+                            new_item_xyz.append(item_xyz[m])
+                            index += 1
+                            rest_index = np.delete(rest_index, np.where(rest_index == m))
+                            new_urdf_index.append(boxes_index[m])
+                        elif ratio_range[ratio_num * 2 - j] <= lw_ratio[m] <= ratio_range[ratio_num * 2 - j - 1]:
+                            transform_flag.append(1)
+                            # print(f'boxes{m} matches in area{i}, ratio{j}, remember to rotate the ori after knolling!')
+                            item_xyz[m, [0, 1]] = item_xyz[m, [1, 0]]
+                            kind_index.append(index)
+                            new_item_xyz.append(item_xyz[m])
+                            index += 1
+                            rest_index = np.delete(rest_index, np.where(rest_index == m))
+                            new_urdf_index.append(boxes_index[m])
+                if len(kind_index) != 0:
+                    all_index.append(kind_index)
 
         new_item_xyz = np.asarray(new_item_xyz).reshape(-1, 3)
-        return new_item_xyz, item_pos, item_ori, all_index
+        transform_flag = np.asarray(transform_flag)
+        if len(rest_index) != 0:
+            # we should implement the rest of boxes!
+            rest_xyz = item_xyz[rest_index]
+            new_item_xyz = np.concatenate((new_item_xyz, rest_xyz), axis=0)
+            all_index.append(list(np.arange(index, len(item_xyz))))
+            transform_flag = np.append(transform_flag, np.zeros(len(item_xyz) - index))
+
+        return new_item_xyz, item_pos, item_ori, all_index, transform_flag, new_urdf_index
 
 if __name__ == '__main__':
 

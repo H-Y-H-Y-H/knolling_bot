@@ -138,11 +138,18 @@ def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 
     lucky_keypoint = keypoints_mm[max_index[lucky_keypoint_index]]
     # print('the ori keypoint is ', keypoints_mm[max_index[lucky_keypoint_index]])
     my_ori = np.arctan2(lucky_keypoint[1] - keypoints_center[1], lucky_keypoint[0] - keypoints_center[0])
+    # In order to grasp, this ori is based on the longest side of the box, not the label ori!
 
+    if length < width:
+        if my_ori > np.pi / 2:
+            my_ori_plot = my_ori - np.pi / 2
+        else:
+            my_ori_plot = my_ori + np.pi / 2
+    else:
+        my_ori_plot = my_ori
 
-
-    rot_z = [[np.cos(my_ori), -np.sin(my_ori)],
-             [np.sin(my_ori), np.cos(my_ori)]]
+    rot_z = [[np.cos(my_ori_plot), -np.sin(my_ori_plot)],
+             [np.sin(my_ori_plot), np.cos(my_ori_plot)]]
     corn1 = (np.dot(rot_z, c1)) * mm2px
     corn2 = (np.dot(rot_z, c2)) * mm2px
     corn3 = (np.dot(rot_z, c3)) * mm2px
@@ -221,12 +228,12 @@ def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 
 def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, data_path=None, model_path=None, real_flag=None, target=None):
     # data_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/'
     # model_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/YOLOv8/runs/pose/train_standard_1000/weights/best.pt'
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_1000/weights/best.pt'
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_4000/weights/best.pt'
     # source_pth = data_path + img_path
     # source_pth = data_path + 'real_image_collect/'
     # source_pth = data_path + 'yolo_pose4keypoints/images/val/'
     img_path_input = img_path + '.png'
-    args = dict(model=model, source=img_path_input, conf=0.5)
+    args = dict(model=model, source=img_path_input, conf=0.4, iou=0.2)
     use_python = True
     if use_python:
         from ultralytics import YOLO
@@ -237,86 +244,83 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, data_path=N
     device = 'cuda:0'
 
 
-    for i in range(len(images)):
 
-        origin_img = cv2.imread(img_path)
-        # origin_img = cv2.imread(source_pth + 'img_%s.png' % int(i))
-        # origin_img = cv2.imread(source_pth + img_path)
+    origin_img = cv2.imread(img_path_input)
+    # origin_img = cv2.imread(source_pth + 'img_%s.png' % int(i))
+    # origin_img = cv2.imread(source_pth + img_path)
 
-        use_lw = True
-        if real_flag == False:
-            # target = np.loadtxt(data_path + 'yolo_pose4keypoints/labels/val/%012d.txt' % int(i + 800))
-            # target = np.loadtxt(data_path + 'knolling_data_small/labels/train/%012d.txt' % int(i))
-            target_order = np.lexsort((target[:, 2], target[:, 1]))
-            target = target[target_order]
+    use_lw = True
+    if real_flag == False:
+        # target = np.loadtxt(data_path + 'yolo_pose4keypoints/labels/val/%012d.txt' % int(i + 800))
+        # target = np.loadtxt(data_path + 'knolling_data_small/labels/train/%012d.txt' % int(i))
+        target_order = np.lexsort((target[:, 2], target[:, 1]))
+        target = target[target_order]
 
-        one_img = images[i]
-        j = 0
-        pred_result = []
-
-
-        pred_xylws = one_img.boxes.xywhn.cpu().detach().numpy()
-        pred_keypoints = one_img.keypoints.cpu().detach().numpy()
-        pred_keypoints[:, :, :2] = pred_keypoints[:, :, :2] / np.array([640, 480])
-        pred_keypoints = pred_keypoints.reshape(len(pred_xylws), -1)
-        # for elements in one_img:
-        #     pred_keypoints.append(elements.keypoints.cpu().detach().numpy())
-        #     box = elements.boxes
-        #     pred_xylws.append(box.xywhn.cpu().detach().numpy().reshape(-1, ))
-
-        pred = np.concatenate((np.zeros((len(pred_xylws), 1)), pred_xylws, pred_keypoints), axis=1)
-        pred_order = np.lexsort((pred[:, 2], pred[:, 1]))
-        pred = pred[pred_order]
-        pred_xylws = pred_xylws[pred_order]
-        pred_keypoints = pred_keypoints[pred_order]
+    one_img = images[0]
+    j = 0
+    pred_result = []
 
 
-        for j in range(len(pred_xylws)):
+    pred_xylws = one_img.boxes.xywhn.cpu().detach().numpy()
+    pred_keypoints = one_img.keypoints.cpu().detach().numpy()
+    pred_keypoints[:, :, :2] = pred_keypoints[:, :, :2] / np.array([640, 480])
+    pred_keypoints = pred_keypoints.reshape(len(pred_xylws), -1)
+    # for elements in one_img:
+    #     pred_keypoints.append(elements.keypoints.cpu().detach().numpy())
+    #     box = elements.boxes
+    #     pred_xylws.append(box.xywhn.cpu().detach().numpy().reshape(-1, ))
 
-            pred_keypoint = pred_keypoints[j].reshape(-1, 3)
-            pred_xylw = pred_xylws[j]
+    pred = np.concatenate((np.zeros((len(pred_xylws), 1)), pred_xylws, pred_keypoints), axis=1)
+    pred_order = np.lexsort((pred[:, 2], pred[:, 1]))
+    pred = pred[pred_order]
+    pred_xylws = pred_xylws[pred_order]
+    pred_keypoints = pred_keypoints[pred_order]
 
-            # pred_name = elements.names
-            # pred_label = (f'{pred_name}')
 
-            # plot pred
-            # print('this is pred xylw', pred_xylw)
-            # print('this is pred cos sin', pred_cos_sin)
-            origin_img, result = plot_and_transform(im=origin_img, box=pred_xylw, label='0:, predic', color=(0, 0, 0), txt_color=(255, 255, 255), index=j,
-                                            scaled_xylw=pred_xylw, keypoints=pred_keypoint, use_lw=use_lw, truth_flag=False)
-            pred_result.append(result)
-            print('this is j', j)
-            print('this is i', i)
+    for j in range(len(pred_xylws)):
 
-            if real_flag == False:
-                tar_xylw = np.copy(target[j, 1:5])
-                tar_keypoints = np.copy((target[j, 5:]).reshape(-1, 3)[:, :2])
-                # tar_keypoints = (target[j, 5:])
-                # tar_keypoints[:, 0] *= 640
-                # tar_keypoints[:, 1] *= 480
-                tar_label = '0: "target"'
+        pred_keypoint = pred_keypoints[j].reshape(-1, 3)
+        pred_xylw = pred_xylws[j]
 
-                # plot target
-                # print('this is tar xylw', tar_xylw)
-                # print('this is tar cos sin', tar_keypoints)
-                origin_img, _ = plot_and_transform(im=origin_img, box=pred_xylw, label='0: target', color=(255, 255, 0), txt_color=(255, 255, 255), index=j,
-                                                scaled_xylw=tar_xylw, keypoints=tar_keypoints, use_lw=use_lw, truth_flag=True)
+        # pred_name = elements.names
+        # pred_label = (f'{pred_name}')
+
+        # plot pred
+        print('this is pred xylw', pred_xylw)
+        # print('this is pred cos sin', pred_cos_sin)
+        origin_img, result = plot_and_transform(im=origin_img, box=pred_xylw, label='0:, predic', color=(0, 0, 0), txt_color=(255, 255, 255), index=j,
+                                        scaled_xylw=pred_xylw, keypoints=pred_keypoint, use_lw=use_lw, truth_flag=False)
+        pred_result.append(result)
+        print('this is j', j)
 
         if real_flag == False:
-            loss_mean = np.mean((target - pred) ** 2)
-            loss_std = np.std((target - pred), dtype=np.float64)
-            print('this is length of pred\n', len(pred))
-            print('this is length of target\n', len(target))
-            print('this is mean error', loss_mean)
-            print('this is std error', loss_std)
+            tar_xylw = np.copy(target[j, 1:5])
+            tar_keypoints = np.copy((target[j, 5:]).reshape(-1, 3)[:, :2])
+            # tar_keypoints = (target[j, 5:])
+            # tar_keypoints[:, 0] *= 640
+            # tar_keypoints[:, 1] *= 480
+            tar_label = '0: "target"'
+
+            # plot target
+            # print('this is tar xylw', tar_xylw)
+            # print('this is tar cos sin', tar_keypoints)
+            origin_img, _ = plot_and_transform(im=origin_img, box=pred_xylw, label='0: target', color=(255, 255, 0), txt_color=(255, 255, 255), index=j,
+                                            scaled_xylw=tar_xylw, keypoints=tar_keypoints, use_lw=use_lw, truth_flag=True)
 
     cv2.namedWindow('zzz', 0)
     cv2.imshow('zzz', origin_img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-
     img_path_output = img_path + '_pred.png'
     cv2.imwrite(img_path_output, origin_img)
+
+    if real_flag == False:
+        print('this is length of pred\n', pred[:, 1:5])
+        print('this is length of target\n', target[:, 1:5])
+        loss_mean = np.mean((target - pred) ** 2)
+        loss_std = np.std((target - pred), dtype=np.float64)
+        print('this is mean error', loss_mean)
+        print('this is std error', loss_std)
 
     print('this is key point')
     pred_result = np.asarray(pred_result)

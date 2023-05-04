@@ -23,40 +23,37 @@ def yolo_box(img, label):
 
     return img
 
-def find_corner(x,y,type,yaw):
+def find_corner(x, y, l, w, yaw):
 
     gamma = yaw
-
     rot_z = [[np.cos(gamma), -np.sin(gamma)],
              [np.sin(gamma), np.cos(gamma)]]
-
-    pos = [x, y]
-
     rot_z = np.asarray(rot_z)
 
-    if type == 0:
-        c1 = [16/2,16/2]
-        c2 = [16/2,-16/2]
-        c3 = [-16/2,16/2]
-        c4 = [-16/2,-16/2]
+    # if type == 0:
+    #     c1 = [16/2,16/2]
+    #     c2 = [16/2,-16/2]
+    #     c3 = [-16/2,16/2]
+    #     c4 = [-16/2,-16/2]
+    #
+    # elif type == 1:
+    #     c1 = [24/2,16/2]
+    #     c2 = [24/2,-16/2]
+    #     c3 = [-24/2,16/2]
+    #     c4 = [-24/2,-16/2]
+    #
+    # elif type == 2:
+    #     c1 = [32/2,16/2]
+    #     c2 = [32/2,-16/2]
+    #     c3 = [-32/2,16/2]
+    #     c4 = [-32/2,-16/2]
 
-    elif type == 1:
-        c1 = [24/2,16/2]
-        c2 = [24/2,-16/2]
-        c3 = [-24/2,16/2]
-        c4 = [-24/2,-16/2]
-
-    elif type == 2:
-        c1 = [32/2,16/2]
-        c2 = [32/2,-16/2]
-        c3 = [-32/2,16/2]
-        c4 = [-32/2,-16/2]
+    c1 = [l / 2, w / 2]
+    c2 = [l / 2, -w / 2]
+    c3 = [-l / 2, w / 2]
+    c4 = [-l / 2, -w / 2]
 
     c1,c2,c3,c4 = np.asarray(c1),np.asarray(c2),np.asarray(c3),np.asarray(c4)
-    c1 = c1/1000
-    c2 = c2/1000
-    c3 = c3/1000
-    c4 = c4/1000
 
     corn1 = np.dot(rot_z,c1)
     corn2 = np.dot(rot_z,c2)
@@ -232,7 +229,7 @@ def pose4keypoints(data_root, target_path):
     os.makedirs(target_path + 'images/', exist_ok=True)
     os.makedirs(target_path + 'labels/', exist_ok=True)
     mm2px = 530 / 0.34  # (1558)
-    total_num = 1000
+    total_num = 4000
     start_index = 2000
     num_item = 15
 
@@ -249,11 +246,11 @@ def pose4keypoints(data_root, target_path):
             real_world_data = np.loadtxt(os.path.join(data_root, "labels/%012d.txt") % i)
             corner_list = []
             label_plot = []
-            if real_world_data[14, 0] == 1:
-                pass
-            else:
-                cut_id = np.where(real_world_data[:, 0] == 0)[0][0]
-                real_world_data = np.delete(real_world_data, np.arange(cut_id, num_item), 0)
+            # if real_world_data[14, 0] == 1:
+            #     pass
+            # else:
+            #     cut_id = np.where(real_world_data[:, 0] == 0)[0][0]
+            #     real_world_data = np.delete(real_world_data, np.arange(cut_id, num_item), 0)
             real_world_data[:, 0] = 0
 
             label = []
@@ -278,13 +275,8 @@ def pose4keypoints(data_root, target_path):
                 element = np.concatenate(([0], [label_x, label_y], [length, width], keypoints.reshape(-1)))
                 label.append(element)
                 # print(label)
-                if 0.8 < l / w < 1.2:
-                    lucky_list = 0
-                elif 1.3 < (l / w) < 1.7:
-                    lucky_list = 1
-                else: lucky_list = 2
 
-                corn1, corn2, corn3, corn4 = find_corner(xpos1, ypos1, int(lucky_list), yawori)
+                corn1, corn2, corn3, corn4 = find_corner(xpos1, ypos1, l, w, yawori)
                 corner_list.append([corn1, corn2, corn3, corn4])
                 corns = corner_list[j]
 
@@ -324,7 +316,7 @@ def pose4keypoints(data_root, target_path):
 
 
             np.savetxt(os.path.join(target_path, "labels/%012d.txt") % i, label, fmt='%.8s')
-            img = cv2.imread(os.path.join(data_root, "images/%012d.png") % i)
+            # img = cv2.imread(os.path.join(data_root, "images/%012d.png") % i)
             # img = yolo_box(img, label_plot)
         # if len(w) > 0:
         #     quit()
@@ -334,7 +326,7 @@ def train_test_split(data_root, target_path):
 
     import shutil
     ratio = 0.8
-    total_num = 1000
+    total_num = 4000
     train_num = int(total_num * ratio)
     test_num = int(total_num - train_num)
     print(train_num)
@@ -369,12 +361,12 @@ if __name__ == '__main__':
 
     # pose_estimation()
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_2/'
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_2/'
     pose4keypoints(data_root, target_path)
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_2/'
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_2/'
     train_test_split(data_root, target_path)
 
     # data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/labels/'

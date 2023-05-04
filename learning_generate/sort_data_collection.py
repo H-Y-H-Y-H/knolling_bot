@@ -7,21 +7,7 @@ from urdfpy import URDF
 class Sort_objects():
     
     def __init__(self):
-
-        self.correct = np.array([[0.016, 0.016, 0.012],
-                                 [0.020, 0.016, 0.012],
-                                 [0.020, 0.020, 0.012],
-                                 [0.024, 0.016, 0.012],
-                                 [0.024, 0.020, 0.012],
-                                 [0.024, 0.024, 0.012],
-                                 [0.028, 0.016, 0.012],
-                                 [0.028, 0.020, 0.012],
-                                 [0.028, 0.024, 0.012],
-                                 [0.032, 0.016, 0.012],
-                                 [0.032, 0.020, 0.012],
-                                 [0.032, 0.024, 0.012]])
-
-        self.error_rate = 0.001
+        pass
 
     def get_data_virtual(self, area_num, ratio_num, lego_num, boxes_index):
 
@@ -38,22 +24,6 @@ class Sort_objects():
 
         pos_list = []
         ori_list = []
-        # for i in range(len(lego_num)):
-        #     for j in range(lego_num[i]):
-        #         xyz_list.append(self.correct[i])
-
-        # for i in range(self.num_2x2):
-        #     names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_0/2x2.STL')
-        #     xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
-        # for i in range(self.num_2x3):
-        #     names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_1/2x3.STL')
-        #     xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
-        # for i in range(self.num_2x4):
-        #     names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_2/2x4.STL')
-        #     xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
-        # for i in range(self.num_pencil):
-        #     names[f'cube_{i}_dimension'] = mesh.Mesh.from_file(urdf_path + 'item_3/%d.STL' % i)
-        #     xyz_list.append(names['cube_%d_dimension' % i].max_ - names['cube_%d_dimension' % i].min_)
         xyz_list = np.asarray(xyz_list, dtype=np.float32)
         # print(xyz_list)
 

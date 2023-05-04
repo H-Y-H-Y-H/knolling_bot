@@ -16,6 +16,7 @@ import random
 import math
 import cv2
 from PIL import Image
+from urdfpy import URDF
 
 # logger = EasyLog(log_level=logging.INFO)
 
@@ -131,7 +132,7 @@ def xyz_resolve(x,y):
 
 class Arm_env(gym.Env):
 
-    def __init__(self,max_step, is_render=True, num_objects=1, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
+    def __init__(self,max_step, is_render=True, boxes_index=None, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
                  z_grasp_accuracy=0.2):
 
         self.kImageSize = {'width': 480, 'height': 480}
@@ -161,7 +162,7 @@ class Arm_env(gym.Env):
         self.max_step = max_step
 
         self.friction = 0.99
-        self.num_objects = num_objects
+        self.boxes_index = boxes_index
         # self.action_space = np.asarray([np.pi/3, np.pi / 6, np.pi / 4, np.pi / 2, np.pi])
         # self.shift = np.asarray([-np.pi/6, -np.pi/12, 0, 0, 0])
         self.ik_space = np.asarray([0.3, 0.4, 0.06, np.pi])  # x, y, z, yaw
@@ -277,7 +278,7 @@ class Arm_env(gym.Env):
         # Texture change
         background = np.random.randint(1, 6)
         textureId = p.loadTexture(f"../urdf/img_{background}.png")
-        textureId = p.loadTexture(f"../urdf/textures/red2.png")
+        # textureId = p.loadTexture(f"../urdf/textures/red2.png")
         p.changeVisualShape(baseid, -1, textureUniqueId=textureId, )
 
         p.changeDynamics(baseid, -1, lateralFriction=self.friction)
@@ -287,79 +288,59 @@ class Arm_env(gym.Env):
 
         # Generate the pos and orin of objects randomly.
         self.obj_idx = []
-        self.lucky_list = []
 
         while True:
             # for i in range(1):
             dis_flag = True
 
-            rdm_pos_z = 0
-            if self.num_objects >= 3:
-                rdm_ori_yaw = np.random.uniform(0, np.pi, size=(self.num_objects - 1))
-                # rdm_ori_yaw = np.zeros(self.num_objects -1)
-                rdm_ori_yaw = np.append(rdm_ori_yaw, rdm_ori_yaw[0])
-            else:
-                rdm_ori_yaw = np.random.uniform(0, np.pi, size=(self.num_objects))
+            rdm_pos_z = 0.006
+            rdm_ori_yaw = np.random.uniform(0, np.pi, size=(len(self.boxes_index) - 1))
+            # rdm_ori_yaw = np.zeros(self.num_objects -1)
+            rdm_ori_yaw = np.append(rdm_ori_yaw, rdm_ori_yaw[0])
 
             if close_flag:
                 # print('this is wall pos', wall_pos)
                 # print(wall_flag)
                 if wall_flag == 0: # x
-
-                    if self.num_objects >= 3:
-                        rdm_pos_x = np.random.uniform(wall_pos+0.02, wall_pos+0.25, size=(self.num_objects - 1))
-                        rdm_pos_y = np.random.uniform(-0.16, 0.16, size=(self.num_objects - 1))
-                    else:
-                        rdm_pos_x = np.random.uniform(wall_pos + 0.02, wall_pos + 0.25, size=(self.num_objects))
-                        rdm_pos_y = np.random.uniform(-0.16, 0.16, size=(self.num_objects))
+                    rdm_pos_x = np.random.uniform(wall_pos+0.02, wall_pos+0.25, size=(len(self.boxes_index) - 1))
+                    rdm_pos_y = np.random.uniform(-0.14, 0.14, size=(len(self.boxes_index) - 1))
                 else: # y
-                    if self.num_objects >= 3:
-                        rdm_pos_x = np.random.uniform(0.06, 0.25, size=(self.num_objects - 1))
-                        rdm_pos_y = np.random.uniform(wall_pos + 0.02, wall_pos+0.25, size=(self.num_objects - 1))
-                    else:
-                        rdm_pos_x = np.random.uniform(0.06, 0.25, size=(self.num_objects))
-                        rdm_pos_y = np.random.uniform(wall_pos + 0.02, wall_pos + 0.25, size=(self.num_objects))
+                    rdm_pos_x = np.random.uniform(0.06, 0.25, size=(len(self.boxes_index) - 1))
+                    rdm_pos_y = np.random.uniform(wall_pos + 0.02, wall_pos+0.25, size=(len(self.boxes_index) - 1))
             else:
-                if self.num_objects >= 3:
-                    rdm_pos_x = np.random.uniform(0.06, 0.25, size=(self.num_objects - 1))
-                    rdm_pos_y = np.random.uniform(-0.178, 0.178, size=(self.num_objects - 1))
-                else:
-                    rdm_pos_x = np.random.uniform(0.06, 0.25, size=(self.num_objects))
-                    rdm_pos_y = np.random.uniform(-0.178, 0.178, size=(self.num_objects))
+                rdm_pos_x = np.random.uniform(0.06, 0.25, size=(len(self.boxes_index) - 1))
+                rdm_pos_y = np.random.uniform(-0.14, 0.14, size=(len(self.boxes_index) - 1))
 
-            if self.num_objects >= 3:
-                rot_parallel = [[np.cos(rdm_ori_yaw[0]), -np.sin(rdm_ori_yaw[0])],
-                                [np.sin(rdm_ori_yaw[0]), np.cos(rdm_ori_yaw[0])]]
-                rot_parallel = np.asarray(rot_parallel)
+            rot_parallel = [[np.cos(rdm_ori_yaw[0]), -np.sin(rdm_ori_yaw[0])],
+                            [np.sin(rdm_ori_yaw[0]), np.cos(rdm_ori_yaw[0])]]
+            rot_parallel = np.asarray(rot_parallel)
 
-                xy_parallel = np.dot(rot_parallel, np.asarray([np.random.uniform(-0.016, 0.016), 0.050 / 2]))
+            xy_parallel = np.dot(rot_parallel, np.asarray([np.random.uniform(-0.016, 0.016), 0.050]))
 
-                xy_parallel = np.add(xy_parallel, np.asarray([rdm_pos_x[0], rdm_pos_y[0]]))
-                # print(xy_parallel)
+            xy_parallel = np.add(xy_parallel, np.asarray([rdm_pos_x[0], rdm_pos_y[0]]))
+            # print(xy_parallel)
 
-                rdm_pos_x = np.append(rdm_pos_x, xy_parallel[0])
-                rdm_pos_y = np.append(rdm_pos_y, xy_parallel[1])
-            else:
-                pass
+            rdm_pos_x = np.append(rdm_pos_x, xy_parallel[0])
+            rdm_pos_y = np.append(rdm_pos_y, xy_parallel[1])
 
             # rdm_pos_x = [0.15, 0.15, 0.15]
             # rdm_pos_y = [0.18, -0.18, 0]
-            for i in range(self.num_objects):
+            for i in range(len(self.boxes_index)):
                 if dis_flag == False:
                     break
 
                 if i == 0:
-                    num2 = self.num_objects - 1
+                    num2 = len(self.boxes_index) - 1
 
                 else:
-                    num2 = self.num_objects
+                    num2 = len(self.boxes_index)
 
                 # print(num2)
                 for j in range(i + 1, num2):
 
                     dis_check = math.dist([rdm_pos_x[i], rdm_pos_y[i]], [rdm_pos_x[j], rdm_pos_y[j]])
 
-                    if dis_check < 0.0312:
+                    if dis_check < 0.048:
                         # print(i,"and",j,"gg")
                         dis_flag = False
 
@@ -370,30 +351,14 @@ class Arm_env(gym.Env):
         r1 = np.random.uniform(0, 0.9)
         g1 = np.random.uniform(0, 0.9)
         b1 = np.random.uniform(0, 0.9)
+        lw_list = []
+        lego_path = "../urdf/box_generator/"
+        for i in range(len(self.boxes_index)):
+            boxes = URDF.load('../urdf/box_generator/box_%d.urdf' % self.boxes_index[i])
+            lw_list.append(boxes.links[0].visuals[0].geometry.box.size)
 
-        for i in range(self.num_objects):
-            # lucky = np.random.randint(2, 5)
-            lucky = np.random.randint(0, 12)
-            # lucky = 3
-            self.lucky_list.append(lucky)
-            # print(lucky)
-            # if random.random() > 0.5:
-            #     lego_path = "urdf/lego/2x"
-            # else:
-            #     # o = random.randint(1,2)
-            #     o = 1
-            #     lego_path = "urdf/lego/%s_2x" % o
-            lego_path = "../urdf/"
-
-            if lucky == 1:
-                self.obj_idx.append(
-                    p.loadURDF((lego_path + "item_1_lego/duck_vhacd.urdf"),
-                               basePosition=[rdm_pos_x[i], rdm_pos_y[i], rdm_pos_z],
-                               baseOrientation=p.getQuaternionFromEuler([0, 0, rdm_ori_yaw[i]]), useFixedBase=0,
-                               flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-            else:
-                self.obj_idx.append(
-                    p.loadURDF((lego_path + "item_%d_lego/0.urdf" % lucky), basePosition=[rdm_pos_x[i], rdm_pos_y[i], rdm_pos_z],
+            self.obj_idx.append(
+                    p.loadURDF((lego_path + "box_%d.urdf" % self.boxes_index[i]), basePosition=[rdm_pos_x[i], rdm_pos_y[i], rdm_pos_z],
                                baseOrientation=p.getQuaternionFromEuler([0, 0, rdm_ori_yaw[i]]), useFixedBase=0,
                                flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
             #
@@ -401,29 +366,24 @@ class Arm_env(gym.Env):
             g = np.random.uniform(0, 0.9)
             b = np.random.uniform(0, 0.9)
 
-            if lucky == 1:
-                print('pause!')
-
             if random.random() < 0.05:
                 p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(0.1, 0.1, 0.1, 1))
             else:
-                texture_random = p.loadTexture(f"../urdf/textures/colors16.png")
-                p.changeVisualShape(self.obj_idx[i], -1, textureUniqueId=texture_random, )
+                p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
 
-            # if self.num_objects >= 3:
-            #     if i == 0 or i == (self.num_objects - 1):
-            #         p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r1, g1, b1, 1))
-            # else:
-            #     pass
+            if len(self.boxes_index) >= 3:
+                if i == 0 or i == (len(self.boxes_index) - 1):
+                    p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r1, g1, b1, 1))
+            else:
+                pass
+        lw_list = np.asarray(lw_list)
 
         for _ in range(int(40+close_flag*260)):
             # time.sleep(1/480)
             p.stepSimulation()
 
-        # print(p.getBasePositionAndOrientation(self.obj_idx[0]))
-        # print(p.getJointState(self.obj_idx[0], 0))
 
-        return self.get_obs(), rdm_pos_x, rdm_pos_y, rdm_pos_z, rdm_ori_yaw, self.lucky_list
+        return self.get_obs(), lw_list[:, :2]
 
     def get_obs(self):
         # Get end-effector obs

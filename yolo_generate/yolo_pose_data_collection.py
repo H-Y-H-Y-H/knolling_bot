@@ -11,6 +11,7 @@ from PIL import Image
 from yolo_pose_data_collection_env import *
 # from create_urdf import *
 # from create_urdf import *
+from tqdm import tqdm
 
 def sort_cube(obj_list, x_sorted):
     s = np.array(x_sorted)
@@ -40,29 +41,29 @@ def yolo_box(img, label):
 
 if __name__ == '__main__':
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_2/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_3/'
     os.makedirs(data_root, exist_ok=True)
 
     p.connect(p.GUI)
 
     startnum = 0
-    endnum = 100
+    endnum = 10
     lebal_list = []
 
     num_reset = True
     CLOSE_FLAG = False
     texture_flag = True
-    max_lego_num = 15
+    max_lego_num = 12
     mm2px = 530 / 0.34
 
-    for epoch in range(startnum,endnum):
+    for epoch in tqdm(range(startnum,endnum)):
         # num_item = random.randint(1, 5)
 
-        num_item = int(np.random.uniform(2, max_lego_num + 1))
-        # num_item = 3
+        num_item = int(np.random.uniform(4, max_lego_num + 1))
+        boxes_index = np.random.choice(50, num_item)
 
-        env = Arm_env(max_step=1, is_render=False, num_objects=num_item)
-        state, rdm_pos_x, rdm_pos_y, rdm_pos_z, rdm_ori_yaw, lucky_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag)
+        env = Arm_env(max_step=1, is_render=False, boxes_index=boxes_index)
+        state, lw_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag)
 
         label = np.zeros((num_item, 6))
 
@@ -73,38 +74,15 @@ if __name__ == '__main__':
         corner_list = []
         for j in range(num_item):
             if j >= num_item:
-                element = np.zeros(7)
+                element = np.zeros(6)
                 # element = np.append(element, 0)
                 label.append(element)
             else:
                 xpos1 = all_pos[0+3*j]
                 ypos1 = all_pos[1+3*j]
                 yawori = all_ori[2+3*j]
-
-                if lucky_list[j] == 0:
-                    l, w = 16/1000, 16/1000
-                if lucky_list[j] == 1:
-                    l, w = 20/1000, 16/1000
-                if lucky_list[j] == 2:
-                    l, w = 20/1000, 20/1000
-                if lucky_list[j] == 3:
-                    l, w = 24/1000, 16/1000
-                if lucky_list[j] == 4:
-                    l, w = 24/1000, 20/1000
-                if lucky_list[j] == 5:
-                    l, w = 24/1000, 24/1000
-                if lucky_list[j] == 6:
-                    l, w = 28/1000, 16/1000
-                if lucky_list[j] == 7:
-                    l, w = 28/1000, 20/1000
-                if lucky_list[j] == 8:
-                    l, w = 28/1000, 24/1000
-                if lucky_list[j] == 9:
-                    l, w = 32/1000, 16/1000
-                if lucky_list[j] == 10:
-                    l, w = 32/1000, 20/1000
-                if lucky_list[j] == 11:
-                    l, w = 32/1000, 24/1000
+                l = lw_list[j, 0]
+                w = lw_list[j, 1]
                 element = np.array([1, xpos1, ypos1, l, w, yawori])
 
             label[j] = element

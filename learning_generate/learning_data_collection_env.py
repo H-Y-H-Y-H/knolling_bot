@@ -115,20 +115,6 @@ class Arm:
         self.use_yolo_pos = use_yolo_pos
         self.boxes_index = boxes_index
 
-        self.correct = np.array([[0.016, 0.016, 0.012],
-                                 [0.020, 0.016, 0.012],
-                                 [0.020, 0.020, 0.012],
-                                 [0.024, 0.016, 0.012],
-                                 [0.024, 0.020, 0.012],
-                                 [0.024, 0.024, 0.012],
-                                 [0.028, 0.016, 0.012],
-                                 [0.028, 0.020, 0.012],
-                                 [0.028, 0.024, 0.012],
-                                 [0.032, 0.016, 0.012],
-                                 [0.032, 0.020, 0.012],
-                                 [0.032, 0.024, 0.012]])
-        self.error_rate = 0.001
-
 
     def get_obs(self, order, evaluation):
 
@@ -202,6 +188,8 @@ class Arm:
                     print(f'this is matching urdf{j}')
                     print(pos_data[i])
                     print(xyz_list[j])
+                    print(ori_data[i])
+                    pos_data[i, 2] += 0.006
                     lego_idx.append(
                         p.loadURDF(self.urdf_path + f"box_generator/box_{int(index_flag[0, j])}.urdf",
                                    basePosition=pos_data[i],
@@ -349,39 +337,6 @@ class Arm:
                     all_item_x = item_min_x
                     all_item_y = item_min_y
                     min_xy = np.array([all_item_x, all_item_y])
-
-
-            # if item_num % 2 == 0:
-            #     fac = []  # 定义一个列表存放因子
-            #     for i in range(1, item_num + 1):
-            #         if item_num % i == 0:
-            #             fac.append(i)
-            #             continue
-            #     for i in range(len(fac)):
-            #         num_row = int(fac[i])
-            #         # print(num_row)
-            #         num_column = int(item_num / num_row)
-            #         # print(num_column)
-            #         len_x = num_row * np.max(item_xyz, axis=0)[0] + (num_row - 1) * self.gap_item
-            #         len_y = num_column * np.max(item_xyz, axis=0)[1] + (num_column - 1) * self.gap_item
-            #
-            #         if np.sum(np.array([len_x, len_y])) < np.sum(min_xy):
-            #             # print('for 2x2, this is the shorter distance')
-            #             min_xy = np.array([len_x, len_y])
-            #             best_item_config = [num_row, num_column]
-            # else:
-            #     len_x1 = np.max(item_xyz, axis=0)[0] * item_num + (item_num - 1) * self.gap_item
-            #     len_y1 = np.max(item_xyz, axis=0)[1]
-            #     len_x2 = np.max(item_xyz, axis=0)[0]
-            #     len_y2 = np.max(item_xyz, axis=0)[1] * item_num + (item_num - 1) * self.gap_item
-            #     if np.sum(np.array([len_x1, len_y1])) < np.sum(np.array([len_x2, len_y2])):
-            #         min_xy = np.array([len_x1, len_y1])
-            #         best_item_config = [item_num, 1]
-            #     else:
-            #         min_xy = np.array([len_x2, len_y2])
-            #         best_item_config = [1, item_num]
-            # best_item_config = np.asarray(best_item_config)
-            # min_xy = min_xy + self.gap_block
 
             return min_xy, best_item_config, item_odd_flag
 
@@ -652,12 +607,12 @@ class Arm:
 
 if __name__ == '__main__':
 
-    command = 'knolling'
+    command = 'recover'
     before_after = 'after'
 
     evaluations = 10000
-    range_low = 14
-    range_high = 15
+    range_low = 4
+    range_high = 5
     total_urdf = 50
 
     area_num = 3
@@ -668,7 +623,7 @@ if __name__ == '__main__':
         env = Arm(is_render=True)
         for i in range(range_low, range_high):
 
-            target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_5categories/'
+            target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_502/'
             images_before_path = target_path + 'images_before/'
             images_after_path = target_path + 'images_after/'
             labels_before_path = target_path + 'labels_before/'
