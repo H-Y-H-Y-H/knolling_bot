@@ -71,7 +71,7 @@ class Sort_objects():
                         #     index += 1
                         #     rest_index = np.delete(rest_index, np.where(rest_index == m))
                         transform_flag.append(0)
-                        print(f'boxes{m} matches in area{i}, ratio{j}!')
+                        # print(f'boxes{m} matches in area{i}, ratio{j}!')
                         kind_index.append(index)
                         new_item_xyz.append(item_xyz[m])
                         index += 1

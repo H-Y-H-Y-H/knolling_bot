@@ -316,27 +316,28 @@ class Arm:
                 if item_num % i == 0:
                     fac.append(i)
                     continue
+            fac = fac[::-1]
 
-            if item_num % 2 != 0 and len(fac) == 2 and item_num >=5:  # its odd! we should generate the factor again!
-                item_num += 1
-                item_odd_flag = True
-                fac = []  # 定义一个列表存放因子
-                for i in range(1, item_num + 1):
-                    if item_num % i == 0:
-                        fac.append(i)
-                        continue
+            # if item_num % 2 != 0 and len(fac) == 2 and item_num >=5:  # its odd! we should generate the factor again!
+            #     item_num += 1
+            #     item_odd_flag = True
+            #     fac = []  # 定义一个列表存放因子
+            #     for i in range(1, item_num + 1):
+            #         if item_num % i == 0:
+            #             fac.append(i)
+            #             continue
 
             item_sequence = np.random.choice(len(item_xyz), len(item_xyz), replace=False)
             if item_odd_flag == True:
                 item_sequence = np.append(item_sequence, item_sequence[-1])
 
             for j in range(len(fac)):
-                if item_num == 3:
-                    item_num_row = 1
-                    item_num_column = 3
-                else:
-                    item_num_row = int(fac[j])
-                    item_num_column = int(item_num / item_num_row)
+                # if item_num == 3:
+                #     item_num_row = 1
+                #     item_num_column = 3
+                # else:
+                item_num_row = int(fac[j])
+                item_num_column = int(item_num / item_num_row)
                 item_sequence = item_sequence.reshape(item_num_row, item_num_column)
                 item_min_x = 0
                 item_min_y = 0
@@ -392,7 +393,7 @@ class Arm:
             # reorder the block based on the min_xy 哪个block面积大哪个在前
 
             # 安排总的摆放
-            iteration = 100
+            iteration = 300
             all_num = best_config.shape[0]
             all_x = 100
             all_y = 100
@@ -403,15 +404,16 @@ class Arm:
                 if all_num % i == 0:
                     fac.append(i)
                     continue
+            fac = fac[::-1]
 
-            if all_num % 2 != 0 and len(fac) == 2:  # its odd! we should generate the factor again!
-                all_num += 1
-                odd_flag = True
-                fac = []  # 定义一个列表存放因子
-                for i in range(1, all_num + 1):
-                    if all_num % i == 0:
-                        fac.append(i)
-                        continue
+            # if all_num % 2 != 0 and len(fac) == 2:  # its odd! we should generate the factor again!
+            #     all_num += 1
+            #     odd_flag = True
+            #     fac = []  # 定义一个列表存放因子
+            #     for i in range(1, all_num + 1):
+            #         if all_num % i == 0:
+            #             fac.append(i)
+            #             continue
 
             for i in range(iteration):
                 # sequence = np.random.choice(best_config.shape[0], size=len(self.all_index), replace=False)
@@ -438,7 +440,10 @@ class Arm:
                     for r in range(num_row):
                         for c in range(num_column):
                             new_row = min_xy[sequence[r][c]]
-                            zero_or_90 = np.random.choice(np.array([0, 90]))
+                            if new_row[0] > new_row[1]:
+                                zero_or_90 = 90
+                            else:
+                                zero_or_90 = np.random.choice(np.array([0, 90]))
                             if zero_or_90 == 90:
                                 rotate_flag[r][c] = True
                                 temp = new_row[0]
@@ -644,11 +649,11 @@ class Arm:
 if __name__ == '__main__':
 
     command = 'recover'
-    before_after = 'after'
+    before_after = 'before'
 
-    evaluations = 10
-    range_low = 13
-    range_high = 14
+    evaluations = 100
+    range_low = 4
+    range_high = 11
     total_urdf = 50
 
     area_num = 4
@@ -656,7 +661,9 @@ if __name__ == '__main__':
 
     target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_503/'
     images_log_path = target_path + 'images_%s/' % before_after
+    preprocess_label_path = target_path + 'preprocess_label/'
     os.makedirs(images_log_path, exist_ok=True)
+    os.makedirs(preprocess_label_path, exist_ok=True)
 
     if command == 'recover':
 
@@ -670,25 +677,40 @@ if __name__ == '__main__':
 
             lego_num = i
 
+            new_data = []
+            # new_index_flag = []
             for j in range(len(data)):
                 env.get_parameters(lego_num=lego_num)
                 print(f'this is data {j}')
+                one_img_data = data[j].reshape(-1, 5)
+                # one_img_index_flag = index_flag[j].reshape(2, -1)
+                box_order = np.lexsort((one_img_data[:, 1], one_img_data[:, 0]))
+                one_img_data = one_img_data[box_order].reshape(-1, )
+                # one_img_index_flag = one_img_index_flag[:, box_order].reshape(-1, )
+                new_data.append(one_img_data)
+                # new_index_flag.append(one_img_index_flag)
+            new_data = np.asarray(new_data)
+            # new_index_flag = np.asarray(new_index_flag)
+            np.savetxt(preprocess_label_path + 'num_%d.txt' % i, new_data)
+            # np.savetxt(target_path + 'index_flag/num_%s_flag.txt' % i, new_index_flag)
+
+
                 # if j == 4:
                 #     print('here')
 
-                image = env.label2image(data[j], index_flag[j])
-                image = image[..., :3]
-                # print('this is shape of image', image.shape)
-                # image = np.transpose(image, (2, 0, 1))
-                # temp = image[:, :, 2]
-                # image[:, :, 2] = image[:, :, 0]
-                # image[:, :, 0] = temp
-                cv2.namedWindow('zzz', 0)
-                cv2.imshow("zzz", image)
-                cv2.waitKey()
-                cv2.destroyAllWindows()
-
-                cv2.imwrite(images_log_path + '%d_%d.png' % (i, j), image)
+                # image = env.label2image(data[j], index_flag[j])
+                # image = image[..., :3]
+                # # print('this is shape of image', image.shape)
+                # # image = np.transpose(image, (2, 0, 1))
+                # # temp = image[:, :, 2]
+                # # image[:, :, 2] = image[:, :, 0]
+                # # image[:, :, 0] = temp
+                # cv2.namedWindow('zzz', 0)
+                # cv2.imshow("zzz", image)
+                # cv2.waitKey()
+                # cv2.destroyAllWindows()
+                #
+                # cv2.imwrite(images_log_path + '%d_%d.png' % (i, j), image)
 
     if command == 'knolling':
 
