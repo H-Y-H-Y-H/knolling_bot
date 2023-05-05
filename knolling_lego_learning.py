@@ -853,6 +853,7 @@ class Arm:
         ################### after generate the neat configuration, we should recover the lw based on that in the urdf files!
         for i in range(len(self.transform_flag)):
             if self.transform_flag[i] == 1:
+                print(f'ori changed in index{i}!')
                 if self.items_ori_list[i, 2] > np.pi:
                     items_ori_list_arm[i, 2] = self.items_ori_list[i, 2] - np.pi / 2
                 else:
