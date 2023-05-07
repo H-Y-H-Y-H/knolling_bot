@@ -117,6 +117,8 @@ class Sort_objects():
         lw_ratio = item_lw[:, 0] / item_lw[:, 1]
         ratio_min, ratio_max = np.min(lw_ratio), np.max(lw_ratio)
         ratio_range = np.linspace(ratio_max, ratio_min, int(ratio_num * 2 + 1))
+        ratio_range_high = np.linspace(ratio_max, 1, int(ratio_num + 1))
+        ratio_range_low = np.linspace(1 / ratio_max, 1, int(ratio_num + 1))
 
         # ! initiate the number of items
         all_index = []
@@ -135,27 +137,27 @@ class Sort_objects():
                     if m not in rest_index:
                         continue
                     elif s_range[i] >= s[m] >= s_range[i + 1]:
-                        if ratio_range[j] >= lw_ratio[m] >= ratio_range[j + 1]:
-                            transform_flag.append(0)
-                            # print(f'boxes{m} matches in area{i}, ratio{j}!')
-                            kind_index.append(index)
-                            new_item_lw.append(item_lw[m])
-                            new_item_pos.append(item_pos[m])
-                            new_item_ori.append(item_ori[m])
-                            new_urdf_index.append(m)
-                            index += 1
-                            rest_index = np.delete(rest_index, np.where(rest_index == m))
-                        elif ratio_range[ratio_num * 2 - j] <= lw_ratio[m] <= ratio_range[ratio_num * 2 - j - 1]:
-                            transform_flag.append(1)
-                            # print(f'boxes{m} matches in area{i}, ratio{j}, remember to rotate the ori after knolling!')
-                            item_lw[m, [0, 1]] = item_lw[m, [1, 0]]
-                            kind_index.append(index)
-                            new_item_lw.append(item_lw[m])
-                            new_item_pos.append(item_pos[m])
-                            new_item_ori.append(item_ori[m])
-                            new_urdf_index.append(m)
-                            index += 1
-                            rest_index = np.delete(rest_index, np.where(rest_index == m))
+                        # if ratio_range_high[j] >= lw_ratio[m] >= ratio_range_high[j + 1]:
+                        transform_flag.append(0)
+                        # print(f'boxes{m} matches in area{i}, ratio{j}!')
+                        kind_index.append(index)
+                        new_item_lw.append(item_lw[m])
+                        new_item_pos.append(item_pos[m])
+                        new_item_ori.append(item_ori[m])
+                        new_urdf_index.append(m)
+                        index += 1
+                        rest_index = np.delete(rest_index, np.where(rest_index == m))
+                        # elif ratio_range_low[j] <= lw_ratio[m] <= ratio_range_low[j + 1]:
+                        #     transform_flag.append(1)
+                        #     # print(f'boxes{m} matches in area{i}, ratio{j}, remember to rotate the ori after knolling!')
+                        #     item_lw[m, [0, 1]] = item_lw[m, [1, 0]]
+                        #     kind_index.append(index)
+                        #     new_item_lw.append(item_lw[m])
+                        #     new_item_pos.append(item_pos[m])
+                        #     new_item_ori.append(item_ori[m])
+                        #     new_urdf_index.append(m)
+                        #     index += 1
+                        #     rest_index = np.delete(rest_index, np.where(rest_index == m))
                 if len(kind_index) != 0:
                     all_index.append(kind_index)
 
@@ -174,45 +176,6 @@ class Sort_objects():
 
         return new_item_lw, new_item_pos, new_item_ori, all_index, transform_flag, new_urdf_index
 
-        # all_index = []
-        # new_xyz_list = []
-        # kind = []
-        # new_results = []
-        # z = 0.006
-        # roll = 0
-        # pitch = 0
-        # num = 0
-        # for i in range(len(self.correct)):
-        #     kind_index = []
-        #     for j in range(len(results)):
-        #         # if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
-        #         if np.abs(self.correct[i][0] - results[j][0]) < 0.002 and np.abs(self.correct[i][1] - results[j][1]) < 0.002:
-        #             kind_index.append(num)
-        #             new_xyz_list.append(self.correct[i])
-        #             num += 1
-        #             if i in kind:
-        #                 pass
-        #             else:
-        #                 kind.append(i)
-        #             new_results.append(results[j])
-        #         else:
-        #             pass
-        #     if len(kind_index) != 0:
-        #         all_index.append(kind_index)
-        #
-        # new_xyz_list = np.asarray(new_xyz_list)
-        # new_results = np.asarray(new_results)
-        # kind = np.asarray(kind)
-        # print('this is kind', kind)
-        # print('this is all index', all_index)
-        # print(new_xyz_list)
-        #
-        # # 按照234重新将result排序
-        # pos_before = np.concatenate((new_results[:, :2], np.zeros(len(new_results).reshape(-1, 1))), axis=1)
-        # ori_before = np.concatenate((np.zeros((len(new_results)), 2), new_results[:, 4]), axis=1)
-        #
-        # return new_xyz_list, pos_before, ori_before, all_index, kind
-
     def judge(self, item_xyz, item_pos, item_ori, area_num, ratio_num, boxes_index):
 
         category_num = int(area_num * ratio_num + 1)
@@ -222,6 +185,8 @@ class Sort_objects():
         lw_ratio = item_xyz[:, 0] / item_xyz[:, 1]
         ratio_min, ratio_max = np.min(lw_ratio), np.max(lw_ratio)
         ratio_range = np.linspace(ratio_max, ratio_min, int(ratio_num * 2 + 1))
+        ratio_range_high = np.linspace(ratio_max, 1, int(ratio_num + 1))
+        ratio_range_low = np.linspace(1 / ratio_max, 1, int(ratio_num + 1))
 
         # ! initiate the number of items
         all_index = []
@@ -238,23 +203,23 @@ class Sort_objects():
                     if m not in rest_index:
                         continue
                     elif s_range[i] >= s[m] >= s_range[i + 1]:
-                        if ratio_range[j] >= lw_ratio[m] >= ratio_range[j + 1]:
-                            transform_flag.append(0)
-                            # print(f'boxes{m} matches in area{i}, ratio{j}!')
-                            kind_index.append(index)
-                            new_item_xyz.append(item_xyz[m])
-                            index += 1
-                            rest_index = np.delete(rest_index, np.where(rest_index == m))
-                            new_urdf_index.append(boxes_index[m])
-                        elif ratio_range[ratio_num * 2 - j] <= lw_ratio[m] <= ratio_range[ratio_num * 2 - j - 1]:
-                            transform_flag.append(1)
-                            # print(f'boxes{m} matches in area{i}, ratio{j}, remember to rotate the ori after knolling!')
-                            item_xyz[m, [0, 1]] = item_xyz[m, [1, 0]]
-                            kind_index.append(index)
-                            new_item_xyz.append(item_xyz[m])
-                            index += 1
-                            rest_index = np.delete(rest_index, np.where(rest_index == m))
-                            new_urdf_index.append(boxes_index[m])
+                        # if ratio_range_high[j] >= lw_ratio[m] >= ratio_range_high[j + 1]:
+                        transform_flag.append(0)
+                        # print(f'boxes{m} matches in area{i}, ratio{j}!')
+                        kind_index.append(index)
+                        new_item_xyz.append(item_xyz[m])
+                        index += 1
+                        rest_index = np.delete(rest_index, np.where(rest_index == m))
+                        new_urdf_index.append(boxes_index[m])
+                        # elif ratio_range_low[j] <= lw_ratio[m] <= ratio_range_low[j + 1]:
+                        #     transform_flag.append(1)
+                        #     # print(f'boxes{m} matches in area{i}, ratio{j}, remember to rotate the ori after knolling!')
+                        #     item_xyz[m, [0, 1]] = item_xyz[m, [1, 0]]
+                        #     kind_index.append(index)
+                        #     new_item_xyz.append(item_xyz[m])
+                        #     index += 1
+                        #     rest_index = np.delete(rest_index, np.where(rest_index == m))
+                        #     new_urdf_index.append(boxes_index[m])
                 if len(kind_index) != 0:
                     all_index.append(kind_index)
 

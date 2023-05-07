@@ -50,3 +50,10 @@ print(rest_index)
 
 rest_index = np.delete(rest_index, np.where(rest_index == 4))
 print(rest_index)
+
+
+array = np.arange(12).reshape(3, 4)
+
+print(np.where(array[:, 1] > 0))
+
+print(min(134, 2))

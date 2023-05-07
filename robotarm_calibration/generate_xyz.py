@@ -360,39 +360,64 @@ class Arm:
             elif tar_ori[2] < -1.58:
                 tar_ori[2] = tar_ori[2] + np.pi
 
-            # if self.test_error_motion == True:
-            #     target_pos = Cartesian_offset_nn(np.array([tar_pos])).reshape(-1, )
-            # automatically add z and x bias
-            # d = np.array([0, 0.10, 0.185, 0.225, 0.27])
             d = np.array([0, 0.3])
-            d_y = np.array((0, 0.17, 0.30))
-            z_bias = np.array([-0.003, 0.008])
-            x_bias = np.array([-0.005, -0.001])
-            y_bias = np.array([0, -0.004, 0.004])
-            # y_bias = np.array([])
+            d_y = np.array((0, 0.17, 0.21, 0.30))
+            d_y = d
+            z_bias = np.array([-0.005, 0.004])
+            x_bias = np.array([-0.002, 0.00])  # yolo error is +2mm along x axis!
+            y_bias = np.array([0, -0.004, -0.001, 0.004])
+            y_bias = np.array([0.002, 0.006])
             # z_parameters = np.polyfit(d, z_bias, 3)
             z_parameters = np.polyfit(d, z_bias, 1)
             x_parameters = np.polyfit(d, x_bias, 1)
-            y_parameters = np.polyfit(d_y, y_bias, 4)
+            y_parameters = np.polyfit(d_y, y_bias, 1)
             new_z_formula = np.poly1d(z_parameters)
             new_x_formula = np.poly1d(x_parameters)
             new_y_formula = np.poly1d(y_parameters)
 
+            # # automatically add z and x bias
+            # # d = np.array([0, 0.10, 0.185, 0.225, 0.27])
+            # d = np.array([0, 0.3])
+            # d_y = np.array((0, 0.17, 0.30))
+            # z_bias = np.array([-0.003, 0.008])
+            # x_bias = np.array([-0.005, -0.001])
+            # y_bias = np.array([0, -0.004, 0.004])
+            # # y_bias = np.array([])
+            # # z_parameters = np.polyfit(d, z_bias, 3)
+            # z_parameters = np.polyfit(d, z_bias, 1)
+            # x_parameters = np.polyfit(d, x_bias, 1)
+            # y_parameters = np.polyfit(d_y, y_bias, 4)
+            # new_z_formula = np.poly1d(z_parameters)
+            # new_x_formula = np.poly1d(x_parameters)
+            # new_y_formula = np.poly1d(y_parameters)
+
             distance = tar_pos[0]
+            distance_y = tar_pos[0]
             tar_pos[2] = tar_pos[2] + new_z_formula(distance)
             print('this is z', new_z_formula(distance))
             tar_pos[0] = tar_pos[0] + new_x_formula(distance)
             print('this is x', new_x_formula(distance))
-            # distance_y = np.linalg.norm(tar_pos[:2])
             if tar_pos[1] > 0:
-                distance_y = np.linalg.norm(tar_pos[:2])
-                print('this is y', new_y_formula(distance_y))
-                tar_pos[1] += new_y_formula(distance_y)
+                tar_pos[1] += new_y_formula(distance_y) * np.clip((6 * (tar_pos[1] + 0.01)), 0, 1)
             else:
-                distance_y = np.linalg.norm(tar_pos[:2])
-                print('this is y', new_y_formula(distance_y))
-                tar_pos[1] -= new_y_formula(distance_y)
+                tar_pos[1] -= new_y_formula(distance_y) * np.clip((6 * (tar_pos[1] - 0.01)), 0, 1)
             print('this is tar pos after manual', tar_pos)
+
+            # distance = tar_pos[0]
+            # tar_pos[2] = tar_pos[2] + new_z_formula(distance)
+            # print('this is z', new_z_formula(distance))
+            # tar_pos[0] = tar_pos[0] + new_x_formula(distance)
+            # print('this is x', new_x_formula(distance))
+            # # distance_y = np.linalg.norm(tar_pos[:2])
+            # if tar_pos[1] > 0:
+            #     distance_y = np.linalg.norm(tar_pos[:2])
+            #     print('this is y', new_y_formula(distance_y))
+            #     tar_pos[1] += new_y_formula(distance_y)
+            # else:
+            #     distance_y = np.linalg.norm(tar_pos[:2])
+            #     print('this is y', new_y_formula(distance_y))
+            #     tar_pos[1] -= new_y_formula(distance_y)
+            # print('this is tar pos after manual', tar_pos)
 
 
             if abs(cur_pos[0] - tar_pos[0]) < 0.001 and abs(cur_pos[1] - tar_pos[1]) < 0.001:
@@ -400,7 +425,7 @@ class Arm:
                 move_slice = 0.004
             else:
                 # horizontal, choose a large slice
-                move_slice = 0.01
+                move_slice = 0.008
 
             if self.real_operate == True:
                 tar_pos = tar_pos + np.array([0, 0, real_height])
@@ -415,7 +440,7 @@ class Arm:
                         and np.abs(target_pos[0] - cur_pos[0]) < 0.01\
                         and np.abs(target_pos[1] - cur_pos[1]) < 0.01:
                     print('we dont need feedback control')
-                    mark_ratio = 0.85
+                    mark_ratio = 0.8
                     vertical_flag = True
                     seg_time = 0
                 else:
@@ -587,13 +612,19 @@ class Arm:
 
                 return cur_pos # return cur pos to let the manipualtor remember the improved pos
 
-        def gripper(gap):
+        def gripper(gap, obj_width=None):
+            obj_width += 0.006
+            obj_width_range = np.array([0.021, 0.026, 0.032, 0.039, 0.045, 0.052, 0.057])
+            motor_pos_range = np.array([2000, 2100, 2200, 2300, 2400, 2500, 2600])
+            formula_parameters = np.polyfit(obj_width_range, motor_pos_range, 3)
+            motor_pos = np.poly1d(formula_parameters)
+
             if self.real_operate == True:
-                if gap > 0.0265:
-                    pos_real = np.asarray([[gap, gap]], dtype=np.float32)
-                elif gap <= 0.0265:
-                    pos_real = np.asarray([[0, 0]], dtype=np.float32)
-                # print('gripper', pos_real)
+                if gap > 0.0265: # close
+                    pos_real = np.asarray([[gap, 1600]], dtype=np.float32)
+                elif gap <= 0.0265: # open
+                    pos_real = np.asarray([[gap, motor_pos(obj_width)]], dtype=np.float32)
+                print('gripper', pos_real)
                 conn.sendall(pos_real.tobytes())
                 # print(f'this is the cmd pos {pos_real}')
                 p.setJointMotorControl2(self.arm_id, 7, p.POSITION_CONTROL, targetPosition=gap, force=10)
@@ -615,21 +646,18 @@ class Arm:
 
             rest_pos = np.array([0, 0, 0.05])
             rest_ori = np.array([0, 1.57, 1.57])
-            offset_low = np.array([0, 0, 0])
-            offset_high = np.array([0, 0, 0.03])
+            offset_low = np.array([0, 0, 0.002])
+            offset_high = np.array([0, 0, 0.035])
 
             last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
             last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
 
             if self.test_error_motion == True:
-                trajectory_pos_list = np.array([[0.00, 0.17, 0.03],
-                                                [0.00, 0.17, 0.005],
-                                                [0.24, -0.17, 0.03],
-                                                [0.24, -0.17, 0.005],
-                                                [0.24, 0.17, 0.03],
-                                                [0.24, 0.17, 0.005],
-                                                [0.00, -0.17, 0.03],
-                                                [0.00, -0.17, 0.005]])
+                trajectory_pos_list = np.array([[0.01, 0.016],
+                                                [0.01, 0.024],
+                                                [0.01, 0.032],
+                                                [0.01, 0.040],
+                                                [0.01, 0.048]])
                 # trajectory_pos_list = np.array([[0.24, -0.17, 0.03],
                 #                                 [0.24, -0.17, 0.005],
                 #                                 [0.24, 0.17, 0.03],
@@ -640,11 +668,12 @@ class Arm:
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], rest_ori)
                         # if trajectory_pos_list[j][2] < 0.02:
                         #     time.sleep(2)
-                        time.sleep(4)
+                        time.sleep(2)
                         last_ori = np.copy(rest_ori)
 
-                    elif len(trajectory_pos_list[j]) == 1:
-                        gripper(trajectory_pos_list[j][0])
+                    elif len(trajectory_pos_list[j]) == 2:
+                        gripper(trajectory_pos_list[j][0], trajectory_pos_list[j][1])
+                        time.sleep(5)
             else:
                 times = 2
                 for j in range(times):
@@ -658,7 +687,7 @@ class Arm:
                         # last_pos = np.copy(trajectory_pos_list)
                         last_ori = np.copy(rest_ori)
 
-                    elif len(trajectory_pos_list[j]) == 1:
+                    elif len(trajectory_pos_list[j]) == 2:
                         gripper(trajectory_pos_list[j][0])
 
             # back to the reset pos and ori

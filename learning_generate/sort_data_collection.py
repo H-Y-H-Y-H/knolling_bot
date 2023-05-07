@@ -6,8 +6,8 @@ from urdfpy import URDF
 
 class Sort_objects():
     
-    def __init__(self):
-        pass
+    def __init__(self, configuration):
+        self.configuration = configuration
 
     def get_data_virtual(self, area_num, ratio_num, lego_num, boxes_index):
 
@@ -37,8 +37,9 @@ class Sort_objects():
         s_range = np.linspace(s_max, s_min, int(area_num + 1))
         lw_ratio = item_xyz[:, 0] / item_xyz[:, 1]
         ratio_min, ratio_max = np.min(lw_ratio), np.max(lw_ratio)
-        ratio_range_high = np.linspace(ratio_max, 1, int(ratio_num + 1))
-        ratio_range_low = np.linspace(1 / ratio_max, 1, int(ratio_num + 1))
+        ratio_range = np.linspace(ratio_max, ratio_min, int(ratio_num + 1))
+        # ratio_range_high = np.linspace(ratio_max, 1, int(ratio_num + 1))
+        # ratio_range_low = np.linspace(1 / ratio_max, 1, int(ratio_num + 1))
 
         #! initiate the number of items
         all_index = []
@@ -54,8 +55,16 @@ class Sort_objects():
                 for m in range(len(item_xyz)):
                     if m not in rest_index:
                         continue
-                    elif s_range[i] >= s[m] >= s_range[i + 1]:
-                        # if ratio_range_high[j] >= lw_ratio[m] >= ratio_range_high[j + 1]:
+                    else:
+                        if s_range[i] >= s[m] >= s_range[i + 1]:
+                            if ratio_range[j] >= lw_ratio[m] >= ratio_range[j + 1]:
+                                transform_flag.append(0)
+                                # print(f'boxes{m} matches in area{i}, ratio{j}!')
+                                kind_index.append(index)
+                                new_item_xyz.append(item_xyz[m])
+                                index += 1
+                                rest_index = np.delete(rest_index, np.where(rest_index == m))
+                        # if ratio_range[j] >= lw_ratio[m] >= ratio_range[j + 1]:
                         #     transform_flag.append(0)
                         #     print(f'boxes{m} matches in area{i}, ratio{j}!')
                         #     kind_index.append(index)
@@ -70,12 +79,6 @@ class Sort_objects():
                         #     new_item_xyz.append(item_xyz[m])
                         #     index += 1
                         #     rest_index = np.delete(rest_index, np.where(rest_index == m))
-                        transform_flag.append(0)
-                        # print(f'boxes{m} matches in area{i}, ratio{j}!')
-                        kind_index.append(index)
-                        new_item_xyz.append(item_xyz[m])
-                        index += 1
-                        rest_index = np.delete(rest_index, np.where(rest_index == m))
 
                 if len(kind_index) != 0:
                     all_index.append(kind_index)

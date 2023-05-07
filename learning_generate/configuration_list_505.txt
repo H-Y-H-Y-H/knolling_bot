@@ -1,0 +1,115 @@
+num_area x num_ratio: 3x2, 3xNone, 4xNone
+item_odd_prevent: False, True
+block_odd_prevent = True!!!!!!!!!!!!!
+upper left: block max, random
+forced rotation of the box: True, False
+
+total: 3x2x2 = 12
+
+cfg_1:
+    no rotate
+    num_area: 3
+    num_ratio: 2
+    num_boxes: 4~10
+    item_odd_prevent = True
+    upper left corner: block max
+    forced rotation of the box: True
+
+cfg_2:
+    no rotate
+    num_area: 3
+    num_ratio: None
+    num_boxes: 4~10
+    item_odd_prevent = True
+    upper left corner: block max
+    forced rotation of the box: True
+
+cfg_3:
+    no rotate
+    num_area: 4
+    num_ratio: None
+    num_boxes: 4~10
+    item_odd_prevent = True
+    upper left corner: block max
+    forced rotation of the box: True
+
+cfg_4:
+    no rotate
+    num_area: 3
+    num_ratio: 2
+    num_boxes: 4~10
+    item_odd_prevent = False
+    upper left corner: block max
+    forced rotation of the box: True
+
+cfg_5:
+    no rotate
+    num_area: 3
+    num_ratio: None
+    num_boxes: 4~10
+    item_odd_prevent = False
+    upper left corner: block max
+    forced rotation of the box: True
+
+cfg_6:
+    no rotate
+    num_area: 4
+    num_ratio: None
+    num_boxes: 4~10
+    item_odd_prevent = False
+    upper left corner: block max
+    forced rotation of the box: True
+
+cfg_7:
+    no rotate
+    num_area: 3
+    num_ratio: 2
+    num_boxes: 4~10
+    item_odd_prevent = True
+    upper left corner: block max
+    forced rotation of the box: False
+
+cfg_8:
+    no rotate
+    num_area: 3
+    num_ratio: None
+    num_boxes: 4~10
+    item_odd_prevent = True
+    upper left corner: block max
+    forced rotation of the box: False
+
+cfg_9:
+    no rotate
+    num_area: 4
+    num_ratio: None
+    num_boxes: 4~10
+    item_odd_prevent = True
+    upper left corner: block max
+    forced rotation of the box: False
+
+cfg_10:
+    no rotate
+    num_area: 3
+    num_ratio: 2
+    num_boxes: 4~10
+    item_odd_prevent = False
+    upper left corner: block max
+    forced rotation of the box: False
+
+cfg_11:
+    no rotate
+    num_area: 3
+    num_ratio: None
+    num_boxes: 4~10
+    item_odd_prevent = False
+    upper left corner: block max
+    forced rotation of the box: False
+
+cfg_12:
+    no rotate
+    num_area: 4
+    num_ratio: None
+    num_boxes: 4~10
+    item_odd_prevent = False
+    upper left corner: block max
+    forced rotation of the box: False

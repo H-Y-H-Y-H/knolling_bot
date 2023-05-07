@@ -201,6 +201,7 @@ class Arm:
             roll = 0
             pitch = 0
             index = []
+            # width_index = []
             print('this is self.xyz', self.xyz_list)
             for i in range(len(self.xyz_list)):
                 for j in range(len(results)):
@@ -208,6 +209,8 @@ class Arm:
                             (np.abs(self.xyz_list[i, 1] - results[j, 2]) < 0.0015 and np.abs(self.xyz_list[i, 0] - results[j, 3]) < 0.0015):
                         if j not in index:
                             index.append(j)
+                        # if i not in width_index:
+                        #     width_index.append(i)
                         else:
                             pass
 
@@ -548,6 +551,292 @@ class Arm:
         print(f'this is standard trim xyz list\n {self.xyz_list}')
         print(f'this is standard trim index list\n {self.all_index}')
 
+        # def calculate_items(item_num, item_xyz):
+        #
+        #     min_xy = np.ones(2) * 100
+        #     best_item_config = []
+        #     item_iteration = 100
+        #     item_odd_flag = False
+        #     all_item_x = 100
+        #     all_item_y = 100
+        #
+        #     fac = []  # 定义一个列表存放因子
+        #     for i in range(1, item_num + 1):
+        #         if item_num % i == 0:
+        #             fac.append(i)
+        #             continue
+        #
+        #     if item_num % 2 != 0 and len(fac) == 2:  # its odd! we should generate the factor again!
+        #         item_num += 1
+        #         item_odd_flag = True
+        #         fac = []  # 定义一个列表存放因子
+        #         for i in range(1, item_num + 1):
+        #             if item_num % i == 0:
+        #                 fac.append(i)
+        #                 continue
+        #
+        #     item_sequence = np.random.choice(len(item_xyz), len(item_xyz), replace=False)
+        #     if item_odd_flag == True:
+        #         item_sequence = np.append(item_sequence, item_sequence[-1])
+        #
+        #     for j in range(len(fac)):
+        #         item_num_row = int(fac[j])
+        #         item_num_column = int(item_num / item_num_row)
+        #         item_sequence = item_sequence.reshape(item_num_row, item_num_column)
+        #         item_min_x = 0
+        #         item_min_y = 0
+        #
+        #         for r in range(item_num_row):
+        #             new_row = item_xyz[item_sequence[r, :]]
+        #             item_min_x = item_min_x + np.max(new_row, axis=0)[0]
+        #
+        #         for c in range(item_num_column):
+        #             new_column = item_xyz[item_sequence[:, c]]
+        #             item_min_y = item_min_y + np.max(new_column, axis=0)[1]
+        #
+        #         item_min_x = item_min_x + (item_num_row - 1) * self.gap_item
+        #         item_min_y = item_min_y + (item_num_column - 1) * self.gap_item
+        #
+        #         if item_min_x + item_min_y < all_item_x + all_item_y:
+        #             best_item_config = [item_num_row, item_num_column]
+        #             all_item_x = item_min_x
+        #             all_item_y = item_min_y
+        #             min_xy = np.array([all_item_x, all_item_y])
+        #
+        #     return min_xy, best_item_config, item_odd_flag
+        #
+        # def calculate_block():  # first: calculate, second: reorder!
+        #
+        #     min_result = []
+        #     best_config = []
+        #     item_odd_list = []
+        #     for i in range(len(self.all_index)):
+        #         item_index = self.all_index[i]
+        #         item_xyz = self.xyz_list[item_index, :]
+        #         item_num = len(item_index)
+        #         xy, config, odd = calculate_items(item_num, item_xyz)
+        #         # print(f'this is min xy {xy}')
+        #         min_result.append(list(xy))
+        #         # print(f'this is the best item config\n {config}')
+        #         best_config.append(list(config))
+        #         item_odd_list.append(odd)
+        #     min_result = np.asarray(min_result).reshape(-1, 2)
+        #     best_config = np.asarray(best_config).reshape(-1, 2)
+        #     item_odd_list = np.asarray(item_odd_list)
+        #     # print(best_config)
+        #
+        #     # 安排总的摆放
+        #     iteration = 100
+        #     all_num = best_config.shape[0]
+        #     all_x = 100
+        #     all_y = 100
+        #     odd_flag = False
+        #
+        #     fac = []  # 定义一个列表存放因子
+        #     for i in range(1, all_num + 1):
+        #         if all_num % i == 0:
+        #             fac.append(i)
+        #             continue
+        #
+        #     if all_num % 2 != 0 and len(fac) == 2:  # its odd! we should generate the factor again!
+        #         all_num += 1
+        #         odd_flag = True
+        #         fac = []  # 定义一个列表存放因子
+        #         for i in range(1, all_num + 1):
+        #             if all_num % i == 0:
+        #                 fac.append(i)
+        #                 continue
+        #
+        #     for i in range(iteration):
+        #         sequence = np.random.choice(best_config.shape[0], size=len(self.all_index), replace=False)
+        #         if odd_flag == True:
+        #             sequence = np.append(sequence, sequence[-1])
+        #         else:
+        #             pass
+        #         zero_or_90 = np.random.choice(np.array([0, 90]))
+        #
+        #         for j in range(len(fac)):
+        #
+        #             min_xy = np.copy(min_result)
+        #             # print(f'this is the min_xy before rotation\n {min_xy}')
+        #
+        #             num_row = int(fac[j])
+        #             num_column = int(all_num / num_row)
+        #             sequence = sequence.reshape(num_row, num_column)
+        #             min_x = 0
+        #             min_y = 0
+        #             rotate_flag = np.full((num_row, num_column), False, dtype=bool)
+        #             # print(f'this is {sequence}')
+        #
+        #             for r in range(num_row):
+        #                 for c in range(num_column):
+        #                     new_row = min_xy[sequence[r][c]]
+        #                     zero_or_90 = np.random.choice(np.array([0, 90]))
+        #                     if zero_or_90 == 90:
+        #                         rotate_flag[r][c] = True
+        #                         temp = new_row[0]
+        #                         new_row[0] = new_row[1]
+        #                         new_row[1] = temp
+        #
+        #                 # insert 'whether to rotate' here
+        #             for r in range(num_row):
+        #                 new_row = min_xy[sequence[r, :]]
+        #                 min_x = min_x + np.max(new_row, axis=0)[0]
+        #
+        #             for c in range(num_column):
+        #                 new_column = min_xy[sequence[:, c]]
+        #                 min_y = min_y + np.max(new_column, axis=0)[1]
+        #
+        #             if min_x + min_y < all_x + all_y:
+        #                 best_all_config = sequence
+        #                 all_x = min_x
+        #                 all_y = min_y
+        #                 best_rotate_flag = rotate_flag
+        #                 best_min_xy = np.copy(min_xy)
+        #     # print(f'in iteration{i}, the min all_x and all_y are {all_x} {all_y}')
+        #     # print('this is best all sequence', best_all_config)
+        #
+        #     return reorder_block(best_config, best_all_config, best_rotate_flag, best_min_xy, odd_flag, item_odd_list)
+        #
+        # def reorder_item(best_config, start_pos, index_block, item_index, item_xyz, rotate_flag, item_odd_list):
+        #
+        #     # initiate the pos and ori
+        #     # we don't analysis these imported oris
+        #     # we directly define the ori is 0 or 90 degree, depending on the algorithm.
+        #     item_row = best_config[index_block][0]
+        #     item_column = best_config[index_block][1]
+        #     item_odd_flag = item_odd_list[index_block]
+        #     if item_odd_flag == True:
+        #         item_pos = np.zeros([len(item_index) + 1, 3])
+        #         item_ori = np.zeros([len(item_index) + 1, 3])
+        #         item_xyz = np.append(item_xyz, item_xyz[-1]).reshape(-1, 2)
+        #         index_temp = np.arange(item_pos.shape[0] - 1)
+        #         index_temp = np.append(index_temp, index_temp[-1]).reshape(item_row, item_column)
+        #     else:
+        #         item_pos = np.zeros([len(item_index), 3])
+        #         item_ori = np.zeros([len(item_index), 3])
+        #         index_temp = np.arange(item_pos.shape[0]).reshape(item_row, item_column)
+        #
+        #     # the initial position of the first items
+        #
+        #     if rotate_flag == True:
+        #
+        #         temp = np.copy(item_xyz[:, 0])
+        #         item_xyz[:, 0] = item_xyz[:, 1]
+        #         item_xyz[:, 1] = temp
+        #         item_ori[:, 2] = np.pi / 2
+        #         # print(item_ori)
+        #         temp = item_row
+        #         item_row = item_column
+        #         item_column = temp
+        #         index_temp = index_temp.transpose()
+        #     else:
+        #         item_ori[:, 2] = 0
+        #
+        #     start_item_x = np.array([start_pos[0]])
+        #     start_item_y = np.array([start_pos[1]])
+        #     previous_start_item_x = start_item_x
+        #     previous_start_item_y = start_item_y
+        #
+        #     for m in range(item_row):
+        #         new_row = item_xyz[index_temp[m, :]]
+        #         start_item_x = np.append(start_item_x,
+        #                                  (previous_start_item_x + np.max(new_row, axis=0)[0] + self.gap_item))
+        #         previous_start_item_x = (previous_start_item_x + np.max(new_row, axis=0)[0] + self.gap_item)
+        #     start_item_x = np.delete(start_item_x, -1)
+        #
+        #     for n in range(item_column):
+        #         new_column = item_xyz[index_temp[:, n]]
+        #         start_item_y = np.append(start_item_y,
+        #                                  (previous_start_item_y + np.max(new_column, axis=0)[1] + self.gap_item))
+        #         previous_start_item_y = (previous_start_item_y + np.max(new_column, axis=0)[1] + self.gap_item)
+        #     start_item_y = np.delete(start_item_y, -1)
+        #
+        #     x_pos, y_pos = np.copy(start_pos)[0], np.copy(start_pos)[1]
+        #
+        #     for j in range(item_row):
+        #         for k in range(item_column):
+        #             if item_odd_flag == True and j == item_row - 1 and k == item_column - 1:
+        #                 break
+        #             ################### check whether to transform for each item in each block!################
+        #             if self.transform_flag[item_index[index_temp[j][k]]] == 1:
+        #                 # print(f'the index {item_index[index_temp[j][k]]} should be rotated because of transformation')
+        #                 item_ori[index_temp[j][k], 2] -= np.pi / 2
+        #             ################### check whether to transform for each item in each block!################
+        #             x_pos = start_item_x[j] + (item_xyz[index_temp[j][k]][0]) / 2
+        #             y_pos = start_item_y[k] + (item_xyz[index_temp[j][k]][1]) / 2
+        #             item_pos[index_temp[j][k]][0] = x_pos
+        #             item_pos[index_temp[j][k]][1] = y_pos
+        #     if item_odd_flag == True:
+        #         item_pos = np.delete(item_pos, -1, axis=0)
+        #         item_ori = np.delete(item_ori, -1, axis=0)
+        #     else:
+        #         pass
+        #     # print('this is the shape of item pos', item_pos.shape)
+        #     return item_ori, item_pos
+        #
+        # def reorder_block(best_config, best_all_config, best_rotate_flag, min_xy, odd_flag, item_odd_list):
+        #
+        #     # print(f'the best configuration of all items is\n {best_all_config}')
+        #     # print(f'the best configuration of each kind of items is\n {best_config}')
+        #     # print(f'the rotate of each block of items is\n {best_rotate_flag}')
+        #     # print(f'this is the min_xy of each kind of items after rotation\n {min_xy}')
+        #
+        #     num_all_row = best_all_config.shape[0]
+        #     num_all_column = best_all_config.shape[1]
+        #
+        #     start_x = [0]
+        #     start_y = [0]
+        #     previous_start_x = 0
+        #     previous_start_y = 0
+        #
+        #     for m in range(num_all_row):
+        #         new_row = min_xy[best_all_config[m, :]]
+        #         # print(new_row)
+        #         # print(np.max(new_row, axis=0)[0])
+        #         start_x.append((previous_start_x + np.max(new_row, axis=0)[0] + self.gap_block))
+        #         previous_start_x = (previous_start_x + np.max(new_row, axis=0)[0] + self.gap_block)
+        #     start_x = np.delete(start_x, -1)
+        #     # print(f'this is start_x {start_x}')
+        #
+        #     for n in range(num_all_column):
+        #         new_column = min_xy[best_all_config[:, n]]
+        #         # print(new_column)
+        #         # print(np.max(new_column, axis=0)[1])
+        #         start_y.append((previous_start_y + np.max(new_column, axis=0)[1] + self.gap_block))
+        #         previous_start_y = (previous_start_y + np.max(new_column, axis=0)[1] + self.gap_block)
+        #     start_y = np.delete(start_y, -1)
+        #     # print(f'this is start_y {start_y}')d
+        #
+        #     # determine the start position per item
+        #     item_pos = np.zeros([len(self.xyz_list), 3])
+        #     item_ori = np.zeros([len(self.xyz_list), 3])
+        #     # print(self.xyz_list[self.all_index[0]])
+        #     # print(self.all_index)
+        #     for m in range(num_all_row):
+        #         for n in range(num_all_column):
+        #             if odd_flag == True and m == num_all_row - 1 and n == num_all_column - 1:
+        #                 break  # this is the redundancy block
+        #             item_index = self.all_index[best_all_config[m][n]]  # determine the index of blocks
+        #
+        #             # print('try', item_index)
+        #             item_xyz = self.xyz_list[item_index, :]
+        #             # print('try', item_xyz)
+        #             start_pos = np.asarray([start_x[m], start_y[n]])
+        #             index_block = best_all_config[m][n]
+        #             rotate_flag = best_rotate_flag[m][n]
+        #
+        #             ori, pos = reorder_item(best_config, start_pos, index_block, item_index, item_xyz, rotate_flag,
+        #                                     item_odd_list)
+        #             # print('tryori', ori)
+        #             # print('trypos', pos)
+        #             item_pos[item_index] = pos
+        #             item_ori[item_index] = ori
+        #
+        #     return item_pos, item_ori  # pos_list, ori_list
+
+        # determine the center of the tidy configuration
+
         def calculate_items(item_num, item_xyz):
 
             min_xy = np.ones(2) * 100
@@ -562,21 +851,26 @@ class Arm:
                 if item_num % i == 0:
                     fac.append(i)
                     continue
+            fac = fac[::-1]
 
-            if item_num % 2 != 0 and len(fac) == 2:  # its odd! we should generate the factor again!
-                item_num += 1
-                item_odd_flag = True
-                fac = []  # 定义一个列表存放因子
-                for i in range(1, item_num + 1):
-                    if item_num % i == 0:
-                        fac.append(i)
-                        continue
+            # if item_num % 2 != 0 and len(fac) == 2 and item_num >=5:  # its odd! we should generate the factor again!
+            #     item_num += 1
+            #     item_odd_flag = True
+            #     fac = []  # 定义一个列表存放因子
+            #     for i in range(1, item_num + 1):
+            #         if item_num % i == 0:
+            #             fac.append(i)
+            #             continue
 
             item_sequence = np.random.choice(len(item_xyz), len(item_xyz), replace=False)
             if item_odd_flag == True:
                 item_sequence = np.append(item_sequence, item_sequence[-1])
 
             for j in range(len(fac)):
+                # if item_num == 3:
+                #     item_num_row = 1
+                #     item_num_column = 3
+                # else:
                 item_num_row = int(fac[j])
                 item_num_column = int(item_num / item_num_row)
                 item_sequence = item_sequence.reshape(item_num_row, item_num_column)
@@ -622,8 +916,19 @@ class Arm:
             item_odd_list = np.asarray(item_odd_list)
             # print(best_config)
 
+            # reorder the block based on the min_xy 哪个block面积大哪个在前
+            s_block_sequence = np.argsort(min_result[:, 0] * min_result[:, 1])[::-1]
+            new_all_index = []
+            for i in s_block_sequence:
+                new_all_index.append(self.all_index[i])
+            self.all_index = new_all_index.copy()
+            min_result = min_result[s_block_sequence]
+            best_config = best_config[s_block_sequence]
+            item_odd_list = item_odd_list[s_block_sequence]
+            # reorder the block based on the min_xy 哪个block面积大哪个在前
+
             # 安排总的摆放
-            iteration = 100
+            iteration = 300
             all_num = best_config.shape[0]
             all_x = 100
             all_y = 100
@@ -634,18 +939,20 @@ class Arm:
                 if all_num % i == 0:
                     fac.append(i)
                     continue
+            fac = fac[::-1]
 
-            if all_num % 2 != 0 and len(fac) == 2:  # its odd! we should generate the factor again!
-                all_num += 1
-                odd_flag = True
-                fac = []  # 定义一个列表存放因子
-                for i in range(1, all_num + 1):
-                    if all_num % i == 0:
-                        fac.append(i)
-                        continue
+            # if all_num % 2 != 0 and len(fac) == 2:  # its odd! we should generate the factor again!
+            #     all_num += 1
+            #     odd_flag = True
+            #     fac = []  # 定义一个列表存放因子
+            #     for i in range(1, all_num + 1):
+            #         if all_num % i == 0:
+            #             fac.append(i)
+            #             continue
 
             for i in range(iteration):
-                sequence = np.random.choice(best_config.shape[0], size=len(self.all_index), replace=False)
+                # sequence = np.random.choice(best_config.shape[0], size=len(self.all_index), replace=False)
+                sequence = np.arange(len(self.all_index))
                 if odd_flag == True:
                     sequence = np.append(sequence, sequence[-1])
                 else:
@@ -668,7 +975,10 @@ class Arm:
                     for r in range(num_row):
                         for c in range(num_column):
                             new_row = min_xy[sequence[r][c]]
-                            zero_or_90 = np.random.choice(np.array([0, 90]))
+                            if new_row[0] > new_row[1]:
+                                zero_or_90 = 90
+                            else:
+                                zero_or_90 = np.random.choice(np.array([0, 90]))
                             if zero_or_90 == 90:
                                 rotate_flag[r][c] = True
                                 temp = new_row[0]
@@ -706,7 +1016,7 @@ class Arm:
             if item_odd_flag == True:
                 item_pos = np.zeros([len(item_index) + 1, 3])
                 item_ori = np.zeros([len(item_index) + 1, 3])
-                item_xyz = np.append(item_xyz, item_xyz[-1]).reshape(-1, 2)
+                item_xyz = np.append(item_xyz, item_xyz[-1]).reshape(-1, 3)
                 index_temp = np.arange(item_pos.shape[0] - 1)
                 index_temp = np.append(index_temp, index_temp[-1]).reshape(item_row, item_column)
             else:
@@ -729,6 +1039,22 @@ class Arm:
                 index_temp = index_temp.transpose()
             else:
                 item_ori[:, 2] = 0
+
+            # start_pos[0] = start_pos[0] + np.max(item_xyz, axis=0)[0] / 2
+            # start_pos[1] = start_pos[1] + np.max(item_xyz, axis=0)[1] / 2
+            #
+            #
+            # for j in range(item_row):
+            #     for k in range(item_column):
+            #         ################### check whether to transform for each item in each block!################
+            #         if self.transform_flag[item_index[index_temp[j][k]]] == 1:
+            #             print(f'the index {item_index[index_temp[j][k]]} should be rotated because of transformation')
+            #             item_ori[index_temp[j][k], 2] -= np.pi / 2
+            #         ################### check whether to transform for each item in each block!################
+            #         x_2x2 = start_pos[0] + (item_xyz[index_temp[j][k]][0]) * j + self.gap_item * j
+            #         y_2x2 = start_pos[1] + (item_xyz[index_temp[j][k]][1]) * k + self.gap_item * k
+            #         item_pos[index_temp[j][k]][0] = x_2x2
+            #         item_pos[index_temp[j][k]][1] = y_2x2
 
             start_item_x = np.array([start_pos[0]])
             start_item_y = np.array([start_pos[1]])
@@ -832,7 +1158,6 @@ class Arm:
 
             return item_pos, item_ori  # pos_list, ori_list
 
-        # determine the center of the tidy configuration
         self.items_pos_list, self.items_ori_list = calculate_block()
         x_low = np.min(self.items_pos_list, axis=0)[0]
         x_high = np.max(self.items_pos_list, axis=0)[0]
@@ -905,7 +1230,7 @@ class Arm:
             start_end = np.asarray((start_end))
             print('get start and end')
 
-            return start_end
+            return start_end, new_xyz_list
 
         def move(cur_pos, cur_ori, tar_pos, tar_ori):
 
@@ -1123,20 +1448,25 @@ class Arm:
 
             return cur_pos
 
-        def gripper(gap):
-            # gap = 0: open, gap > 0: close
+        def gripper(gap, obj_width):
+            obj_width += 0.006
+            obj_width_range = np.array([0.021, 0.026, 0.032, 0.039, 0.045, 0.052, 0.057])
+            motor_pos_range = np.array([2000, 2100, 2200, 2300, 2400, 2500, 2600])
+            formula_parameters = np.polyfit(obj_width_range, motor_pos_range, 3)
+            motor_pos = np.poly1d(formula_parameters)
+
             if self.real_operate == True:
-                if gap > 0.0265:
-                    pos_real = np.asarray([[gap, gap]], dtype=np.float32)
-                elif gap <= 0.0265:
-                    pos_real = np.asarray([[0, 0]], dtype=np.float32)
-                # print('gripper', pos_real)
+                if gap > 0.0265:  # close
+                    pos_real = np.asarray([[gap, 1600]], dtype=np.float32)
+                elif gap <= 0.0265:  # open
+                    pos_real = np.asarray([[gap, motor_pos(obj_width)]], dtype=np.float32)
+                print('gripper', pos_real)
                 conn.sendall(pos_real.tobytes())
                 # print(f'this is the cmd pos {pos_real}')
                 p.setJointMotorControl2(self.arm_id, 7, p.POSITION_CONTROL, targetPosition=gap, force=10)
                 p.setJointMotorControl2(self.arm_id, 8, p.POSITION_CONTROL, targetPosition=gap, force=10)
 
-                real_pos = conn.recv(8192)
+                real_pos = conn.recv(4096)
                 # test_real_pos = np.frombuffer(real_pos, dtype=np.float32)
                 real_pos = np.frombuffer(real_pos, dtype=np.float32)
                 # print('this is test float from buffer', test_real_pos)
@@ -1232,7 +1562,7 @@ class Arm:
                             offset_horizontal = np.array([0, diag / 2 + gripper_height / 2, 0])
                             terminate = np.array([barricade_pos[i][0], y_low, barricade_pos[i][2]])
 
-                    trajectory_pos_list.append([0.03159])
+                    trajectory_pos_list.append([0.03159, 0])
                     trajectory_pos_list.append(barricade_pos[i] + offset_high + offset_horizontal)
                     trajectory_pos_list.append(barricade_pos[i] + offset_low + offset_horizontal)
                     trajectory_pos_list.append(offset_low - offset_horizontal + terminate)
@@ -1394,7 +1724,7 @@ class Arm:
                             crowded_y_high = np.max(crowded_pos[:, 1])
                             crowded_y_low = np.min(crowded_pos[:, 1])
 
-                            trajectory_pos_list.append([0.03159])
+                            trajectory_pos_list.append([0.03159, 0])
                             trajectory_pos_list.append([(x_high + x_low) / 2, (y_high + y_low) / 2, offset_high[2]])
                             trajectory_pos_list.append([(x_high + x_low) / 2, (y_high + y_low) / 2, offset_low[2]])
                             trajectory_pos_list.append([(crowded_x_high + crowded_x_low) / 2, (crowded_y_high + crowded_y_low) / 2, offset_low[2]])
@@ -1410,7 +1740,7 @@ class Arm:
                         else:
                             pass
                     else:
-                        trajectory_pos_list.append([0.03159])
+                        trajectory_pos_list.append([0.03159, 0])
                         print('this is crowded pos', crowded_pos[i])
                         print('this is sequence point', sequence_point)
                         trajectory_pos_list.append(crowded_pos[i] + offset_high + sequence_point[0])
@@ -1494,7 +1824,7 @@ class Arm:
 
         def knolling():
 
-            start_end = get_start_end()
+            start_end, new_xyz_list_knolling = get_start_end()
 
             if self.obs_order == 'sim_image_obj_evaluate':
                 return start_end
@@ -1505,26 +1835,28 @@ class Arm:
             offset_high = np.array([0, 0, 0.035])
             offset_highest = np.array([0, 0, 0.05])
 
+            grasp_width = np.min(new_xyz_list_knolling[:, :2], axis=1)
+
             for i in range(len(self.lego_idx)):
 
-                trajectory_pos_list = [[0.01],
+                trajectory_pos_list = [[0.01, grasp_width[i]], # open!
                                        offset_high + start_end[i][:3],
                                        offset_low + start_end[i][:3],
-                                       [0.0273],
+                                       [0.0273, grasp_width[i]], # close
                                        offset_high + start_end[i][:3],
                                        offset_high + start_end[i][6:9],
                                        offset_low + start_end[i][6:9],
-                                       [0.01],
+                                       [0.01, grasp_width[i]],
                                        offset_high + start_end[i][6:9]]
 
                 trajectory_ori_list = [rest_ori + start_end[i][3:6],
                                        rest_ori + start_end[i][3:6],
                                        rest_ori + start_end[i][3:6],
-                                       [0.0273],
+                                       [0.0273, grasp_width[i]],
                                        rest_ori + start_end[i][3:6],
                                        rest_ori + start_end[i][9:12],
                                        rest_ori + start_end[i][9:12],
-                                       [0.01],
+                                       [0.01, grasp_width[i]],
                                        rest_ori + start_end[i][9:12]]
                 if i == 0:
                     last_pos = np.asarray(p.getLinkState(self.arm_id, 9)[0])
@@ -1811,16 +2143,16 @@ if __name__ == '__main__':
     if command == 'knolling':
 
         lego_num = 8
-        area_num = 3
-        ratio_num = 2
+        area_num = 4
+        ratio_num = 1
         boxes_index = np.random.choice(50, lego_num)
         # total_offset = [0.15, 0.1, 0]
         total_offset = [0.016, -0.17 + 0.016, 0]
         gap_item = 0.015
         gap_block = 0.02
         random_offset = False
-        real_operate = True
-        obs_order = 'real_image_obj'
+        real_operate = False
+        obs_order = 'sim_image_obj'
         check_detection_loss = False
         obs_img_from = 'env'
         use_yolo_pos = False
