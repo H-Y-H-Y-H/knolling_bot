@@ -2145,14 +2145,14 @@ if __name__ == '__main__':
         lego_num = 8
         area_num = 4
         ratio_num = 1
-        boxes_index = np.random.choice(50, lego_num)
+        boxes_index = np.random.choice(30, lego_num)
         # total_offset = [0.15, 0.1, 0]
         total_offset = [0.016, -0.17 + 0.016, 0]
         gap_item = 0.015
         gap_block = 0.02
         random_offset = False
-        real_operate = False
-        obs_order = 'sim_image_obj'
+        real_operate = True
+        obs_order = 'real_image_obj'
         check_detection_loss = False
         obs_img_from = 'env'
         use_yolo_pos = False

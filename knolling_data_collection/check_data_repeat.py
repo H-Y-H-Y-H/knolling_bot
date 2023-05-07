@@ -2,17 +2,18 @@ import numpy as np
 
 num_configuration = 1
 before_after = 'after'
-range_low = 10
-range_high = 11
+range_low = 8
+range_high = 9
 
-sample_num = 70000
+sample_num = 1000
 sample_time = 1
 
 for i in range(1, num_configuration + 1):
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_506/cfg_%s/' % i
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_506_30/cfg_%s/' % i
     for j in range(range_low, range_high):
 
-        data = np.loadtxt(target_path + 'labels_%s/num_%d.txt' % (before_after, j))
+        # data = np.loadtxt(target_path + 'labels_%s/num_%d.txt' % (before_after, j))
+        data = np.loadtxt(target_path + 'labels_%s/num_8_1000.txt' % (before_after))
         print(len(data))
         total_repetition_rate = 0
         for m in range(sample_time):

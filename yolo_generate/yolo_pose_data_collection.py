@@ -60,7 +60,7 @@ if __name__ == '__main__':
         # num_item = random.randint(1, 5)
 
         num_item = int(np.random.uniform(4, max_lego_num + 1))
-        boxes_index = np.random.choice(50, num_item)
+        boxes_index = np.random.choice(30, num_item)
 
         env = Arm_env(max_step=1, is_render=False, boxes_index=boxes_index)
         state, lw_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag)

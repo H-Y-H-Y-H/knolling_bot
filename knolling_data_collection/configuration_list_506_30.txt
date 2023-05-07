@@ -1,3 +1,5 @@
+num_urdf = 30
+
 num_area x num_ratio: 3x2, 3xNone, 4xNone
 item_odd_prevent: False, True
 block_odd_prevent = True!!!!!!!!!!!!!
@@ -69,8 +71,8 @@ cfg_7:
     num_ratio: 2
     num_boxes: 4~10
     item_odd_prevent = True
-    upper left corner: block max
-    forced rotation of the box: True
+    upper left corner: others
+    forced rotation of the box: False
 
 cfg_8:
     no rotate
@@ -78,8 +80,8 @@ cfg_8:
     num_ratio: None
     num_boxes: 4~10
     item_odd_prevent = True
-    upper left corner: block max
-    forced rotation of the box: True
+    upper left corner: others
+    forced rotation of the box: False
 
 cfg_9:
     no rotate
@@ -87,8 +89,8 @@ cfg_9:
     num_ratio: None
     num_boxes: 4~10
     item_odd_prevent = True
-    upper left corner: block max
-    forced rotation of the box: True
+    upper left corner: others
+    forced rotation of the box: False
 
 cfg_10:
     no rotate
@@ -96,8 +98,8 @@ cfg_10:
     num_ratio: 2
     num_boxes: 4~10
     item_odd_prevent = False
-    upper left corner: block max
-    forced rotation of the box: True
+    upper left corner: others
+    forced rotation of the box: False
 
 cfg_11:
     no rotate
@@ -105,8 +107,8 @@ cfg_11:
     num_ratio: None
     num_boxes: 4~10
     item_odd_prevent = False
-    upper left corner: block max
-    forced rotation of the box: True
+    upper left corner: others
+    forced rotation of the box: False
 
 cfg_12:
     no rotate
@@ -114,5 +116,5 @@ cfg_12:
     num_ratio: None
     num_boxes: 4~10
     item_odd_prevent = False
-    upper left corner: block max
-    forced rotation of the box: True
+    upper left corner: others
+    forced rotation of the box: False

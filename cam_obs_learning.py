@@ -228,12 +228,12 @@ def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 
 def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, data_path=None, model_path=None, real_flag=None, target=None):
     # data_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/'
     # model_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/YOLOv8/runs/pose/train_standard_1000/weights/best.pt'
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_4000/weights/best.pt'
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_507/weights/best.pt'
     # source_pth = data_path + img_path
     # source_pth = data_path + 'real_image_collect/'
     # source_pth = data_path + 'yolo_pose4keypoints/images/val/'
     img_path_input = img_path + '.png'
-    args = dict(model=model, source=img_path_input, conf=0.4, iou=0.2)
+    args = dict(model=model, source=img_path_input, conf=0.2, iou=0.2)
     use_python = True
     if use_python:
         from ultralytics import YOLO

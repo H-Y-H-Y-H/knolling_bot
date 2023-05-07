@@ -366,15 +366,15 @@ class Arm:
 
 if __name__ == '__main__':
 
-    command = 'recover'
+    command = 'knolling'
     before_after = 'after'
     configuration = '1'
 
-    start_evaluations = 0
-    end_evaluations = 10000
-    range_low = 6
-    range_high = 8
-    total_urdf = 100
+    start_evaluations = 40000
+    end_evaluations = 50000
+    range_low = 4
+    range_high = 7
+    total_urdf = 30
 
     area_num = 3
     ratio_num = 2
@@ -386,9 +386,10 @@ if __name__ == '__main__':
     # always true
 
     upper_left_max = True
+
     forced_rotate_box = False
 
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_506_zzz/cfg_%s/' % configuration
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_506_30/cfg_%s/' % configuration
     images_log_path = target_path + 'images_%s/' % before_after
     preprocess_label_path = target_path + 'preprocess_label_%s/' % before_after
     os.makedirs(images_log_path, exist_ok=True)
@@ -408,7 +409,7 @@ if __name__ == '__main__':
 
             new_data = []
             # new_index_flag = []
-            for j in range(len(data)):
+            for j in range(start_evaluations, end_evaluations):
                 env.get_parameters(lego_num=lego_num)
                 print(f'this is data {j}')
                 one_img_data = data[j].reshape(-1, 5)
@@ -460,7 +461,7 @@ if __name__ == '__main__':
                 # if j == 2:
                 #     print('here!')
                 lego_num = num
-                boxes_index = np.random.choice(50, lego_num)
+                boxes_index = np.random.choice(total_urdf, lego_num)
 
                 total_offset = [0.016, -0.17 + 0.016, 0]
                 gap_item = 0.01
@@ -481,9 +482,9 @@ if __name__ == '__main__':
                                    item_odd_prevent=item_odd_prevent, block_odd_prevent = block_odd_prevent,
                                    upper_left_max = upper_left_max, forced_rotate_box=forced_rotate_box)
 
-                pos_before, ori_before, xy_before, transform_before = env.reset()
-                data_before.append(
-                    np.concatenate((pos_before, xy_before, ori_before.reshape(-1, 1)), axis=1).reshape(-1, ))
+                # pos_before, ori_before, xy_before, transform_before = env.reset()
+                # data_before.append(
+                #     np.concatenate((pos_before, xy_before, ori_before.reshape(-1, 1)), axis=1).reshape(-1, ))
                 pos_after, ori_after, xy_after, transform_after = env.change_config()
 
                 break_flag = False
@@ -517,6 +518,6 @@ if __name__ == '__main__':
             data_before = np.asarray(data_before)
             data_after = np.asarray(data_after)
             index_flag = np.asarray(index_flag)
-            np.savetxt(before_path + 'num_%s_%s.txt' % (num, end_evaluations), data_before)
+            # np.savetxt(before_path + 'num_%s_%s.txt' % (num, end_evaluations), data_before)
             np.savetxt(after_path + 'num_%s_%s.txt' % (num, end_evaluations), data_after)
             np.savetxt(index_flag_path + 'num_%s_%s_flag.txt' % (num, end_evaluations), index_flag)
