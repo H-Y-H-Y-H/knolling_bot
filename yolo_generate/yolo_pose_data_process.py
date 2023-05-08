@@ -196,7 +196,10 @@ def pose_estimation():
 
         np.savetxt(os.path.join(data_root, "label/yolo_label_418/%012d.txt") % i, label, fmt='%.8s')
 
-def find_keypoints(xpos, ypos, l, w, ori, mm2px):
+
+total_1 = 0
+total_2 = 0
+def find_keypoints(xpos, ypos, l, w, ori, mm2px, total_1, total_2):
 
     gamma = ori
     rot_z = [[np.cos(gamma), -np.sin(gamma)],
@@ -210,18 +213,33 @@ def find_keypoints(xpos, ypos, l, w, ori, mm2px):
     kp3 = np.asarray([-l / 2, 0])
     kp4 = np.asarray([0, -w / 2])
 
+    # here is simulation xy sequence, not yolo lw sequence!
     keypoint1 = np.dot(rot_z, kp1)
     keypoint2 = np.dot(rot_z, kp2)
     keypoint3 = np.dot(rot_z, kp3)
     keypoint4 = np.dot(rot_z, kp4)
+    keypoints = np.concatenate((keypoint1, keypoint2, keypoint3, keypoint4), axis=0).reshape(-1, 2)
+    keypoints_order = np.lexsort((keypoints[:, 1], keypoints[:, 0]))[::-1]
+    keypoints = keypoints[keypoints_order]
 
-    keypoint1 = np.array([((keypoint1[1] + ypos) * mm2px + 320) / 640, ((keypoint1[0] + xpos) * mm2px + 6) / 480, 1])
-    keypoint2 = np.array([((keypoint2[1] + ypos) * mm2px + 320) / 640, ((keypoint2[0] + xpos) * mm2px + 6) / 480, 1])
-    keypoint3 = np.array([((keypoint3[1] + ypos) * mm2px + 320) / 640, ((keypoint3[0] + xpos) * mm2px + 6) / 480, 1])
-    keypoint4 = np.array([((keypoint4[1] + ypos) * mm2px + 320) / 640, ((keypoint4[0] + xpos) * mm2px + 6) / 480, 1])
-    keypoints = np.concatenate((keypoint1, keypoint2, keypoint3, keypoint4), axis=0).reshape(-1, 3)
+    if np.abs(keypoints[0, 0] - keypoints[1, 0]) < 0.001 and keypoints[0, 1] < keypoints[1, 1]:
+        new_order = np.array([1, 0, 3, 2])
+        keypoints = keypoints[new_order]
+        total_1 += 1
+    elif np.abs(keypoints[1, 0] - keypoints[2, 0]) < 0.001 and keypoints[1, 1] < keypoints[2, 1]:
+        new_order = np.array([0, 2, 1, 3])
+        keypoints = keypoints[new_order]
+        total_2 += 1
+    # keypoint1 = np.array([((keypoint1[1] + ypos) * mm2px + 320) / 640, ((keypoint1[0] + xpos) * mm2px + 6) / 480, 1])
+    # keypoint2 = np.array([((keypoint2[1] + ypos) * mm2px + 320) / 640, ((keypoint2[0] + xpos) * mm2px + 6) / 480, 1])
+    # keypoint3 = np.array([((keypoint3[1] + ypos) * mm2px + 320) / 640, ((keypoint3[0] + xpos) * mm2px + 6) / 480, 1])
+    # keypoint4 = np.array([((keypoint4[1] + ypos) * mm2px + 320) / 640, ((keypoint4[0] + xpos) * mm2px + 6) / 480, 1])
+    # keypoints = np.concatenate((keypoint1, keypoint2, keypoint3, keypoint4), axis=0).reshape(-1, 3)
+    keypoints = np.concatenate(((((keypoints[:, 1] + ypos) * mm2px + 320) / 640).reshape(-1, 1),
+                                (((keypoints[:, 0] + xpos) * mm2px + 6) / 480).reshape(-1, 1),
+                                np.ones((4, 1))), axis=1).reshape(-1, 3)
 
-    return keypoints
+    return keypoints, total_1, total_2
 
 def pose4keypoints(data_root, target_path):
     os.makedirs(data_root, exist_ok=True)
@@ -242,6 +260,8 @@ def pose4keypoints(data_root, target_path):
     import warnings
     with warnings.catch_warnings(record=True) as w:
 
+        total_1 = 0
+        total_2 = 0
         for i in range(total_num):
             real_world_data = np.loadtxt(os.path.join(data_root, "labels/%012d.txt") % i)
             corner_list = []
@@ -269,16 +289,17 @@ def pose4keypoints(data_root, target_path):
                     else:
                         yawori = yawori + np.pi / 2
 
-
                 # ensure the yolo sequence!
                 label_y = (xpos1 * mm2px + 6) / 480
                 label_x = (ypos1 * mm2px + 320) / 640
                 length = l * 3
                 width = w * 3
                 # ensure the yolo sequence!
-                keypoints = find_keypoints(xpos1, ypos1, l, w, yawori, mm2px)
-                keypoints_order = np.lexsort((keypoints[:, 0], keypoints[:, 1]))
-                keypoints = keypoints[keypoints_order]
+                keypoints, total_1, total_2 = find_keypoints(xpos1, ypos1, l, w, yawori, mm2px, total_1, total_2)
+                # keypoints_order = np.lexsort((keypoints[:, 0], keypoints[:, 1]))[::-1]
+                # keypoints = keypoints[keypoints_order]
+
+
 
                 element = np.concatenate(([0], [label_x, label_y], [length, width], keypoints.reshape(-1)))
                 # print(label)
@@ -332,6 +353,8 @@ def pose4keypoints(data_root, target_path):
             np.savetxt(os.path.join(target_path, "labels/%012d.txt") % i, label, fmt='%.8s')
             # img = cv2.imread(os.path.join(data_root, "images/%012d.png") % i)
             # img = yolo_box(img, label_plot)
+        print('this is total_1', total_1)
+        print('this is total_2', total_2)
         # if len(w) > 0:
         #     quit()
 
@@ -376,11 +399,11 @@ if __name__ == '__main__':
     # pose_estimation()
 
     data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_2/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_507_2/'
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_508/'
     pose4keypoints(data_root, target_path)
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_507_2/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_507_2/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_508/'
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_508/'
     train_test_split(data_root, target_path)
 
     # data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/labels/'

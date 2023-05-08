@@ -24,3 +24,11 @@ texture: None
 quantity: 4000
 label: 1, x, y, yolo_l, yolo_w, ori
 urdf_cfg: generation_2
+
+yolo_pose4points_508
+categories: 30 random boxes
+texture: None
+quantity: 4000
+label: 1, x, y, yolo_l, yolo_w, ori
+urdf_cfg: generation_2
+change sequence of kpts

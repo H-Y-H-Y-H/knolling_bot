@@ -225,15 +225,37 @@ def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 
 
     return im, result
 
-def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, data_path=None, model_path=None, real_flag=None, target=None):
+def adjust_img(img):
+
+    cv2.namedWindow('zzz', 0)
+    cv2.imshow('zzz', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    alpha = 1
+    beta = 20
+    new_img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
+
+    cv2.namedWindow('zzz', 0)
+    cv2.imshow('zzz', new_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    return new_img
+
+def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, data_path=None, model_path=None, real_flag=None, target=None):
     # data_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/'
     # model_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/YOLOv8/runs/pose/train_standard_1000/weights/best.pt'
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_507/weights/best.pt'
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_508/weights/best.pt'
     # source_pth = data_path + img_path
     # source_pth = data_path + 'real_image_collect/'
     # source_pth = data_path + 'yolo_pose4keypoints/images/val/'
+
+    # img = adjust_img(img)
+
+    cv2.imwrite(img_path + '.png', img)
     img_path_input = img_path + '.png'
-    args = dict(model=model, source=img_path_input, conf=0.2, iou=0.2)
+    args = dict(model=model, source=img_path_input, conf=0.3, iou=0.5)
     use_python = True
     if use_python:
         from ultralytics import YOLO
@@ -249,7 +271,7 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, data_path=N
     # origin_img = cv2.imread(source_pth + 'img_%s.png' % int(i))
     # origin_img = cv2.imread(source_pth + img_path)
 
-    use_lw = True
+    use_lw = False # use lw or keypoints to export length and width
     if real_flag == False:
         # target = np.loadtxt(data_path + 'yolo_pose4keypoints/labels/val/%012d.txt' % int(i + 800))
         # target = np.loadtxt(data_path + 'knolling_data_small/labels/train/%012d.txt' % int(i))

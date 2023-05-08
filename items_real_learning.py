@@ -82,15 +82,15 @@ class Sort_objects():
         color_colormap_dim = color_image.shape
         resized_color_image = color_image
         img_path = 'Test_images/image_real'
-        cv2.imwrite(img_path + '.png', resized_color_image)
-        cv2.waitKey(1)
+        # cv2.imwrite(img_path + '.png', resized_color_image)
+        # cv2.waitKey(1)
 
         # cv2.waitKey(1)
 
         # img = cv2.imread("read_real_cam.png")
 
         # structure of results: x, y, length, width, ori
-        results = yolov8_predict(img_path=img_path,
+        results = yolov8_predict(img_path=img_path, img=resized_color_image,
                                  real_flag=True,
                                  target=None)
 
