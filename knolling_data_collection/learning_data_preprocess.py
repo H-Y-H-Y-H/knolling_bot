@@ -24,8 +24,8 @@ for i in configuration:
             distance = np.linalg.norm(one_img_data[:, :2] - origin_point, axis=1)
             order = np.argsort(distance)
             new_data.append(one_img_data[order].reshape(-1, ))
-            one_img_index = index[m]
-            new_index.append(one_img_index[order].reshape(-1, ))
+            one_img_index = index[m].reshape(2, -1)
+            new_index.append(one_img_index[:, order].reshape(-1, ))
         new_data = np.asarray(new_data)
         new_index = np.asarray(new_index)
         np.savetxt(target_path + 'labels_after/num_%d.txt' % (j), new_data)

@@ -389,7 +389,7 @@ if __name__ == '__main__':
 
     forced_rotate_box = False
 
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_507_30/cfg_%s/' % configuration
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_508/cfg_%s/' % configuration
     images_log_path = target_path + 'images_%s/' % before_after
     preprocess_label_path = target_path + 'preprocess_label_%s/' % before_after
     os.makedirs(images_log_path, exist_ok=True)
