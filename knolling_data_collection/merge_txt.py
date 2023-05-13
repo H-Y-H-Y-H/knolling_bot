@@ -1,11 +1,11 @@
 import numpy as np
 
-configuration = np.arange(2, 3)
-num_range = np.arange(10, 11)
+configuration = np.arange(3, 4)
+num_range = np.arange(30, 31)
 
 for i in configuration:
 
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512/cfg_%d/' % i
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512_large/cfg_%d/' % i
     before_path = target_path + 'labels_before/'
     after_path = target_path + 'labels_after/'
     index_path = target_path + 'index_flag/'

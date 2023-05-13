@@ -266,15 +266,24 @@ class Arm_env(gym.Env):
             lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
 
         # Texture change
-        background = np.random.randint(5, 6)
+        background = np.random.randint(1, 5)
         textureId = p.loadTexture(f"../urdf/img_{background}.png")
         # textureId = p.loadTexture(f"../urdf/textures/red2.png")
-        p.changeVisualShape(baseid, -1, textureUniqueId=textureId, )
+        p.changeVisualShape(baseid, -1, textureUniqueId=textureId, specularColor=[0, 0, 0])
+
+        # visual_shape_id = -1
+        # for i in range(p.getNumBodies()):
+        #     if p.getBodyUniqueId(i) == baseid:
+        #         visual_shape_id = p.getBodyInfo(i)[0]
+        #         break
+        # material_id = -1
+        # for i in range(p.getNumVisualShape(visual_shape_id)):
+        #     material_id = p.getVisualShapeData(visual_shape_id, i)[10]
+        #     if material_id != -1:
+        #         break
+        # material_props = p.getPhysicsEngineParameters()["material_" + str(material_id)]
 
         p.changeDynamics(baseid, -1, lateralFriction=self.friction)
-
-
-        # p.changeVisualShape(baseid, -1, rgbaColor=[1, 1, 1, 1])
 
         # Generate the pos and orin of objects randomly.
         self.obj_idx = []
@@ -371,7 +380,7 @@ class Arm_env(gym.Env):
                     else:
                         pass
         else:
-            lego_path = "../urdf/box_generator/"
+            lego_path = "../urdf/box_generator/generation_1/"
             for i in range(len(self.boxes_index)):
                 boxes = URDF.load('../urdf/box_generator/box_%d.urdf' % self.boxes_index[i])
                 lw_list.append(boxes.links[0].visuals[0].geometry.box.size)
@@ -394,6 +403,7 @@ class Arm_env(gym.Env):
                         p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r1, g1, b1, 1))
                 else:
                     pass
+
         lw_list = np.asarray(lw_list)
 
         for _ in range(int(40+close_flag*260)):

@@ -56,7 +56,7 @@ if __name__ == '__main__':
     max_lego_num = 12
     mm2px = 530 / 0.34
 
-    use_lego_urdf = True
+    use_lego_urdf = False
 
     for epoch in tqdm(range(startnum,endnum)):
         # num_item = random.randint(1, 5)

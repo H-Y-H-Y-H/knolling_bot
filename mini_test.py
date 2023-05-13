@@ -57,3 +57,5 @@ array = np.arange(12).reshape(3, 4)
 print(np.where(array[:, 1] > 0))
 
 print(min(134, 2))
+
+print(50*0.05 + 80*0.2 + 96*0.25 + 115*0.25 + 100*0.25)

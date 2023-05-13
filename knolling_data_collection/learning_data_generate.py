@@ -21,9 +21,6 @@ from urdfpy import URDF
 from learning_knolling_configuration import configuration_zzz
 
 torch.manual_seed(42)
-# np.random.seed(100)
-# random.seed(100)
-
 
 class Arm:
 
@@ -368,15 +365,15 @@ if __name__ == '__main__':
 
     command = 'knolling'
     before_after = 'after'
-    configuration = '2'
+    configuration = '3'
 
-    start_evaluations = 900000
-    end_evaluations = 1000000
-    range_low = 10
-    range_high = 11
+    start_evaluations = 90000
+    end_evaluations = 100000
+    range_low = 30
+    range_high = 31
     total_urdf = 30
 
-    area_num = 3
+    area_num = 4
     ratio_num = 1
 
     item_odd_prevent = True
@@ -489,7 +486,7 @@ if __name__ == '__main__':
 
                 break_flag = False
                 for i in range(len(pos_after)):
-                    if pos_after[i, 0] > 0.3 or pos_after[i, 1] > 0.2 or pos_after[i, 1] < -0.2:
+                    if pos_after[i, 0] > 0.28 or pos_after[i, 1] > 0.2 or pos_after[i, 1] < -0.2:
                         print(f'num{num}, evaluation {j} out of the boundary!')
                         break_flag = True
                 if break_flag == True:

@@ -8,8 +8,8 @@ range_high = 11
 origin_point = np.array([0, -0.2])
 
 for i in configuration:
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512/cfg_%s/' % i
-    root_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512/cfg_%s/' % i
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512_large/cfg_%s/' % i
+    root_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512_large/cfg_%s/' % i
     os.makedirs(target_path, exist_ok=True)
     os.makedirs(root_path, exist_ok=True)
     print('over')

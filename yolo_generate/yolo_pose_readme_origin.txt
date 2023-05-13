@@ -21,8 +21,8 @@ label: 1, x, y, yolo_l, yolo_w, ori
 urdf_cfg: None
 
 yolo_pose4points_3
-categories: lego items
+categories: 100 random boxes
 texture: None
-quantity: 4000
+quantity: 8000
 label: 1, x, y, yolo_l, yolo_w, ori
 urdf_cfg: None
