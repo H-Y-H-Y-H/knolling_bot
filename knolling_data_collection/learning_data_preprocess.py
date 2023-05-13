@@ -1,15 +1,15 @@
 import numpy as np
 import os
 
-configuration = np.arange(1, 8)
-range_low = 1
+configuration = np.arange(2, 3)
+range_low = 10
 range_high = 11
 
 origin_point = np.array([0, -0.2])
 
 for i in configuration:
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_508/cfg_%s/' % i
-    root_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_507_30/cfg_%s/' % i
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512/cfg_%s/' % i
+    root_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512/cfg_%s/' % i
     os.makedirs(target_path, exist_ok=True)
     os.makedirs(root_path, exist_ok=True)
     print('over')

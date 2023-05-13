@@ -95,7 +95,7 @@ def data_preprocess(xy, lw, ori):
 
     return label
 
-def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 255), index=None, scaled_xylw=None, keypoints=None, use_lw=True, truth_flag=None):
+def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 255), index=None, scaled_xylw=None, keypoints=None, use_xylw=True, truth_flag=None):
     # Add one xyxy box to image with label
 
     ############### zzz plot parameters ###############
@@ -114,22 +114,25 @@ def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 
     keypoints_y = ((keypoints[:, 0] * 640 - 320) / mm2px).reshape(-1, 1)
     keypoints_mm = np.concatenate((keypoints_x, keypoints_y), axis=1)
     keypoints_center = np.average(keypoints_mm, axis=0)
-    if use_lw == True:
-        length = scaled_xylw[2] / 3
-        width = scaled_xylw[3] / 3
-        c1 = np.array([length / (2), width / (2)])
-        c2 = np.array([length / (2), -width / (2)])
-        c3 = np.array([-length / (2), width / (2)])
-        c4 = np.array([-length / (2), -width / (2)])
+
+    length = max(np.linalg.norm(keypoints_mm[0] - keypoints_mm[-1]),
+                 np.linalg.norm(keypoints_mm[1] - keypoints_mm[2]))
+    width = min(np.linalg.norm(keypoints_mm[0] - keypoints_mm[-1]),
+                np.linalg.norm(keypoints_mm[1] - keypoints_mm[2]))
+    c1 = np.array([length / (2), width / (2)])
+    c2 = np.array([length / (2), -width / (2)])
+    c3 = np.array([-length / (2), width / (2)])
+    c4 = np.array([-length / (2), -width / (2)])
+    if use_xylw == True:
+        # length = scaled_xylw[2] / 3
+        # width = scaled_xylw[3] / 3
+        # c1 = np.array([length / (2), width / (2)])
+        # c2 = np.array([length / (2), -width / (2)])
+        # c3 = np.array([-length / (2), width / (2)])
+        # c4 = np.array([-length / (2), -width / (2)])
+        box_center = np.array([scaled_xylw[0], scaled_xylw[1]])
     else:
-        length = max(np.linalg.norm(keypoints_mm[0] - keypoints_mm[-1]),
-                   np.linalg.norm(keypoints_mm[1] - keypoints_mm[2]))
-        width = min(np.linalg.norm(keypoints_mm[0] - keypoints_mm[-1]),
-                   np.linalg.norm(keypoints_mm[1] - keypoints_mm[2]))
-        c1 = np.array([length / (2), width / (2)])
-        c2 = np.array([length / (2), -width / (2)])
-        c3 = np.array([-length / (2), width / (2)])
-        c4 = np.array([-length / (2), -width / (2)])
+        box_center = keypoints_center
 
     all_distance = np.linalg.norm((keypoints_mm - keypoints_center), axis=1)
     k = 2
@@ -178,8 +181,8 @@ def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 
     plot_y = np.copy((scaled_xylw[0] * 640 - 320) / mm2px)
     plot_l = np.copy(length)
     plot_w = np.copy(width)
-    label1 = 'index: %d, x: %.3f, y: %.3f' % (index, plot_x, plot_y)
-    label2 = 'l: %.3f, w: %.3f, ori: %.3f' % (plot_l, plot_w, my_ori)
+    label1 = 'index: %d, x: %.4f, y: %.4f' % (index, plot_x, plot_y)
+    label2 = 'l: %.4f, w: %.4f, ori: %.4f' % (plot_l, plot_w, my_ori)
     if label:
         w, h = cv2.getTextSize(label, 0, fontScale=zzz_lw / 3, thickness=tf)[0]  # text width, height
         outside = p1[1] - h >= 3
@@ -221,7 +224,7 @@ def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 
         im = cv2.circle(im, (int(x_coord), int(y_coord)), radius, color_k, -1, lineType=cv2.LINE_AA)
     ############### zzz plot the keypoints ###############
 
-    result = np.concatenate((keypoints_center, [length], [width], [my_ori]))
+    result = np.concatenate((box_center, [round(length, 3)], [round(width, 3)], [my_ori]))
 
     return im, result
 
@@ -246,7 +249,7 @@ def adjust_img(img):
 def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, data_path=None, model_path=None, real_flag=None, target=None):
     # data_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/'
     # model_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/YOLOv8/runs/pose/train_standard_1000/weights/best.pt'
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_508/weights/best.pt'
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_512/weights/best.pt'
     # source_pth = data_path + img_path
     # source_pth = data_path + 'real_image_collect/'
     # source_pth = data_path + 'yolo_pose4keypoints/images/val/'
@@ -255,7 +258,7 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, d
 
     cv2.imwrite(img_path + '.png', img)
     img_path_input = img_path + '.png'
-    args = dict(model=model, source=img_path_input, conf=0.3, iou=0.5)
+    args = dict(model=model, source=img_path_input, conf=0.5, iou=0.2)
     use_python = True
     if use_python:
         from ultralytics import YOLO
@@ -265,38 +268,46 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, d
         predictor.predict_cli()
     device = 'cuda:0'
 
-
-
     origin_img = cv2.imread(img_path_input)
-    # origin_img = cv2.imread(source_pth + 'img_%s.png' % int(i))
-    # origin_img = cv2.imread(source_pth + img_path)
 
-    use_lw = False # use lw or keypoints to export length and width
+    use_xylw = False # use lw or keypoints to export length and width
     if real_flag == False:
-        # target = np.loadtxt(data_path + 'yolo_pose4keypoints/labels/val/%012d.txt' % int(i + 800))
-        # target = np.loadtxt(data_path + 'knolling_data_small/labels/train/%012d.txt' % int(i))
         target_order = np.lexsort((target[:, 2], target[:, 1]))
         target = target[target_order]
 
     one_img = images[0]
-    j = 0
+
     pred_result = []
-
-
     pred_xylws = one_img.boxes.xywhn.cpu().detach().numpy()
     pred_keypoints = one_img.keypoints.cpu().detach().numpy()
     pred_keypoints[:, :, :2] = pred_keypoints[:, :, :2] / np.array([640, 480])
     pred_keypoints = pred_keypoints.reshape(len(pred_xylws), -1)
-    # for elements in one_img:
-    #     pred_keypoints.append(elements.keypoints.cpu().detach().numpy())
-    #     box = elements.boxes
-    #     pred_xylws.append(box.xywhn.cpu().detach().numpy().reshape(-1, ))
 
     pred = np.concatenate((np.zeros((len(pred_xylws), 1)), pred_xylws, pred_keypoints), axis=1)
     pred_order = np.lexsort((pred[:, 2], pred[:, 1]))
+
+    pred_test = np.copy(pred[pred_order])
+    for i in range(len(pred) - 1):
+        if np.abs(pred_test[i, 1] - pred_test[i + 1, 1]) < 0.003:
+            if pred_test[i, 2] < pred_test[i + 1, 2]:
+                # ground_truth_pose[order_ground_truth[i]], ground_truth_pose[order_ground_truth[i+1]] = ground_truth_pose[order_ground_truth[i+1]], ground_truth_pose[order_ground_truth[i]]
+                pred_order[i], pred_order[i + 1] = pred_order[i + 1], pred_order[i]
+                print('truth change the order!')
+            else:
+                pass
+    print('this is the pred order', pred_order)
+
     pred = pred[pred_order]
     pred_xylws = pred_xylws[pred_order]
     pred_keypoints = pred_keypoints[pred_order]
+
+    # if real_flag == False:
+    #     for j in range(len(pred)):
+    #         if np.abs(pred[j, 3] - target[j, 3]) + np.abs(pred[j, 4] - target[j, 4]) > \
+    #             np.abs(pred[j, 3] - target[j, 4]) + np.abs(pred[j, 4] - target[j, 3]):
+    #             temp = pred[j, 3]
+    #             pred[j, 3] = pred[j, 4]
+    #             pred[j, 4] = temp
 
 
     for j in range(len(pred_xylws)):
@@ -311,9 +322,9 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, d
         print('this is pred xylw', pred_xylw)
         # print('this is pred cos sin', pred_cos_sin)
         origin_img, result = plot_and_transform(im=origin_img, box=pred_xylw, label='0:, predic', color=(0, 0, 0), txt_color=(255, 255, 255), index=j,
-                                        scaled_xylw=pred_xylw, keypoints=pred_keypoint, use_lw=use_lw, truth_flag=False)
+                                        scaled_xylw=pred_xylw, keypoints=pred_keypoint, use_xylw=use_xylw, truth_flag=False)
         pred_result.append(result)
-        print('this is j', j)
+        # print('this is j', j)
 
         if real_flag == False:
             tar_xylw = np.copy(target[j, 1:5])
@@ -324,10 +335,10 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, d
             tar_label = '0: "target"'
 
             # plot target
-            # print('this is tar xylw', tar_xylw)
+            print('this is tar xylw', tar_xylw)
             # print('this is tar cos sin', tar_keypoints)
-            origin_img, _ = plot_and_transform(im=origin_img, box=pred_xylw, label='0: target', color=(255, 255, 0), txt_color=(255, 255, 255), index=j,
-                                            scaled_xylw=tar_xylw, keypoints=tar_keypoints, use_lw=use_lw, truth_flag=True)
+            origin_img, _ = plot_and_transform(im=origin_img, box=tar_xylw, label='0: target', color=(255, 255, 0), txt_color=(255, 255, 255), index=j,
+                                            scaled_xylw=tar_xylw, keypoints=tar_keypoints, use_xylw=use_xylw, truth_flag=True)
 
     cv2.namedWindow('zzz', 0)
     cv2.imshow('zzz', origin_img)
@@ -339,14 +350,17 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, d
     if real_flag == False:
         print('this is length of pred\n', pred[:, 1:5])
         print('this is length of target\n', target[:, 1:5])
-        loss_mean = np.mean((target - pred) ** 2)
-        loss_std = np.std((target - pred), dtype=np.float64)
-        print('this is mean error', loss_mean)
-        print('this is std error', loss_std)
+        # loss_mean = np.mean((target - pred))
+        # loss_std = np.std((target - pred), dtype=np.float64)
+        loss = np.mean((target - pred) ** 2)
+        # print('this is mean error', loss_mean)
+        # print('this is std error', loss_std)
+        pred_result = np.asarray(pred_result)
+        return pred_result, loss
 
-    print('this is key point')
-    pred_result = np.asarray(pred_result)
-    return pred_result
+    else:
+        pred_result = np.asarray(pred_result)
+        return pred_result
 
 if __name__ == '__main__':
 

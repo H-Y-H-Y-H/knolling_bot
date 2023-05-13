@@ -18,7 +18,7 @@ from shapely.geometry import Polygon
 from tqdm import tqdm
 from urdfpy import URDF
 
-from knolling_configuration import configuration_zzz
+from learning_knolling_configuration import configuration_zzz
 
 torch.manual_seed(42)
 # np.random.seed(100)
@@ -366,18 +366,18 @@ class Arm:
 
 if __name__ == '__main__':
 
-    command = 'recover'
+    command = 'knolling'
     before_after = 'after'
-    configuration = '1'
+    configuration = '2'
 
-    start_evaluations = 40000
-    end_evaluations = 50000
-    range_low = 4
-    range_high = 7
+    start_evaluations = 900000
+    end_evaluations = 1000000
+    range_low = 10
+    range_high = 11
     total_urdf = 30
 
     area_num = 3
-    ratio_num = 2
+    ratio_num = 1
 
     item_odd_prevent = True
 
@@ -389,7 +389,7 @@ if __name__ == '__main__':
 
     forced_rotate_box = False
 
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_508/cfg_%s/' % configuration
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512_large/cfg_%s/' % configuration
     images_log_path = target_path + 'images_%s/' % before_after
     preprocess_label_path = target_path + 'preprocess_label_%s/' % before_after
     os.makedirs(images_log_path, exist_ok=True)
@@ -464,8 +464,8 @@ if __name__ == '__main__':
                 boxes_index = np.random.choice(total_urdf, lego_num)
 
                 total_offset = [0.016, -0.17 + 0.016, 0]
-                gap_item = 0.01
-                gap_block = 0.02
+                gap_item = 0.015
+                gap_block = 0.015
                 random_offset = False
                 real_operate = False
                 obs_order = 'sim_image_obj'

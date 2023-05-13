@@ -52,6 +52,7 @@ def real_tarpos2cmd(tar_pos): # real to sim!!!!!!!!!!!
 
     tar_pos = np.delete(tar_pos, 2)
     tar_pos = np.asarray(tar_pos)
+    print('this is tar from calculation', tar_pos)
     pos2deg = 4095/360
     motion_limit = np.asarray([1/180, 1/135, 1/135, 1/90, 1/180])
     reset_pos = [3075, 1025, 1050, 2050, 2050]

@@ -7,7 +7,7 @@ from urdfpy import URDF
 
 class Sort_objects():
     
-    def __init__(self):
+    def __init__(self, evaluations):
 
         self.correct = np.array([[0.016, 0.016, 0.012],
                                  [0.020, 0.016, 0.012],
@@ -21,28 +21,30 @@ class Sort_objects():
                                  [0.032, 0.016, 0.012],
                                  [0.032, 0.020, 0.012],
                                  [0.032, 0.024, 0.012]])
-
+        self.evaluations = evaluations
         self.error_rate = 0.05
 
-    def get_data_virtual(self, area_num, ratio_num, lego_num, boxes_index):
+    def get_data_virtual(self, area_num, ratio_num, lego_num, boxes_index, use_lego_urdf):
 
         boxes = []
         xyz_list = []
-        # for i in range(lego_num):
-        #     boxes.append(URDF.load('../urdf/box_generator/box_%d.urdf' % i))
-        #     xyz_list.append(boxes[i].links[0].visuals[0].geometry.box.size)
-        # print(boxes_index)
-        for i in range(len(boxes_index)):
-            # print(boxes_index[i])
-            boxes.append(URDF.load('./urdf/box_generator/box_%d.urdf' % boxes_index[i]))
-            xyz_list.append(boxes[i].links[0].visuals[0].geometry.box.size)
+        if use_lego_urdf == True:
+            for i in range(len(lego_num)):
+                for j in range(lego_num[i]):
+                    xyz_list.append(self.correct[i])
+            # print('this is box index', boxes_index)
+        else:
+            for i in range(len(boxes_index)):
+                # print(boxes_index[i])
+                boxes.append(URDF.load('./urdf/box_generator/box_%d.urdf' % boxes_index[i]))
+                xyz_list.append(boxes[i].links[0].visuals[0].geometry.box.size)
 
         pos_list = []
         ori_list = []
         xyz_list = np.asarray(xyz_list, dtype=np.float32)
-        # print(xyz_list)
+        print(xyz_list)
 
-        return self.judge(xyz_list, pos_list, ori_list, area_num, ratio_num, boxes_index)
+        return self.judge(xyz_list, pos_list, ori_list, area_num, ratio_num, boxes_index, use_lego_urdf, lego_num)
 
     def get_data_real(self, area_num, ratio_num, lego_num):
         pipeline = rs.pipeline()
@@ -81,7 +83,8 @@ class Sort_objects():
 
         color_colormap_dim = color_image.shape
         resized_color_image = color_image
-        img_path = 'Test_images/image_real'
+        # img_path = 'Test_images/image_real'
+        img_path = './learning_data_demo/cfg_0/images_before/8/image_%d' % self.evaluations
         # cv2.imwrite(img_path + '.png', resized_color_image)
         # cv2.waitKey(1)
 
@@ -176,7 +179,7 @@ class Sort_objects():
 
         return new_item_lw, new_item_pos, new_item_ori, all_index, transform_flag, new_urdf_index
 
-    def judge(self, item_xyz, item_pos, item_ori, area_num, ratio_num, boxes_index):
+    def judge(self, item_xyz, item_pos, item_ori, area_num, ratio_num, boxes_index, use_lego_urdf, lego_num):
 
         category_num = int(area_num * ratio_num + 1)
         s = item_xyz[:, 0] * item_xyz[:, 1]
@@ -184,7 +187,7 @@ class Sort_objects():
         s_range = np.linspace(s_max, s_min, int(area_num + 1))
         lw_ratio = item_xyz[:, 0] / item_xyz[:, 1]
         ratio_min, ratio_max = np.min(lw_ratio), np.max(lw_ratio)
-        ratio_range = np.linspace(ratio_max, ratio_min, int(ratio_num * 2 + 1))
+        ratio_range = np.linspace(ratio_max, ratio_min, int(ratio_num + 1))
         ratio_range_high = np.linspace(ratio_max, 1, int(ratio_num + 1))
         ratio_range_low = np.linspace(1 / ratio_max, 1, int(ratio_num + 1))
 
@@ -202,24 +205,19 @@ class Sort_objects():
                 for m in range(len(item_xyz)):
                     if m not in rest_index:
                         continue
-                    elif s_range[i] >= s[m] >= s_range[i + 1]:
-                        # if ratio_range_high[j] >= lw_ratio[m] >= ratio_range_high[j + 1]:
-                        transform_flag.append(0)
-                        # print(f'boxes{m} matches in area{i}, ratio{j}!')
-                        kind_index.append(index)
-                        new_item_xyz.append(item_xyz[m])
-                        index += 1
-                        rest_index = np.delete(rest_index, np.where(rest_index == m))
-                        new_urdf_index.append(boxes_index[m])
-                        # elif ratio_range_low[j] <= lw_ratio[m] <= ratio_range_low[j + 1]:
-                        #     transform_flag.append(1)
-                        #     # print(f'boxes{m} matches in area{i}, ratio{j}, remember to rotate the ori after knolling!')
-                        #     item_xyz[m, [0, 1]] = item_xyz[m, [1, 0]]
-                        #     kind_index.append(index)
-                        #     new_item_xyz.append(item_xyz[m])
-                        #     index += 1
-                        #     rest_index = np.delete(rest_index, np.where(rest_index == m))
-                        #     new_urdf_index.append(boxes_index[m])
+                    else:
+                        if s_range[i] >= s[m] >= s_range[i + 1]:
+                            if ratio_range[j] >= lw_ratio[m] >= ratio_range[j + 1]:
+                                transform_flag.append(0)
+                                # print(f'boxes{m} matches in area{i}, ratio{j}!')
+                                kind_index.append(index)
+                                new_item_xyz.append(item_xyz[m])
+                                index += 1
+                                rest_index = np.delete(rest_index, np.where(rest_index == m))
+                                if use_lego_urdf == True:
+                                    pass
+                                else:
+                                    new_urdf_index.append(boxes_index[m])
                 if len(kind_index) != 0:
                     all_index.append(kind_index)
 
@@ -232,7 +230,22 @@ class Sort_objects():
             all_index.append(list(np.arange(index, len(item_xyz))))
             transform_flag = np.append(transform_flag, np.zeros(len(item_xyz) - index))
 
-        return new_item_xyz, item_pos, item_ori, all_index, transform_flag, new_urdf_index
+        # make the sequence of legos fit for num_list to compare them with the predictive results
+        lego_urdf_index = []
+        new_lego_xyz = []
+        if use_lego_urdf == True:
+            for i in range(len(self.correct)):
+                lego_index_row = []
+                for j in range(len(new_item_xyz)):
+                    if np.abs(self.correct[i][0] - new_item_xyz[j][0]) < 0.001 and np.abs(self.correct[i][1] - new_item_xyz[j][1]) < 0.001:
+                        lego_index_row.append(i)
+                        new_lego_xyz.append(new_item_xyz[j])
+                if len(lego_index_row) != 0:
+                    lego_urdf_index.append(lego_index_row)
+        new_item_xyz = np.asarray(new_lego_xyz)
+        # make the sequence of legos fit for num_list to compare them with the predictive results
+
+        return new_item_xyz, item_pos, item_ori, all_index, transform_flag, new_urdf_index, lego_urdf_index
 
 if __name__ == '__main__':
 

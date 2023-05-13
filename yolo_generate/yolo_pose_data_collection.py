@@ -56,14 +56,21 @@ if __name__ == '__main__':
     max_lego_num = 12
     mm2px = 530 / 0.34
 
+    use_lego_urdf = True
+
     for epoch in tqdm(range(startnum,endnum)):
         # num_item = random.randint(1, 5)
 
         num_item = int(np.random.uniform(4, max_lego_num + 1))
         boxes_index = np.random.choice(30, num_item)
 
+        num_2x2 = np.random.randint(1, 5)
+        num_2x3 = np.random.randint(1, 5)
+        num_2x4 = np.random.randint(1, 5)
+        lego_list = np.array([num_2x2, num_2x3, num_2x4])
+
         env = Arm_env(max_step=1, is_render=False, boxes_index=boxes_index)
-        state, lw_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag)
+        state, lw_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag, use_lego_urdf=use_lego_urdf, lego_list=lego_list)
 
         label = np.zeros((num_item, 6))
 
@@ -93,6 +100,6 @@ if __name__ == '__main__':
         # add = int((640 - 480) / 2)
         # img = cv2.copyMakeBorder(my_im2, add, add, 0, 0, cv2.BORDER_CONSTANT, None, value=(0, 0, 0, 255))
 
-        cv2.imwrite(os.path.join(data_root, 'images/%012d.png') % epoch, my_im2)
+        cv2.imwrite(os.path.join(data_root, 'origin_images/%012d.png') % epoch, my_im2)
 
-        np.savetxt(os.path.join(data_root, "labels/%012d.txt" % epoch), label)
+        np.savetxt(os.path.join(data_root, "origin_labels/%012d.txt" % epoch), label)

@@ -207,28 +207,18 @@ class Arm_env(gym.Env):
             farVal=self.camera_parameters['far'])
 
         if random.uniform(0, 1) > 0.5:
-            p.configureDebugVisualizer(lightPosition=[random.randint(1, 3), random.randint(1, 2), 5],
-                                       shadowMapResolution=8192, shadowMapIntensity=np.random.randint(5, 8) / 10)
+            p.configureDebugVisualizer(lightPosition=[random.randint(1, 1), random.uniform(0, 1), 2],
+                                       shadowMapResolution=8192, shadowMapIntensity=np.random.randint(5, 7) / 10)
         else:
-            p.configureDebugVisualizer(lightPosition=[random.randint(1, 3), random.randint(-2, -1), 5],
-                                       shadowMapResolution=8192, shadowMapIntensity=np.random.randint(5, 8) / 10)
+            p.configureDebugVisualizer(lightPosition=[random.randint(1, 1), random.uniform(-1, 0), 2],
+                                       shadowMapResolution=8192, shadowMapIntensity=np.random.randint(5, 7) / 10)
         p.resetDebugVisualizerCamera(cameraDistance=0.7,
                                      cameraYaw=45,
                                      cameraPitch=-45,
                                      cameraTargetPosition=[0.1, 0, 0.4])
         p.setAdditionalSearchPath(pd.getDataPath())
 
-        self.action_space = spaces.Box(
-            low=np.array([self.x_low_obs, self.y_low_obs, self.z_low_obs, self.yaw_low_obs, self.gripper_low_obs]),
-            high=np.array(
-                [self.x_high_obs, self.y_high_obs, self.z_high_obs, self.yaw_high_obs, self.gripper_high_obs]),
-            dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.ones(19) * np.inf,
-                                            high=np.ones(19) * np.inf,
-                                            dtype=np.float32)
-
-
-    def reset_table(self, close_flag = False, texture_flag = False):
+    def reset_table(self, close_flag = False, texture_flag = False, use_lego_urdf = None, lego_list = None):
         self.r = 0
         self.step_counter = 0
 
@@ -276,7 +266,7 @@ class Arm_env(gym.Env):
             lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
 
         # Texture change
-        background = np.random.randint(1, 6)
+        background = np.random.randint(5, 6)
         textureId = p.loadTexture(f"../urdf/img_{background}.png")
         # textureId = p.loadTexture(f"../urdf/textures/red2.png")
         p.changeVisualShape(baseid, -1, textureUniqueId=textureId, )
@@ -352,30 +342,58 @@ class Arm_env(gym.Env):
         g1 = np.random.uniform(0, 0.9)
         b1 = np.random.uniform(0, 0.9)
         lw_list = []
-        lego_path = "../urdf/box_generator/"
-        for i in range(len(self.boxes_index)):
-            boxes = URDF.load('../urdf/box_generator/box_%d.urdf' % self.boxes_index[i])
-            lw_list.append(boxes.links[0].visuals[0].geometry.box.size)
+        lw_data = np.array([[0.016, 0.016, 0.012],
+                            [0.024, 0.016, 0.012],
+                            [0.032, 0.016, 0.012]])
 
-            self.obj_idx.append(
-                    p.loadURDF((lego_path + "box_%d.urdf" % self.boxes_index[i]), basePosition=[rdm_pos_x[i], rdm_pos_y[i], rdm_pos_z],
-                               baseOrientation=p.getQuaternionFromEuler([0, 0, rdm_ori_yaw[i]]), useFixedBase=0,
-                               flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-            #
-            r = np.random.uniform(0, 0.9)
-            g = np.random.uniform(0, 0.9)
-            b = np.random.uniform(0, 0.9)
+        if use_lego_urdf == True:
+            lego_path = "../urdf/"
+            for i in range(len(lego_list)):
+                for j in range(lego_list[i]):
+                    lw_list.append(lw_data[i])
+                    self.obj_idx.append(p.loadURDF((lego_path + "item_%d/%d.urdf" % (i, j)),
+                                   basePosition=[rdm_pos_x[i], rdm_pos_y[i], rdm_pos_z],
+                                   baseOrientation=p.getQuaternionFromEuler([0, 0, rdm_ori_yaw[i]]), useFixedBase=0,
+                                   flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+                    #
+                    r = np.random.uniform(0, 0.9)
+                    g = np.random.uniform(0, 0.9)
+                    b = np.random.uniform(0, 0.9)
 
-            if random.random() < 0.05:
-                p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(0.1, 0.1, 0.1, 1))
-            else:
-                p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
+                    if random.random() < 0.05:
+                        p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(0.1, 0.1, 0.1, 1))
+                    else:
+                        p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
 
-            if len(self.boxes_index) >= 3:
-                if i == 0 or i == (len(self.boxes_index) - 1):
-                    p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r1, g1, b1, 1))
-            else:
-                pass
+                    if len(self.boxes_index) >= 3:
+                        if i == 0 or i == (len(self.boxes_index) - 1):
+                            p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r1, g1, b1, 1))
+                    else:
+                        pass
+        else:
+            lego_path = "../urdf/box_generator/"
+            for i in range(len(self.boxes_index)):
+                boxes = URDF.load('../urdf/box_generator/box_%d.urdf' % self.boxes_index[i])
+                lw_list.append(boxes.links[0].visuals[0].geometry.box.size)
+
+                self.obj_idx.append(p.loadURDF((lego_path + "box_%d.urdf" % self.boxes_index[i]), basePosition=[rdm_pos_x[i], rdm_pos_y[i], rdm_pos_z],
+                                   baseOrientation=p.getQuaternionFromEuler([0, 0, rdm_ori_yaw[i]]), useFixedBase=0,
+                                   flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+                #
+                r = np.random.uniform(0, 0.9)
+                g = np.random.uniform(0, 0.9)
+                b = np.random.uniform(0, 0.9)
+
+                if random.random() < 0.05:
+                    p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(0.1, 0.1, 0.1, 1))
+                else:
+                    p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
+
+                if len(self.boxes_index) >= 3:
+                    if i == 0 or i == (len(self.boxes_index) - 1):
+                        p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r1, g1, b1, 1))
+                else:
+                    pass
         lw_list = np.asarray(lw_list)
 
         for _ in range(int(40+close_flag*260)):

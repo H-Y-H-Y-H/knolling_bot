@@ -32,6 +32,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.preprocessing import MinMaxScaler
 from shapely.geometry import Polygon
+from knolling_configuration import configuration_zzz
 
 torch.manual_seed(42)
 np.random.seed(202)
@@ -110,10 +111,11 @@ class Arm:
         p.setAdditionalSearchPath(pd.getDataPath())
 
     def get_parameters(self, lego_num=None, area_num=None, ratio_num=None, boxes_index=None,
-                       total_offset=None, grasp_order=None,
+                       total_offset=None, evaluations=None,
                        gap_item=0.03, gap_block=0.02,
                        real_operate=False, obs_order='1',
-                       random_offset = False, check_detection_loss=None, obs_img_from=None, use_yolo_pos=True):
+                       random_offset = False, check_detection_loss=None, obs_img_from=None, use_lego_urdf=True,
+                       item_odd_prevent=None, block_odd_prevent=None, upper_left_max = None, forced_rotate_box=None):
 
         # self.lego_num = lego_num
         self.total_offset = total_offset
@@ -127,10 +129,29 @@ class Arm:
         self.num_list = lego_num
         self.check_detection_loss = check_detection_loss
         self.obs_img_from = obs_img_from
-        self.use_yolo_pos = use_yolo_pos
+        self.use_lego_urdf = use_lego_urdf
         self.boxes_index = boxes_index
+        self.evaluations = evaluations
+        self.configuration = None
+        self.item_odd_prevent = item_odd_prevent
+        self.block_odd_prevent = block_odd_prevent
+        self.upper_left_max = upper_left_max
+        self.forced_rotate_box = forced_rotate_box
 
-    def get_obs(self, order, evaluation):
+        self.correct = np.array([[0.016, 0.016, 0.012],
+                                 [0.020, 0.016, 0.012],
+                                 [0.020, 0.020, 0.012],
+                                 [0.024, 0.016, 0.012],
+                                 [0.024, 0.020, 0.012],
+                                 [0.024, 0.024, 0.012],
+                                 [0.028, 0.016, 0.012],
+                                 [0.028, 0.020, 0.012],
+                                 [0.028, 0.024, 0.012],
+                                 [0.032, 0.016, 0.012],
+                                 [0.032, 0.020, 0.012],
+                                 [0.032, 0.024, 0.012]])
+
+    def get_obs(self, order):
 
         def get_joints_obs():
 
@@ -191,9 +212,14 @@ class Arm:
 
             ################### the results of object detection has changed the order!!!! ####################
             # structure of results: x, y, length, width, ori
-            results = yolov8_predict(img_path=img_path, img=img,
-                                     real_flag=self.real_operate,
-                                     target=ground_truth_pose)
+            if self.real_operate == False:
+                results, env_loss = yolov8_predict(img_path=img_path, img=img,
+                                                             real_flag=self.real_operate,
+                                                             target=ground_truth_pose)
+            else:
+                results = yolov8_predict(img_path=img_path, img=img,
+                                          real_flag=self.real_operate,
+                                          target=ground_truth_pose)
             print('this is the result of yolo-pose\n', results)
             ################### the results of object detection has changed the order!!!! ####################
 
@@ -205,8 +231,8 @@ class Arm:
             print('this is self.xyz', self.xyz_list)
             for i in range(len(self.xyz_list)):
                 for j in range(len(results)):
-                    if (np.abs(self.xyz_list[i, 0] - results[j, 2]) < 0.0015 and np.abs(self.xyz_list[i, 1] - results[j, 3]) < 0.0015) or \
-                            (np.abs(self.xyz_list[i, 1] - results[j, 2]) < 0.0015 and np.abs(self.xyz_list[i, 0] - results[j, 3]) < 0.0015):
+                    if (np.abs(self.xyz_list[i, 0] - results[j, 2]) < 0.002 and np.abs(self.xyz_list[i, 1] - results[j, 3]) < 0.002) or \
+                            (np.abs(self.xyz_list[i, 1] - results[j, 2]) < 0.002 and np.abs(self.xyz_list[i, 0] - results[j, 3]) < 0.002):
                         if j not in index:
                             index.append(j)
                         # if i not in width_index:
@@ -432,10 +458,10 @@ class Arm:
             p.stepSimulation()
 
         # get the standard xyz and corresponding index from files in the computer
-        items_sort = Sort_objects()
+        items_sort = Sort_objects(self.evaluations)
         self.lego_idx = []
         if self.real_operate == False:
-            self.xyz_list, _, _, self.all_index, self.transform_flag, self.urdf_index = items_sort.get_data_virtual(self.area_num, self.ratio_num, self.num_list, self.boxes_index)
+            self.xyz_list, _, _, self.all_index, self.transform_flag, self.urdf_index, self.lego_urdf_index = items_sort.get_data_virtual(self.area_num, self.ratio_num, self.num_list, self.boxes_index, self.use_lego_urdf)
             restrict = np.max(self.xyz_list)
             gripper_height = 0.012
             last_pos = np.array([[0, 0, 1]])
@@ -445,47 +471,85 @@ class Arm:
             collect_pos = []
             ############## collect ori and pos to calculate the error of detection ##############
 
-            for i in range(len(self.urdf_index)):
+            if self.use_lego_urdf == True:
+                # for i in range(len(self.xyz_list)):
+                #     for j in range(len(self.num_list)):
+                #         if np.abs(self.xyz_list[i][0] - self.correct[j][0]) < 0.001 and np.abs(self.xyz_list[i][1] - self.correct[j][1]) < 0.001:
+                #             pass
+                for i in range(len(self.lego_urdf_index)):
+                    for j in range(len(self.lego_urdf_index[i])):
+                # for i in range(length):
+                #     for j in range(self.num_list[lego_index[i]]):
+                        rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
+                                            random.uniform(self.y_low_obs, self.y_high_obs), 0])
+                        ori = [0, 0, random.uniform(0, math.pi)]
+                        # ori = [0, 0, np.pi / 2]
+                        # ori = [0, 0, 0]
+                        collect_ori.append(ori)
+                        check_list = np.zeros(last_pos.shape[0])
 
-                rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
-                                    random.uniform(self.y_low_obs, self.y_high_obs), 0.006])
-                ori = [0, 0, random.uniform(0, math.pi)]
-                # ori = [0, 0, np.pi / 2]
+                        while 0 in check_list:
+                            rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs),
+                                       random.uniform(self.y_low_obs, self.y_high_obs), 0]
+                            for z in range(last_pos.shape[0]):
+                                if np.linalg.norm(last_pos[z] - rdm_pos) < restrict + gripper_height:
+                                    check_list[z] = 0
+                                else:
+                                    check_list[z] = 1
+                        collect_pos.append(rdm_pos)
+                        last_pos = np.append(last_pos, [rdm_pos], axis=0)
 
-                ################### after generate the neat configuration, we should recover the lw based on that in the urdf files!
-                if self.transform_flag[i] == 1:
-                    self.xyz_list[i, [0, 1]] = self.xyz_list[i, [1, 0]]
-                    # if ori[2] > np.pi:
-                    #     ori[2] -= np.pi / 2
-                    # else:
-                    #     ori[2] += np.pi / 2
-                    # we dont' need to change the ori here, because the ori is definitely random
-                    # the real ori provided to arm is genereatd by yolo
-                ################### after generate the neat configuration, we should recover the lw based on that in the urdf files!
-                # ori = [0, 0, 0]
-                collect_ori.append(ori)
-                check_list = np.zeros(last_pos.shape[0])
+                        self.lego_idx.append(p.loadURDF(self.urdf_path + "item_%d_lego/%d.urdf" % (self.lego_urdf_index[i][j], j),
+                                           basePosition=rdm_pos,
+                                           baseOrientation=p.getQuaternionFromEuler(ori), useFixedBase=False,
+                                           flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+                for m in range(len(self.lego_idx)):
+                    r = np.random.uniform(0, 0.9)
+                    g = np.random.uniform(0, 0.9)
+                    b = np.random.uniform(0, 0.9)
+                    p.changeVisualShape(self.lego_idx[m], -1, rgbaColor=(r, g, b, 1))
+            else:
+                length = len(self.urdf_index)
 
-                while 0 in check_list:
-                    rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs),
-                               random.uniform(self.y_low_obs, self.y_high_obs), 0.006]
-                    for z in range(last_pos.shape[0]):
-                        if np.linalg.norm(last_pos[z] - rdm_pos) < restrict + gripper_height:
-                            check_list[z] = 0
-                        else:
-                            check_list[z] = 1
-                collect_pos.append(rdm_pos)
-                last_pos = np.append(last_pos, [rdm_pos], axis=0)
+                for i in range(length):
+                    rdm_pos = np.array([random.uniform(self.x_low_obs, self.x_high_obs),
+                                        random.uniform(self.y_low_obs, self.y_high_obs), 0.006])
+                    ori = [0, 0, random.uniform(0, math.pi)]
+                    # ori = [0, 0, np.pi / 2]
 
-                self.lego_idx.append(
-                    p.loadURDF(self.urdf_path + f"box_generator/box_{self.urdf_index[i]}.urdf",
-                               basePosition=rdm_pos,
-                               baseOrientation=p.getQuaternionFromEuler(ori), useFixedBase=False,
-                               flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-                r = np.random.uniform(0, 0.9)
-                g = np.random.uniform(0, 0.9)
-                b = np.random.uniform(0, 0.9)
-                p.changeVisualShape(self.lego_idx[i], -1, rgbaColor=(r, g, b, 1))
+                    ################### after generate the neat configuration, we should recover the lw based on that in the urdf files!
+                    if self.transform_flag[i] == 1:
+                        self.xyz_list[i, [0, 1]] = self.xyz_list[i, [1, 0]]
+                        # if ori[2] > np.pi:
+                        #     ori[2] -= np.pi / 2
+                        # else:
+                        #     ori[2] += np.pi / 2
+                        # we dont' need to change the ori here, because the ori is definitely random
+                        # the real ori provided to arm is genereatd by yolo
+                    ################### after generate the neat configuration, we should recover the lw based on that in the urdf files!
+                    # ori = [0, 0, 0]
+                    collect_ori.append(ori)
+                    check_list = np.zeros(last_pos.shape[0])
+
+                    while 0 in check_list:
+                        rdm_pos = [random.uniform(self.x_low_obs, self.x_high_obs),
+                                   random.uniform(self.y_low_obs, self.y_high_obs), 0.006]
+                        for z in range(last_pos.shape[0]):
+                            if np.linalg.norm(last_pos[z] - rdm_pos) < restrict + gripper_height:
+                                check_list[z] = 0
+                            else:
+                                check_list[z] = 1
+                    collect_pos.append(rdm_pos)
+                    last_pos = np.append(last_pos, [rdm_pos], axis=0)
+                    self.lego_idx.append(
+                        p.loadURDF(self.urdf_path + f"box_generator/box_{self.urdf_index[i]}.urdf",
+                                   basePosition=rdm_pos,
+                                   baseOrientation=p.getQuaternionFromEuler(ori), useFixedBase=False,
+                                   flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+                    r = np.random.uniform(0, 0.9)
+                    g = np.random.uniform(0, 0.9)
+                    b = np.random.uniform(0, 0.9)
+                    p.changeVisualShape(self.lego_idx[i], -1, rgbaColor=(r, g, b, 1))
 
             collect_ori = np.asarray(collect_ori)
             collect_pos = np.asarray(collect_pos)
@@ -499,10 +563,12 @@ class Arm:
             # these data has defined in function change_config, we don't need to define them twice!!!
             # self.xyz_list, pos_before, ori_before, self.all_index, self.kind = items_sort.get_data_real()
             num_lego = 0
+            sim_pos = np.copy(self.pos_before)
+            sim_pos[2] += 0.006
             for i in range(len(self.xyz_list)):
                 self.lego_idx.append(
                     p.loadURDF(self.urdf_path + f"knolling_box/knolling_box_{self.urdf_index[i]}.urdf",
-                               basePosition=self.pos_before[i],
+                               basePosition=sim_pos[i],
                                baseOrientation=p.getQuaternionFromEuler(self.ori_before[i]), useFixedBase=False,
                                flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
                 r = np.random.uniform(0, 0.9)
@@ -511,8 +577,11 @@ class Arm:
                 p.changeVisualShape(self.lego_idx[num_lego], -1, rgbaColor=(r, g, b, 1))
                 num_lego += 1
 
-        return self.get_obs('images', None)
-        # return self.check_pos, self.check_ori, self.xyz_list
+        data_before = np.concatenate((self.pos_before[:, :2], self.xyz_list[:, :2], self.ori_before[:, 2].reshape(-1, 1)), axis=1)
+        np.savetxt('./learning_data_demo/cfg_0/labels_before/label_%d.txt' % self.evaluations, data_before, fmt='%.03f')
+
+        return self.get_obs('images')
+        # return self.pos_before, self.ori_before, self.xyz_list
 
     def change_config(self):  # this is main function!!!!!!!!!
 
@@ -545,336 +614,22 @@ class Arm:
         p.changeVisualShape(baseid, -1, textureUniqueId=textureId)
 
         # get the standard xyz and corresponding index from files in the computer
-        items_sort = Sort_objects()
+        items_sort = Sort_objects(self.evaluations)
         if self.real_operate == False:
-            self.xyz_list, _, _, self.all_index, self.transform_flag, self.urdf_index = items_sort.get_data_virtual(self.area_num, self.ratio_num, self.num_list, self.boxes_index)
+            self.xyz_list, _, _, self.all_index, self.transform_flag, self.urdf_index, self.lego_urdf_index = items_sort.get_data_virtual(self.area_num, self.ratio_num, self.num_list, self.boxes_index, self.use_lego_urdf)
         else:
             self.xyz_list, self.pos_before, self.ori_before, self.all_index, self.transform_flag, self.urdf_index = items_sort.get_data_real(self.area_num, self.ratio_num, self.num_list)
         print(f'this is standard trim xyz list\n {self.xyz_list}')
         print(f'this is standard trim index list\n {self.all_index}')
 
-        def calculate_items(item_num, item_xyz):
 
-            min_xy = np.ones(2) * 100
-            best_item_config = []
-            item_iteration = 100
-            item_odd_flag = False
-            all_item_x = 100
-            all_item_y = 100
+        calculate_reorder = configuration_zzz(self.xyz_list, self.all_index, self.gap_item, self.gap_block,
+                                              self.transform_flag, self.configuration,
+                                              self.item_odd_prevent, self.block_odd_prevent, self.upper_left_max,
+                                              self.forced_rotate_box)
 
-            fac = []  # 定义一个列表存放因子
-            for i in range(1, item_num + 1):
-                if item_num % i == 0:
-                    fac.append(i)
-                    continue
-            fac = fac[::-1]
-
-            # if item_num % 2 != 0 and len(fac) == 2 and item_num >=5:  # its odd! we should generate the factor again!
-            #     item_num += 1
-            #     item_odd_flag = True
-            #     fac = []  # 定义一个列表存放因子
-            #     for i in range(1, item_num + 1):
-            #         if item_num % i == 0:
-            #             fac.append(i)
-            #             continue
-
-            item_sequence = np.random.choice(len(item_xyz), len(item_xyz), replace=False)
-            if item_odd_flag == True:
-                item_sequence = np.append(item_sequence, item_sequence[-1])
-
-            for j in range(len(fac)):
-                # if item_num == 3:
-                #     item_num_row = 1
-                #     item_num_column = 3
-                # else:
-                item_num_row = int(fac[j])
-                item_num_column = int(item_num / item_num_row)
-                item_sequence = item_sequence.reshape(item_num_row, item_num_column)
-                item_min_x = 0
-                item_min_y = 0
-
-                for r in range(item_num_row):
-                    new_row = item_xyz[item_sequence[r, :]]
-                    item_min_x = item_min_x + np.max(new_row, axis=0)[0]
-
-                for c in range(item_num_column):
-                    new_column = item_xyz[item_sequence[:, c]]
-                    item_min_y = item_min_y + np.max(new_column, axis=0)[1]
-
-                item_min_x = item_min_x + (item_num_row - 1) * self.gap_item
-                item_min_y = item_min_y + (item_num_column - 1) * self.gap_item
-
-                if item_min_x + item_min_y < all_item_x + all_item_y:
-                    best_item_config = [item_num_row, item_num_column]
-                    all_item_x = item_min_x
-                    all_item_y = item_min_y
-                    min_xy = np.array([all_item_x, all_item_y])
-
-            return min_xy, best_item_config, item_odd_flag
-
-        def calculate_block():  # first: calculate, second: reorder!
-
-            min_result = []
-            best_config = []
-            item_odd_list = []
-            for i in range(len(self.all_index)):
-                item_index = self.all_index[i]
-                item_xyz = self.xyz_list[item_index, :]
-                item_num = len(item_index)
-                xy, config, odd = calculate_items(item_num, item_xyz)
-                # print(f'this is min xy {xy}')
-                min_result.append(list(xy))
-                # print(f'this is the best item config\n {config}')
-                best_config.append(list(config))
-                item_odd_list.append(odd)
-            min_result = np.asarray(min_result).reshape(-1, 2)
-            best_config = np.asarray(best_config).reshape(-1, 2)
-            item_odd_list = np.asarray(item_odd_list)
-            # print(best_config)
-
-            # reorder the block based on the min_xy 哪个block面积大哪个在前
-            s_block_sequence = np.argsort(min_result[:, 0] * min_result[:, 1])[::-1]
-            new_all_index = []
-            for i in s_block_sequence:
-                new_all_index.append(self.all_index[i])
-            self.all_index = new_all_index.copy()
-            min_result = min_result[s_block_sequence]
-            best_config = best_config[s_block_sequence]
-            item_odd_list = item_odd_list[s_block_sequence]
-            # reorder the block based on the min_xy 哪个block面积大哪个在前
-
-            # 安排总的摆放
-            iteration = 300
-            all_num = best_config.shape[0]
-            all_x = 100
-            all_y = 100
-            odd_flag = False
-
-            fac = []  # 定义一个列表存放因子
-            for i in range(1, all_num + 1):
-                if all_num % i == 0:
-                    fac.append(i)
-                    continue
-            fac = fac[::-1]
-
-            # if all_num % 2 != 0 and len(fac) == 2:  # its odd! we should generate the factor again!
-            #     all_num += 1
-            #     odd_flag = True
-            #     fac = []  # 定义一个列表存放因子
-            #     for i in range(1, all_num + 1):
-            #         if all_num % i == 0:
-            #             fac.append(i)
-            #             continue
-
-            for i in range(iteration):
-                # sequence = np.random.choice(best_config.shape[0], size=len(self.all_index), replace=False)
-                sequence = np.arange(len(self.all_index))
-                if odd_flag == True:
-                    sequence = np.append(sequence, sequence[-1])
-                else:
-                    pass
-                zero_or_90 = np.random.choice(np.array([0, 90]))
-
-                for j in range(len(fac)):
-
-                    min_xy = np.copy(min_result)
-                    # print(f'this is the min_xy before rotation\n {min_xy}')
-
-                    num_row = int(fac[j])
-                    num_column = int(all_num / num_row)
-                    sequence = sequence.reshape(num_row, num_column)
-                    min_x = 0
-                    min_y = 0
-                    rotate_flag = np.full((num_row, num_column), False, dtype=bool)
-                    # print(f'this is {sequence}')
-
-                    for r in range(num_row):
-                        for c in range(num_column):
-                            new_row = min_xy[sequence[r][c]]
-                            if new_row[0] > new_row[1]:
-                                zero_or_90 = 90
-                            else:
-                                zero_or_90 = np.random.choice(np.array([0, 90]))
-                            if zero_or_90 == 90:
-                                rotate_flag[r][c] = True
-                                temp = new_row[0]
-                                new_row[0] = new_row[1]
-                                new_row[1] = temp
-
-                        # insert 'whether to rotate' here
-                    for r in range(num_row):
-                        new_row = min_xy[sequence[r, :]]
-                        min_x = min_x + np.max(new_row, axis=0)[0]
-
-                    for c in range(num_column):
-                        new_column = min_xy[sequence[:, c]]
-                        min_y = min_y + np.max(new_column, axis=0)[1]
-
-                    if min_x + min_y < all_x + all_y:
-                        best_all_config = sequence
-                        all_x = min_x
-                        all_y = min_y
-                        best_rotate_flag = rotate_flag
-                        best_min_xy = np.copy(min_xy)
-            # print(f'in iteration{i}, the min all_x and all_y are {all_x} {all_y}')
-            # print('this is best all sequence', best_all_config)
-
-            return reorder_block(best_config, best_all_config, best_rotate_flag, best_min_xy, odd_flag, item_odd_list)
-
-        def reorder_item(best_config, start_pos, index_block, item_index, item_xyz, rotate_flag, item_odd_list):
-
-            # initiate the pos and ori
-            # we don't analysis these imported oris
-            # we directly define the ori is 0 or 90 degree, depending on the algorithm.
-            item_row = best_config[index_block][0]
-            item_column = best_config[index_block][1]
-            item_odd_flag = item_odd_list[index_block]
-            if item_odd_flag == True:
-                item_pos = np.zeros([len(item_index) + 1, 3])
-                item_ori = np.zeros([len(item_index) + 1, 3])
-                item_xyz = np.append(item_xyz, item_xyz[-1]).reshape(-1, 3)
-                index_temp = np.arange(item_pos.shape[0] - 1)
-                index_temp = np.append(index_temp, index_temp[-1]).reshape(item_row, item_column)
-            else:
-                item_pos = np.zeros([len(item_index), 3])
-                item_ori = np.zeros([len(item_index), 3])
-                index_temp = np.arange(item_pos.shape[0]).reshape(item_row, item_column)
-
-            # the initial position of the first items
-
-            if rotate_flag == True:
-
-                temp = np.copy(item_xyz[:, 0])
-                item_xyz[:, 0] = item_xyz[:, 1]
-                item_xyz[:, 1] = temp
-                item_ori[:, 2] = np.pi / 2
-                # print(item_ori)
-                temp = item_row
-                item_row = item_column
-                item_column = temp
-                index_temp = index_temp.transpose()
-            else:
-                item_ori[:, 2] = 0
-
-            # start_pos[0] = start_pos[0] + np.max(item_xyz, axis=0)[0] / 2
-            # start_pos[1] = start_pos[1] + np.max(item_xyz, axis=0)[1] / 2
-            #
-            #
-            # for j in range(item_row):
-            #     for k in range(item_column):
-            #         ################### check whether to transform for each item in each block!################
-            #         if self.transform_flag[item_index[index_temp[j][k]]] == 1:
-            #             print(f'the index {item_index[index_temp[j][k]]} should be rotated because of transformation')
-            #             item_ori[index_temp[j][k], 2] -= np.pi / 2
-            #         ################### check whether to transform for each item in each block!################
-            #         x_2x2 = start_pos[0] + (item_xyz[index_temp[j][k]][0]) * j + self.gap_item * j
-            #         y_2x2 = start_pos[1] + (item_xyz[index_temp[j][k]][1]) * k + self.gap_item * k
-            #         item_pos[index_temp[j][k]][0] = x_2x2
-            #         item_pos[index_temp[j][k]][1] = y_2x2
-
-            start_item_x = np.array([start_pos[0]])
-            start_item_y = np.array([start_pos[1]])
-            previous_start_item_x = start_item_x
-            previous_start_item_y = start_item_y
-
-            for m in range(item_row):
-                new_row = item_xyz[index_temp[m, :]]
-                start_item_x = np.append(start_item_x,
-                                         (previous_start_item_x + np.max(new_row, axis=0)[0] + self.gap_item))
-                previous_start_item_x = (previous_start_item_x + np.max(new_row, axis=0)[0] + self.gap_item)
-            start_item_x = np.delete(start_item_x, -1)
-
-            for n in range(item_column):
-                new_column = item_xyz[index_temp[:, n]]
-                start_item_y = np.append(start_item_y,
-                                         (previous_start_item_y + np.max(new_column, axis=0)[1] + self.gap_item))
-                previous_start_item_y = (previous_start_item_y + np.max(new_column, axis=0)[1] + self.gap_item)
-            start_item_y = np.delete(start_item_y, -1)
-
-            x_pos, y_pos = np.copy(start_pos)[0], np.copy(start_pos)[1]
-
-            for j in range(item_row):
-                for k in range(item_column):
-                    if item_odd_flag == True and j == item_row - 1 and k == item_column - 1:
-                        break
-                    ################### check whether to transform for each item in each block!################
-                    if self.transform_flag[item_index[index_temp[j][k]]] == 1:
-                        # print(f'the index {item_index[index_temp[j][k]]} should be rotated because of transformation')
-                        item_ori[index_temp[j][k], 2] -= np.pi / 2
-                    ################### check whether to transform for each item in each block!################
-                    x_pos = start_item_x[j] + (item_xyz[index_temp[j][k]][0]) / 2
-                    y_pos = start_item_y[k] + (item_xyz[index_temp[j][k]][1]) / 2
-                    item_pos[index_temp[j][k]][0] = x_pos
-                    item_pos[index_temp[j][k]][1] = y_pos
-            if item_odd_flag == True:
-                item_pos = np.delete(item_pos, -1, axis=0)
-                item_ori = np.delete(item_ori, -1, axis=0)
-            else:
-                pass
-            # print('this is the shape of item pos', item_pos.shape)
-            return item_ori, item_pos
-
-        def reorder_block(best_config, best_all_config, best_rotate_flag, min_xy, odd_flag, item_odd_list):
-
-            # print(f'the best configuration of all items is\n {best_all_config}')
-            # print(f'the best configuration of each kind of items is\n {best_config}')
-            # print(f'the rotate of each block of items is\n {best_rotate_flag}')
-            # print(f'this is the min_xy of each kind of items after rotation\n {min_xy}')
-
-            num_all_row = best_all_config.shape[0]
-            num_all_column = best_all_config.shape[1]
-
-            start_x = [0]
-            start_y = [0]
-            previous_start_x = 0
-            previous_start_y = 0
-
-            for m in range(num_all_row):
-                new_row = min_xy[best_all_config[m, :]]
-                # print(new_row)
-                # print(np.max(new_row, axis=0)[0])
-                start_x.append((previous_start_x + np.max(new_row, axis=0)[0] + self.gap_block))
-                previous_start_x = (previous_start_x + np.max(new_row, axis=0)[0] + self.gap_block)
-            start_x = np.delete(start_x, -1)
-            # print(f'this is start_x {start_x}')
-
-            for n in range(num_all_column):
-                new_column = min_xy[best_all_config[:, n]]
-                # print(new_column)
-                # print(np.max(new_column, axis=0)[1])
-                start_y.append((previous_start_y + np.max(new_column, axis=0)[1] + self.gap_block))
-                previous_start_y = (previous_start_y + np.max(new_column, axis=0)[1] + self.gap_block)
-            start_y = np.delete(start_y, -1)
-            # print(f'this is start_y {start_y}')d
-
-            # determine the start position per item
-            item_pos = np.zeros([len(self.xyz_list), 3])
-            item_ori = np.zeros([len(self.xyz_list), 3])
-            # print(self.xyz_list[self.all_index[0]])
-            # print(self.all_index)
-            for m in range(num_all_row):
-                for n in range(num_all_column):
-                    if odd_flag == True and m == num_all_row - 1 and n == num_all_column - 1:
-                        break  # this is the redundancy block
-                    item_index = self.all_index[best_all_config[m][n]]  # determine the index of blocks
-
-                    # print('try', item_index)
-                    item_xyz = self.xyz_list[item_index, :]
-                    # print('try', item_xyz)
-                    start_pos = np.asarray([start_x[m], start_y[n]])
-                    index_block = best_all_config[m][n]
-                    rotate_flag = best_rotate_flag[m][n]
-
-                    ori, pos = reorder_item(best_config, start_pos, index_block, item_index, item_xyz, rotate_flag,
-                                            item_odd_list)
-                    # print('tryori', ori)
-                    # print('trypos', pos)
-                    item_pos[item_index] = pos
-                    item_ori[item_index] = ori
-
-            return item_pos, item_ori  # pos_list, ori_list
-
-        self.items_pos_list, self.items_ori_list = calculate_block()
+        # determine the center of the tidy configuration
+        self.items_pos_list, self.items_ori_list = calculate_reorder.calculate_block()
         x_low = np.min(self.items_pos_list, axis=0)[0]
         x_high = np.max(self.items_pos_list, axis=0)[0]
         y_low = np.min(self.items_pos_list, axis=0)[1]
@@ -907,36 +662,44 @@ class Arm:
         self.lego_idx = []
         for i in range(len(self.urdf_index)):
             if self.real_operate == False:
-                self.lego_idx.append(
-                    p.loadURDF(self.urdf_path + f"box_generator/box_{self.urdf_index[i]}.urdf",
-                               basePosition=self.items_pos_list[i],
-                               baseOrientation=p.getQuaternionFromEuler(self.items_ori_list[i]), useFixedBase=False,
-                               flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+                if self.use_lego_urdf == True:
+                    pass
+                else:
+                    self.lego_idx.append(p.loadURDF(self.urdf_path + f"box_generator/box_{self.urdf_index[i]}.urdf",
+                                       basePosition=self.items_pos_list[i],
+                                       baseOrientation=p.getQuaternionFromEuler(self.items_ori_list[i]), useFixedBase=False,
+                                       flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
             else:
-                self.lego_idx.append(
-                    p.loadURDF(self.urdf_path + f"knolling_box/knolling_box_{self.urdf_index[i]}.urdf",
-                               basePosition=self.items_pos_list[i],
-                               baseOrientation=p.getQuaternionFromEuler(self.items_ori_list[i]), useFixedBase=False,
-                               flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+                sim_pos = np.copy(self.items_pos_list)
+                sim_pos[:, 2] += 0.006
+                self.lego_idx.append(p.loadURDF(self.urdf_path + f"knolling_box/knolling_box_{self.urdf_index[i]}.urdf",
+                                   basePosition=sim_pos[i],
+                                   baseOrientation=p.getQuaternionFromEuler(self.items_ori_list[i]), useFixedBase=False,
+                                   flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
 
             r = np.random.uniform(0, 0.9)
             g = np.random.uniform(0, 0.9)
             b = np.random.uniform(0, 0.9)
             p.changeVisualShape(self.lego_idx[i], -1, rgbaColor=(r, g, b, 1))
 
-        return self.get_obs('images', None)
+        # if the urdf is lego, all ori after knolling should be 0, not pi / 2
+        self.items_ori_list[:, 2] = 0
+        data_after = np.concatenate((self.items_pos_list[:, :2], self.xyz_list[:, :2], self.items_ori_list[:, 2].reshape(-1, 1)), axis=1)
+        np.savetxt('./learning_data_demo/cfg_0/labels_after/label_%d.txt' % self.evaluations, data_after, fmt='%.03f')
 
-    def planning(self, order, conn, real_height, sim_height, evaluation):
+        return self.get_obs('images')
+
+    def planning(self, order, conn, real_height, sim_height):
 
         def get_start_end():  # generating all trajectories of all items in normal condition
             arm_z = 0
             roll = 0
             pitch = 0
             if self.obs_order == 'sim_image_obj_evaluate':
-                manipulator_before, new_xyz_list, error = self.get_obs(self.obs_order, evaluation)
+                manipulator_before, new_xyz_list, error = self.get_obs(self.obs_order)
                 return error
             else:
-                manipulator_before, new_xyz_list = self.get_obs(self.obs_order, evaluation)
+                manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
 
             # sequence pos_before, ori_before, pos_after, ori_after
             start_end = []
@@ -971,9 +734,9 @@ class Arm:
                 distance = tar_pos[0]
                 distance_y = tar_pos[0]
                 tar_pos[2] = tar_pos[2] + new_z_formula(distance)
-                print('this is z', new_z_formula(distance))
+                print('this is z add', new_z_formula(distance))
                 tar_pos[0] = tar_pos[0] + new_x_formula(distance)
-                print('this is x', new_x_formula(distance))
+                print('this is x add', new_x_formula(distance))
                 if tar_pos[1] > 0:
                     tar_pos[1] += new_y_formula(distance_y) * np.clip((6 * (tar_pos[1] + 0.01)), 0, 1)
                 else:
@@ -1107,6 +870,7 @@ class Arm:
                         final_angles_real = conn.recv(4096)
                         # print('received')
                         final_angles_real = np.frombuffer(final_angles_real, dtype=np.float32).reshape(-1, 6)
+                        print('this is final after moving', final_angles_real)
 
                         ik_angles_real = np.asarray(cmd2rad(real_tarpos2cmd(final_angles_real)), dtype=np.float32)
                         for motor_index in range(self.num_motor):
@@ -1205,7 +969,7 @@ class Arm:
             restrict_gripper_diagonal = np.sqrt(gripper_width ** 2 + gripper_height ** 2)
             barricade_pos = []
             barricade_index = []
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+            manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
             print('this is test obs xyz', new_xyz_list)
             for i in range(len(manipulator_before)):
                 for j in range(len(self.manipulator_after)):
@@ -1307,7 +1071,7 @@ class Arm:
                 break_flag = False
                 barricade_pos = []
                 barricade_index = []
-                manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+                manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
                 for i in range(len(manipulator_before)):
                     for j in range(len(self.manipulator_after)):
                         # 这里会因为漏检的bug而报错！
@@ -1513,7 +1277,7 @@ class Arm:
                 crowded_pos = []
                 crowded_ori = []
                 crowded_index = []
-                manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+                manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
                 for i in range(len(manipulator_before)):
                     for j in range(len(manipulator_before)):
                         restrict_item_i = np.sqrt((new_xyz_list[i][0]) ** 2 + (new_xyz_list[i][1]) ** 2)
@@ -1540,10 +1304,12 @@ class Arm:
 
         def knolling():
 
-            start_end, new_xyz_list_knolling = get_start_end()
-
             if self.obs_order == 'sim_image_obj_evaluate':
-                return start_end
+                env_loss = get_start_end()
+                return env_loss
+            else:
+                start_end, new_xyz_list_knolling = get_start_end()
+
 
             rest_pos = np.array([0, 0, 0.05])
             rest_ori = np.array([0, 1.57, 0])
@@ -1609,7 +1375,7 @@ class Arm:
         def check_accuracy_sim(): # need improvement
 
 
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _) # the sequence along 2,3,4
+            manipulator_before, new_xyz_list = self.get_obs(self.obs_order) # the sequence along 2,3,4
             manipulator_knolling = manipulator_before[:, :2]
             xyz_knolling = new_xyz_list
             # don't change the order of xyz in sim!!!!!!!!!!!!!
@@ -1663,7 +1429,7 @@ class Arm:
                     print('error!')
 
         def check_accuracy_real():
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order, _)
+            manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
             manipulator_knolling = manipulator_before[:, :2]
             xyz_knolling = new_xyz_list
             # don't change the order of xyz in sim!!!!!!!!!!!!!
@@ -1735,7 +1501,7 @@ class Arm:
             error = get_start_end()
             return error
 
-    def step(self, evaluation):
+    def step(self):
 
         if self.real_operate == True:
 
@@ -1783,7 +1549,7 @@ class Arm:
         # 1: clean_desk + clean_item, 3: knolling, 4: check_accuracy of knolling, 5: get_camera
         # self.planning(1, conn, table_surface_height, sim_table_surface_height, evaluation)
         # error = self.planning(5, conn, table_surface_height, sim_table_surface_height, evaluation)
-        error = self.planning(3, conn, table_surface_height, sim_table_surface_height, evaluation)
+        error = self.planning(3, conn, table_surface_height, sim_table_surface_height)
         # self.planning(4, conn, table_surface_height, sim_table_surface_height, evaluation)
         #######################################################################################
 
@@ -1793,7 +1559,7 @@ class Arm:
         if self.real_operate == True:
             end = np.array([0], dtype=np.float32)
             conn.sendall(end.tobytes())
-        print(f'evaluation {evaluation} over!!!!!')
+        print(f'evaluation 0 over!!!!!')
 
 if __name__ == '__main__':
 
@@ -1859,38 +1625,46 @@ if __name__ == '__main__':
     if command == 'knolling':
 
         lego_num = 8
-        area_num = 4
+        area_num = 3
         ratio_num = 1
         boxes_index = np.random.choice(30, lego_num)
         # total_offset = [0.15, 0.1, 0]
         total_offset = [0.016, -0.17 + 0.016, 0]
         gap_item = 0.015
-        gap_block = 0.02
+        gap_block = 0.015
         random_offset = False
-        real_operate = False
-        obs_order = 'sim_image_obj'
+        real_operate = True
+        obs_order = 'real_image_obj'
         check_detection_loss = False
         obs_img_from = 'env'
-        use_yolo_pos = False
+        use_lego_urdf = True
 
-        lego_num = np.array([2, 2, 0, 0, 0, 0, 3, 0, 0, 4, 0, 0])
+        item_odd_prevent = True
+        block_odd_prevent = True
+        upper_left_max = True
+        forced_rotate_box = False
+
+        lego_num = np.array([2, 0, 0, 3, 0, 0, 0, 0, 0, 4, 0, 0])
         grasp_order = np.arange(len(lego_num))
         index = np.where(lego_num == 0)
         grasp_order = np.delete(grasp_order, index)
 
         env = Arm(is_render=True)
+        evaluations = 0
         env.get_parameters(lego_num=lego_num, area_num=area_num, ratio_num=ratio_num, boxes_index=boxes_index,
-                           total_offset=total_offset,
+                           total_offset=total_offset, evaluations=evaluations,
                            gap_item=gap_item, gap_block=gap_block,
                            real_operate=real_operate, obs_order=obs_order,
                            random_offset=random_offset, check_detection_loss=check_detection_loss,
-                           obs_img_from=obs_img_from, use_yolo_pos=use_yolo_pos)
-        evaluations = 1
+                           obs_img_from=obs_img_from, use_lego_urdf=use_lego_urdf,
+                           item_odd_prevent=item_odd_prevent, block_odd_prevent = block_odd_prevent,
+                           upper_left_max = upper_left_max, forced_rotate_box=forced_rotate_box)
 
-        for i in range(evaluations):
-            image_trim = env.change_config()
-            _ = env.reset()
-            env.step(i)
+
+        # for i in range(evaluations):
+        image_trim = env.change_config()
+        _ = env.reset()
+        env.step()
 
     if command == 'evaluate_object_detection':
 
@@ -1898,30 +1672,59 @@ if __name__ == '__main__':
         error_min = 100
         evaluation_min = 0
         error_list = []
+        env = Arm(is_render=True)
         for i in range(evaluations):
-            num_2x2 = np.random.randint(1, 6)
-            num_2x3 = np.random.randint(1, 6)
-            num_2x4 = np.random.randint(1, 6)
-            total_offset = [0.15, 0, 0]
-            grasp_order = [1, 0, 2]
+            # num_2x2 = np.random.randint(1, 6)
+            # num_2x3 = np.random.randint(1, 6)
+            # num_2x4 = np.random.randint(1, 6)
+            # total_offset = [0.15, 0, 0]
+            # grasp_order = [1, 0, 2]
+            # gap_item = 0.015
+            # gap_block = 0.02
+            # random_offset = True
+            # real_operate = False
+            # obs_order = 'sim_image_obj_evaluate'
+            # check_detection_loss = False
+            # obs_img_from = 'env'
+            #
+            # lego_num = np.array([2, 2, 0, 0, 0, 0, 3, 0, 0, 4, 0, 0])
+            #
+            # env = Arm(is_render=True)
+            # env.get_parameters(lego_num=lego_num,
+            #                    total_offset=total_offset, grasp_order=grasp_order,
+            #                    gap_item=gap_item, gap_block=gap_block,
+            #                    real_operate=real_operate, obs_order=obs_order,
+            #                    random_offset=random_offset, check_detection_loss=check_detection_loss,
+            #                    obs_img_from=obs_img_from)
+            # image_trim = env.change_config()
+
+            lego_num = np.random.randint(4, 10)
+            area_num = 4
+            ratio_num = 1
+            boxes_index = np.random.choice(30, lego_num)
+            # total_offset = [0.15, 0.1, 0]
+            total_offset = [0.016, -0.17 + 0.016, 0]
             gap_item = 0.015
             gap_block = 0.02
-            random_offset = True
+            random_offset = False
             real_operate = False
             obs_order = 'sim_image_obj_evaluate'
             check_detection_loss = False
             obs_img_from = 'env'
+            use_yolo_pos = False
 
             lego_num = np.array([2, 2, 0, 0, 0, 0, 3, 0, 0, 4, 0, 0])
+            grasp_order = np.arange(len(lego_num))
+            index = np.where(lego_num == 0)
+            grasp_order = np.delete(grasp_order, index)
 
-            env = Arm(is_render=True)
-            env.get_parameters(lego_num=lego_num,
-                               total_offset=total_offset, grasp_order=grasp_order,
+            env.get_parameters(lego_num=lego_num, area_num=area_num, ratio_num=ratio_num, boxes_index=boxes_index,
+                               total_offset=total_offset,
                                gap_item=gap_item, gap_block=gap_block,
                                real_operate=real_operate, obs_order=obs_order,
                                random_offset=random_offset, check_detection_loss=check_detection_loss,
-                               obs_img_from=obs_img_from)
-            image_trim = env.change_config()
+                               obs_img_from=obs_img_from, use_yolo_pos=use_yolo_pos)
+
             _ = env.reset()
             error = env.step(i)
             error_list.append(error)

@@ -10,9 +10,9 @@
        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="-0.01 -0.01 -0.005"/>
+      <origin rpy="0 0 1.57" xyz="-0.0 -0.0 -0.005"/>
       <geometry>
-		<mesh filename="plane100.obj" scale="0.221 0.221 1"/>
+		<mesh filename="plane100.obj" scale="0.2 0.2 1"/>
       </geometry>
       <material
         name="red">

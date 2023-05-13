@@ -1,6 +1,8 @@
 import numpy as np
-from yolo_data_collection_env_useless import *
+# from yolo_data_collection_env import *
 import os
+import cv2
+import shutil
 
 def yolo_box(img, label):
     # label = [0,x,y,l,w],[0,x,y,l,w],...
@@ -16,7 +18,9 @@ def yolo_box(img, label):
 
         # img = img/255
         img = cv2.rectangle(img,(x_lt,y_lt),(x_rb,y_rb), color = (0,0,0), thickness = 1)
-    cv2.namedWindow("zzz", 0)
+
+    img = cv2.resize(img, (1280, 960), interpolation=cv2.INTER_AREA)
+    # cv2.namedWindow("zzz", 0)
     cv2.imshow('zzz', img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -251,33 +255,62 @@ def pose4keypoints(data_root, target_path):
     start_index = 2000
     num_item = 15
 
-    import shutil
     for i in range(total_num):
-        cur_path = os.path.join(data_root, "images/%012d.png") % i
-        tar_path = os.path.join(target_path, "images/%012d.png") % i
-        shutil.copy(cur_path, tar_path)
+
+        raw_img = cv2.imread(data_root + "origin_images/%012d.png" % i)
+
+        # cv2.namedWindow("zzz", 0)
+        # cv2.imshow('zzz', raw_img)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
+        # kernel = np.array([[-1, -1, -1], [2, 2, 2], [-1, -1, -1]], dtype=int)
+        # kernel = np.array([[-1, 2, -1], [-1, 2, -1], [-1, 2, -1]], dtype=int)
+        # img = cv2.filter2D(raw_img,-1,kernel)
+
+        kernel_size = (3, 3)
+        img = cv2.blur(raw_img, kernel_size)
+
+        # cv2.namedWindow("zzz", 0)
+        # cv2.imshow('zzz', img)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
+        print(i)
+        cv2.imwrite(data_root + 'images/%012d.png' % i, img)
+
+
+    # for i in range(total_num):
+    #     cur_path = os.path.join(data_root, "images/%012d.png") % i
+    #     tar_path = os.path.join(target_path, "images/%012d.png") % i
+    #     shutil.copy(cur_path, tar_path)
 
     import warnings
     with warnings.catch_warnings(record=True) as w:
 
+        # for i in range(15000):
+        #     real_world_data = np.loadtxt(os.path.join(data_root, "labels/%012d.txt") % i)
+        #     if real_world_data[14, 0] == 1:
+        #         pass
+        #     else:
+        #         cut_id = np.where(real_world_data[:, 0] == 0)[0][0]
+        #         real_world_data = np.delete(real_world_data, np.arange(cut_id, num_item), 0)
+        #     real_world_data[:, 0] = 0
+        #     np.savetxt(os.path.join(data_root, "labels_new/%012d.txt") % i, real_world_data, fmt='%.8s')
+        # quit()
+
         total_1 = 0
         total_2 = 0
         for i in range(total_num):
-            real_world_data = np.loadtxt(os.path.join(data_root, "labels/%012d.txt") % i)
+            real_world_data = np.loadtxt(os.path.join(data_root, "origin_labels/%012d.txt") % i)
             corner_list = []
             label_plot = []
-            # if real_world_data[14, 0] == 1:
-            #     pass
-            # else:
-            #     cut_id = np.where(real_world_data[:, 0] == 0)[0][0]
-            #     real_world_data = np.delete(real_world_data, np.arange(cut_id, num_item), 0)
-            real_world_data[:, 0] = 0
-
             label = []
+
             print('this is index of images', i)
             for j in range(len(real_world_data)):
                 # print(real_world_data[j])
-                print('this is index if legos', j)
+                # print('this is index if legos', j)
                 xpos1, ypos1 = real_world_data[j][1], real_world_data[j][2]
                 l, w = real_world_data[j][3], real_world_data[j][4]
                 yawori = real_world_data[j][5]
@@ -296,7 +329,7 @@ def pose4keypoints(data_root, target_path):
                 width = w * 3
                 # ensure the yolo sequence!
                 keypoints, total_1, total_2 = find_keypoints(xpos1, ypos1, l, w, yawori, mm2px, total_1, total_2)
-                # keypoints_order = np.lexsort((keypoints[:, 0], keypoints[:, 1]))[::-1]
+                # keypoints_order = np.lexsort((keypoints[:, 0], keypoints[:, 1]))
                 # keypoints = keypoints[keypoints_order]
 
 
@@ -319,10 +352,10 @@ def pose4keypoints(data_root, target_path):
 
                 col_list = np.sort(col_list)
                 row_list = np.sort(row_list)
-                col_list[3] = col_list[3] + 6
-                col_list[0] = col_list[0] - 6
-                row_list[3] = row_list[3] + 6
-                row_list[0] = row_list[0] - 6
+                col_list[3] = col_list[3] + 7
+                col_list[0] = col_list[0] - 7
+                row_list[3] = row_list[3] + 7
+                row_list[0] = row_list[0] - 7
 
                 label_x_plot = ((col_list[0] + col_list[3]) / 2) / 640
                 label_y_plot = (((row_list[0] + row_list[3]) / 2) + 6) / 480
@@ -350,14 +383,119 @@ def pose4keypoints(data_root, target_path):
             # print('this is plot element\n', label_plot)
 
 
-            np.savetxt(os.path.join(target_path, "labels/%012d.txt") % i, label, fmt='%.8s')
+            np.savetxt(os.path.join(data_root, "labels/%012d.txt") % i, label, fmt='%.8s')
             # img = cv2.imread(os.path.join(data_root, "images/%012d.png") % i)
             # img = yolo_box(img, label_plot)
         print('this is total_1', total_1)
         print('this is total_2', total_2)
-        # if len(w) > 0:
-        #     quit()
 
+def manual_pose4keypoints(data_root, target_path):
+    os.makedirs(data_root, exist_ok=True)
+    os.makedirs(target_path, exist_ok=True)
+    os.makedirs(target_path + 'images/', exist_ok=True)
+    os.makedirs(target_path + 'labels/', exist_ok=True)
+    mm2px = 530 / 0.34  # (1558)
+    img_index = input('Enter the index of img:')
+    img_index = int(img_index)
+
+    cur_path = os.path.join(data_root, "images/%012d.png") % img_index
+    tar_path = os.path.join(target_path, "images/%012d.png") % img_index
+    shutil.copy(cur_path, tar_path)
+
+    # num_item = input('Enter the num of boxes in one img:')
+    #
+    # data_total = []
+    # for i in range(int(num_item)):
+    #     data = input('Enter the xylwori of one img (five datas in total):').split(" ")
+    #     data_total.append(np.array([float(j) for j in data]))
+    # data_total = np.concatenate((np.zeros((len(data_total), 1)), np.asarray(data_total)), axis=1)
+    # data_total[:, 5] = data_total[:, 5] / 180 * np.pi
+    # print(data_total)
+    # np.savetxt(os.path.join(data_root, "labels/%012d.txt") % img_index, data_total, fmt='%.8s')
+
+    data_total = np.loadtxt(os.path.join(data_root, "labels/%012d.txt") % img_index)
+    data_total[:, 5] = data_total[:, 5] / 180 * np.pi
+
+    corner_list = []
+    label_plot = []
+    label = []
+    total_1 = 0
+    total_2 = 0
+    for j in range(len(data_total)):
+        print(data_total[j])
+        # print('this is index if legos', j)
+        xpos1, ypos1 = data_total[j][1], data_total[j][2]
+        l, w = data_total[j][3], data_total[j][4]
+        yawori = data_total[j][5]
+        if l < w:
+            l = data_total[j][4]
+            w = data_total[j][3]
+            if yawori > np.pi / 2:
+                yawori = yawori - np.pi / 2
+            else:
+                yawori = yawori + np.pi / 2
+
+        # ensure the yolo sequence!
+        label_y = (xpos1 * mm2px + 6) / 480
+        label_x = (ypos1 * mm2px + 320) / 640
+        length = l * 3
+        width = w * 3
+        # ensure the yolo sequence!
+        keypoints, total_1, total_2 = find_keypoints(xpos1, ypos1, l, w, yawori, mm2px, total_1, total_2)
+        # keypoints_order = np.lexsort((keypoints[:, 0], keypoints[:, 1]))[::-1]
+        # keypoints = keypoints[keypoints_order]
+
+        element = np.concatenate(([0], [label_x, label_y], [length, width], keypoints.reshape(-1)))
+        # print(label)
+
+        corn1, corn2, corn3, corn4 = find_corner(xpos1, ypos1, l, w, yawori)
+        corner_list.append([corn1, corn2, corn3, corn4])
+        corns = corner_list[j]
+
+        col_offset = 320
+        # row_offset = (0.154 - (0.3112 - 0.154)) * mm2px + 5
+        row_offset = 0
+
+        col_list = np.array([mm2px * corns[0][1] + col_offset, mm2px * corns[3][1] + col_offset,
+                             mm2px * corns[1][1] + col_offset, mm2px * corns[2][1] + col_offset])
+        row_list = np.array([mm2px * corns[0][0] - row_offset, mm2px * corns[3][0] - row_offset,
+                             mm2px * corns[1][0] - row_offset, mm2px * corns[2][0] - row_offset])
+
+        col_list = np.sort(col_list)
+        row_list = np.sort(row_list)
+        col_list[3] = col_list[3]
+        col_list[0] = col_list[0]
+        row_list[3] = row_list[3]
+        row_list[0] = row_list[0]
+
+        label_x_plot = ((col_list[0] + col_list[3]) / 2) / 640
+        label_y_plot = (((row_list[0] + row_list[3]) / 2) + 6) / 480
+        label_y = (xpos1 * mm2px + 6) / 480
+        label_x = (ypos1 * mm2px + 320) / 640
+
+        length_plot = (col_list[3] - col_list[0]) / 640
+        width_plot = (row_list[3] - row_list[0]) / 480
+        element_plot = []
+        element_plot.append(0)
+        element_plot.append(label_x_plot)
+        element_plot.append(label_y_plot)
+        element_plot.append(length_plot)
+        element_plot.append(width_plot)
+        element_plot = np.asarray(element_plot)
+        label_plot.append(element_plot)
+
+        # change the lw to yolo_lw in label!!!!!!
+        element[3] = length_plot
+        element[4] = width_plot
+        label.append(element)
+
+    label = np.asarray(label)
+    print('this is element\n', label)
+    # print('this is plot element\n', label_plot)
+    img = cv2.imread(os.path.join(data_root, "images/%012d.png") % img_index)
+    img = yolo_box(img, label_plot)
+
+    np.savetxt(os.path.join(target_path, "labels/%012d.txt") % img_index, label, fmt='%.8s')
 
 def train_test_split(data_root, target_path):
 
@@ -380,7 +518,7 @@ def train_test_split(data_root, target_path):
         shutil.copy(cur_path, tar_path)
 
         cur_path = os.path.join(data_root, 'labels/%012d.txt') % (i)
-        tar_path = os.path.join(data_root, 'labels/train/%012d.txt') % i
+        tar_path = os.path.join(target_path, 'labels/train/%012d.txt') % i
         shutil.copy(cur_path, tar_path)
 
     for i in range(train_num, total_num):
@@ -389,21 +527,21 @@ def train_test_split(data_root, target_path):
         shutil.copy(cur_path, tar_path)
 
         cur_path = os.path.join(data_root, 'labels/%012d.txt') % (i)
-        tar_path = os.path.join(data_root, 'labels/val/%012d.txt') % i
+        tar_path = os.path.join(target_path, 'labels/val/%012d.txt') % i
         shutil.copy(cur_path, tar_path)
 
 if __name__ == '__main__':
 
-    # object_detection()
+    # data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_510_tuning/'
+    # target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_510_tuning/'
+    # manual_pose4keypoints(data_root, target_path)
 
-    # pose_estimation()
-
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_2/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_508/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/'
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_512/'
     pose4keypoints(data_root, target_path)
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_508/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_508/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/'
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_512/'
     train_test_split(data_root, target_path)
 
     # data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/labels/'
@@ -414,8 +552,3 @@ if __name__ == '__main__':
     #
     # for m in l:
     #     os.remove(data_root + m)
-
-    # for i in range(15000):
-    #     data = np.loadtxt(data_root + 'normal_409_%s.csv' % i)
-    #     # print(data)
-    #     np.savetxt(data_root + '%012d.txt' % i, data)
