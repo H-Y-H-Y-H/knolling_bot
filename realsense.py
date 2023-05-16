@@ -81,7 +81,7 @@ try:
 
         # os.makedirs('real_image_collect/', exist_ok=True)
         # path = './urdf/'
-        path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_510_tuning/images/'
+        path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_tuning/images/'
         # resized_color_image = resized_color_image[9:470, 58: 581]
         i = 6
         cv2.imwrite(path + '%012d.png' % i, resized_color_image)

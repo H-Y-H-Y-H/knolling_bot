@@ -41,36 +41,36 @@ def yolo_box(img, label):
 
 if __name__ == '__main__':
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_3/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_4/'
     os.makedirs(data_root, exist_ok=True)
 
-    p.connect(p.GUI)
-
-    startnum = 0
-    endnum = 10
+    startnum = 9000
+    endnum = 10000
     lebal_list = []
 
     num_reset = True
     CLOSE_FLAG = False
     texture_flag = True
-    max_lego_num = 12
+    max_lego_num = 10
     mm2px = 530 / 0.34
 
+    total_box_urdf = 100
+
     use_lego_urdf = False
+    env = Arm_env(max_step=1, is_render=True)
 
     for epoch in tqdm(range(startnum,endnum)):
         # num_item = random.randint(1, 5)
 
         num_item = int(np.random.uniform(4, max_lego_num + 1))
-        boxes_index = np.random.choice(30, num_item)
+        boxes_index = np.random.choice(total_box_urdf, num_item)
 
         num_2x2 = np.random.randint(1, 5)
         num_2x3 = np.random.randint(1, 5)
         num_2x4 = np.random.randint(1, 5)
         lego_list = np.array([num_2x2, num_2x3, num_2x4])
 
-        env = Arm_env(max_step=1, is_render=False, boxes_index=boxes_index)
-        state, lw_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag, use_lego_urdf=use_lego_urdf, lego_list=lego_list)
+        state, lw_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag, use_lego_urdf=use_lego_urdf, lego_list=lego_list, boxes_index=boxes_index)
 
         label = np.zeros((num_item, 6))
 

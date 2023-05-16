@@ -275,7 +275,7 @@ class Arm_env(gym.Env):
             lineToXYZ=[0, 0.17, self.z_low_obs])
 
         rad_pos = np.random.sample(3)
-        baseid = p.loadURDF(os.path.join(self.urdf_path, "plane_1.urdf"), basePosition=[0, -0.2, 0],
+        baseid = p.loadURDF(os.path.join(self.urdf_path, "plane_zzz.urdf"), basePosition=[0, -0.2, 0],
                             baseOrientation=p.getQuaternionFromEuler([0, 0, 0]), useFixedBase=1,
                             flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         # self.arm_id = p.loadURDF(os.path.join(self.urdf_path, "robot_arm928/robot_arm1.urdf"),

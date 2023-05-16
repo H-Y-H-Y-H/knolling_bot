@@ -251,7 +251,7 @@ def pose4keypoints(data_root, target_path):
     os.makedirs(target_path + 'images/', exist_ok=True)
     os.makedirs(target_path + 'labels/', exist_ok=True)
     mm2px = 530 / 0.34  # (1558)
-    total_num = 4000
+    total_num = 10000
     start_index = 2000
     num_item = 15
 
@@ -268,8 +268,8 @@ def pose4keypoints(data_root, target_path):
         # kernel = np.array([[-1, 2, -1], [-1, 2, -1], [-1, 2, -1]], dtype=int)
         # img = cv2.filter2D(raw_img,-1,kernel)
 
-        kernel_size = (3, 3)
-        img = cv2.blur(raw_img, kernel_size)
+        # kernel_size = (3, 3)
+        # img = cv2.blur(raw_img, kernel_size)
 
         # cv2.namedWindow("zzz", 0)
         # cv2.imshow('zzz', img)
@@ -277,13 +277,7 @@ def pose4keypoints(data_root, target_path):
         # cv2.destroyAllWindows()
 
         print(i)
-        cv2.imwrite(data_root + 'images/%012d.png' % i, img)
-
-
-    # for i in range(total_num):
-    #     cur_path = os.path.join(data_root, "images/%012d.png") % i
-    #     tar_path = os.path.join(target_path, "images/%012d.png") % i
-    #     shutil.copy(cur_path, tar_path)
+        cv2.imwrite(data_root + 'images/%012d.png' % i, raw_img)
 
     import warnings
     with warnings.catch_warnings(record=True) as w:
@@ -303,6 +297,7 @@ def pose4keypoints(data_root, target_path):
         total_2 = 0
         for i in range(total_num):
             real_world_data = np.loadtxt(os.path.join(data_root, "origin_labels/%012d.txt") % i)
+            real_world_img = cv2.imread(data_root + "origin_images/%012d.png" % i)
             corner_list = []
             label_plot = []
             label = []
@@ -352,10 +347,10 @@ def pose4keypoints(data_root, target_path):
 
                 col_list = np.sort(col_list)
                 row_list = np.sort(row_list)
-                col_list[3] = col_list[3] + 7
-                col_list[0] = col_list[0] - 7
-                row_list[3] = row_list[3] + 7
-                row_list[0] = row_list[0] - 7
+                col_list[3] = col_list[3] + 10
+                col_list[0] = col_list[0] - 10
+                row_list[3] = row_list[3] + 10
+                row_list[0] = row_list[0] - 10
 
                 label_x_plot = ((col_list[0] + col_list[3]) / 2) / 640
                 label_y_plot = (((row_list[0] + row_list[3]) / 2) + 6) / 480
@@ -385,7 +380,7 @@ def pose4keypoints(data_root, target_path):
 
             np.savetxt(os.path.join(data_root, "labels/%012d.txt") % i, label, fmt='%.8s')
             # img = cv2.imread(os.path.join(data_root, "images/%012d.png") % i)
-            # img = yolo_box(img, label_plot)
+            # img = yolo_box(real_world_img, label_plot)
         print('this is total_1', total_1)
         print('this is total_2', total_2)
 
@@ -501,7 +496,7 @@ def train_test_split(data_root, target_path):
 
     import shutil
     ratio = 0.8
-    total_num = 4000
+    total_num = 10000
     train_num = int(total_num * ratio)
     test_num = int(total_num - train_num)
     print(train_num)
@@ -536,12 +531,12 @@ if __name__ == '__main__':
     # target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_510_tuning/'
     # manual_pose4keypoints(data_root, target_path)
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_512/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_4/'
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_516/'
     pose4keypoints(data_root, target_path)
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_512/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_4/'
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_516/'
     train_test_split(data_root, target_path)
 
     # data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/labels/'

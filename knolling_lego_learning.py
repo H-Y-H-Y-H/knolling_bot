@@ -195,7 +195,7 @@ class Arm:
 
             ground_truth_pose_test = np.copy(ground_truth_pose[order_ground_truth, :])
             for i in range(len(order_ground_truth) - 1):
-                if np.abs(ground_truth_pose_test[i, 1] - ground_truth_pose_test[i+1, 1]) < 0.003:
+                if np.abs(ground_truth_pose_test[i, 1] - ground_truth_pose_test[i+1, 1]) < 0.01:
                     if ground_truth_pose_test[i, 2] < ground_truth_pose_test[i+1, 2]:
                         # ground_truth_pose[order_ground_truth[i]], ground_truth_pose[order_ground_truth[i+1]] = ground_truth_pose[order_ground_truth[i+1]], ground_truth_pose[order_ground_truth[i]]
                         order_ground_truth[i], order_ground_truth[i+1] = order_ground_truth[i+1], order_ground_truth[i]
@@ -349,52 +349,6 @@ class Arm:
             new_xyz_list = self.xyz_list
             print('this is manipulator before after the detection \n', manipulator_before)
 
-            # # arange the sequence based on categories of cubes
-            # all_index = []
-            # new_xyz_list = []
-            # kind = []
-            # new_results = []
-            # ori_index = []
-            # z = 0
-            # roll = 0
-            # pitch = 0
-            # num = 0
-            # for i in range(len(self.correct)):
-            #     kind_index = []
-            #     for j in range(len(results)):
-            #         # if np.linalg.norm(self.correct[i][:2] - results[j][3:5]) < 0.003:
-            #         if np.linalg.norm(self.correct[i][0] - results[j][2]) < 0.004:
-            #             kind_index.append(num)
-            #             new_xyz_list.append(self.correct[i])
-            #             num += 1
-            #             if i in kind:
-            #                 pass
-            #             else:
-            #                 kind.append(i)
-            #             ori_index.append(j)
-            #             new_results.append(results[j])
-            #         else:
-            #             pass
-            #             print('detect failed!!!')
-            #     if len(kind_index) != 0:
-            #         all_index.append(kind_index)
-            # new_xyz_list = np.asarray(new_xyz_list)
-            # ori_index = np.asarray(ori_index)
-            # new_results = np.asarray(new_results)
-            # print(new_results)
-            # print(all_index)
-            #
-            # manipulator_before = []
-            # for i in range(len(all_index)):
-            #     for j in range(len(all_index[i])):
-            #         manipulator_before.append(
-            #             [new_results[all_index[i][j]][0], new_results[all_index[i][j]][1], z, roll, pitch,
-            #              new_results[all_index[i][j], 4]])
-            # manipulator_before = np.asarray(manipulator_before)
-            #
-            # print('this is the result of dectection before changing the sequence\n', results)
-            # print('this is manipulator before after the detection \n', manipulator_before)
-
             return manipulator_before, new_xyz_list
 
         if order == 'sim_obj':
@@ -434,7 +388,7 @@ class Arm:
             lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
             lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
 
-        baseid = p.loadURDF(self.urdf_path + "plane_1.urdf", basePosition=[0, -0.2, 0], useFixedBase=1,
+        baseid = p.loadURDF(self.urdf_path + "plane_zzz.urdf", basePosition=[0, -0.2, 0], useFixedBase=1,
                             flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         self.arm_id = p.loadURDF(os.path.join(self.urdf_path, "robot_arm928/robot_arm1.urdf"),
                                  basePosition=[-0.08, 0, 0.02], useFixedBase=True,
@@ -578,7 +532,7 @@ class Arm:
                 num_lego += 1
 
         data_before = np.concatenate((self.pos_before[:, :2], self.xyz_list[:, :2], self.ori_before[:, 2].reshape(-1, 1)), axis=1)
-        np.savetxt('./learning_data_demo/cfg_0/labels_before/label_%d.txt' % self.evaluations, data_before, fmt='%.03f')
+        np.savetxt('./learning_data_demo/cfg_4/labels_before/label_6_%d.txt' % self.evaluations, data_before, fmt='%.03f')
 
         return self.get_obs('images')
         # return self.pos_before, self.ori_before, self.xyz_list
@@ -601,7 +555,7 @@ class Arm:
             lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
             lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
 
-        baseid = p.loadURDF(self.urdf_path + "plane_1.urdf", basePosition=[0, -0.2, 0], useFixedBase=1,
+        baseid = p.loadURDF(self.urdf_path + "plane_zzz.urdf", basePosition=[0, -0.2, 0], useFixedBase=1,
                             flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         self.arm_id = p.loadURDF(self.urdf_path + "robot_arm928/robot_arm1.urdf",
                                  basePosition=[-0.08, 0, 0.02], useFixedBase=True,
@@ -685,7 +639,7 @@ class Arm:
         # if the urdf is lego, all ori after knolling should be 0, not pi / 2
         self.items_ori_list[:, 2] = 0
         data_after = np.concatenate((self.items_pos_list[:, :2], self.xyz_list[:, :2], self.items_ori_list[:, 2].reshape(-1, 1)), axis=1)
-        np.savetxt('./learning_data_demo/cfg_0/labels_after/label_%d.txt' % self.evaluations, data_after, fmt='%.03f')
+        np.savetxt('./learning_data_demo/cfg_4/labels_after/label_6_%d.txt' % self.evaluations, data_after, fmt='%.03f')
 
         return self.get_obs('images')
 
@@ -1584,7 +1538,7 @@ if __name__ == '__main__':
         # total_offset = [0.1, -0.1, 0]
         total_offset = [0.016, -0.17 + 0.016, 0]
         gap_item = 0.015
-        gap_block = 0.02
+        gap_block = 0.015
         random_offset = True
         real_operate = False
         obs_order = 'images'
@@ -1625,7 +1579,7 @@ if __name__ == '__main__':
     if command == 'knolling':
 
         lego_num = 8
-        area_num = 3
+        area_num = 2
         ratio_num = 1
         boxes_index = np.random.choice(30, lego_num)
         # total_offset = [0.15, 0.1, 0]
@@ -1650,7 +1604,7 @@ if __name__ == '__main__':
         grasp_order = np.delete(grasp_order, index)
 
         env = Arm(is_render=True)
-        evaluations = 0
+        evaluations = 3
         env.get_parameters(lego_num=lego_num, area_num=area_num, ratio_num=ratio_num, boxes_index=boxes_index,
                            total_offset=total_offset, evaluations=evaluations,
                            gap_item=gap_item, gap_block=gap_block,
@@ -1705,7 +1659,7 @@ if __name__ == '__main__':
             # total_offset = [0.15, 0.1, 0]
             total_offset = [0.016, -0.17 + 0.016, 0]
             gap_item = 0.015
-            gap_block = 0.02
+            gap_block = 0.015
             random_offset = False
             real_operate = False
             obs_order = 'sim_image_obj_evaluate'

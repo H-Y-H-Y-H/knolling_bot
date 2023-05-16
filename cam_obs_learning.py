@@ -247,9 +247,8 @@ def adjust_img(img):
     return new_img
 
 def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, data_path=None, model_path=None, real_flag=None, target=None):
-    # data_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/'
-    # model_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/YOLOv8/runs/pose/train_standard_1000/weights/best.pt'
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_512/weights/best.pt'
+
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_508/weights/best.pt'
     # source_pth = data_path + img_path
     # source_pth = data_path + 'real_image_collect/'
     # source_pth = data_path + 'yolo_pose4keypoints/images/val/'
@@ -258,7 +257,7 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, d
 
     cv2.imwrite(img_path + '.png', img)
     img_path_input = img_path + '.png'
-    args = dict(model=model, source=img_path_input, conf=0.5, iou=0.2)
+    args = dict(model=model, source=img_path_input, conf=0.3, iou=0.2)
     use_python = True
     if use_python:
         from ultralytics import YOLO
@@ -288,11 +287,11 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, d
 
     pred_test = np.copy(pred[pred_order])
     for i in range(len(pred) - 1):
-        if np.abs(pred_test[i, 1] - pred_test[i + 1, 1]) < 0.003:
+        if np.abs(pred_test[i, 1] - pred_test[i + 1, 1]) < 0.01:
             if pred_test[i, 2] < pred_test[i + 1, 2]:
                 # ground_truth_pose[order_ground_truth[i]], ground_truth_pose[order_ground_truth[i+1]] = ground_truth_pose[order_ground_truth[i+1]], ground_truth_pose[order_ground_truth[i]]
                 pred_order[i], pred_order[i + 1] = pred_order[i + 1], pred_order[i]
-                print('truth change the order!')
+                print('pred change the order!')
             else:
                 pass
     print('this is the pred order', pred_order)

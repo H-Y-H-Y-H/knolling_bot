@@ -50,3 +50,12 @@ label: 1, x, y, yolo_l, yolo_w, ori
 urdf_cfg: lego items
 change sequence of kpts
 add cv2.blur(raw_img, (3, 3)
+
+yolo_pose4points_516
+categories: 100 random boxes (generation_1)
+texture: None
+quantity: 4000
+label: 1, x, y, yolo_l, yolo_w, ori
+urdf_cfg: lego items
+change sequence of kpts
+add cv2.blur(raw_img, (3, 3)

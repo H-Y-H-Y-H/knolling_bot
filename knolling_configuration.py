@@ -277,6 +277,8 @@ class configuration_zzz():
         previous_start_item_x = start_item_x
         previous_start_item_y = start_item_y
 
+        print('this is item_xyz', item_xyz)
+        print('this is item_sequence', item_sequence)
         for m in range(item_row):
             new_row = item_xyz[item_sequence[m, :]]
             start_item_x = np.append(start_item_x,

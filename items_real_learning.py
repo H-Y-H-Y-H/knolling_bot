@@ -84,7 +84,7 @@ class Sort_objects():
         color_colormap_dim = color_image.shape
         resized_color_image = color_image
         # img_path = 'Test_images/image_real'
-        img_path = './learning_data_demo/cfg_0/images_before/8/image_%d' % self.evaluations
+        img_path = './learning_data_demo/cfg_4/images_before/6/image_%d' % self.evaluations
         # cv2.imwrite(img_path + '.png', resized_color_image)
         # cv2.waitKey(1)
 
@@ -177,6 +177,7 @@ class Sort_objects():
             all_index.append(list(np.arange(index, len(item_lw))))
             transform_flag = np.append(transform_flag, np.zeros(len(item_lw) - index))
 
+        new_item_lw = np.concatenate((new_item_lw, np.array([0.012] * len(new_item_lw)).reshape(len(new_item_lw), 1)), axis=1)
         return new_item_lw, new_item_pos, new_item_ori, all_index, transform_flag, new_urdf_index
 
     def judge(self, item_xyz, item_pos, item_ori, area_num, ratio_num, boxes_index, use_lego_urdf, lego_num):

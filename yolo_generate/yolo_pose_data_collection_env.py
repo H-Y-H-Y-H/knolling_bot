@@ -132,14 +132,14 @@ def xyz_resolve(x,y):
 
 class Arm_env(gym.Env):
 
-    def __init__(self,max_step, is_render=True, boxes_index=None, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
+    def __init__(self,max_step, is_render=True, x_grasp_accuracy=0.2, y_grasp_accuracy=0.2,
                  z_grasp_accuracy=0.2):
 
         self.kImageSize = {'width': 480, 'height': 480}
 
         self.step_counter = 0
 
-        self.urdf_path = '../urdf'
+        self.urdf_path = '../urdf/'
         self.pybullet_path = pd.getDataPath()
         self.is_render = is_render
 
@@ -147,7 +147,7 @@ class Arm_env(gym.Env):
         self.x_high_obs = 0.3
         self.y_low_obs = -0.15
         self.y_high_obs = 0.15
-        self.z_low_obs = 0.005
+        self.z_low_obs = 0.0
         self.z_high_obs = 0.05
         self.x_grasp_interval = (self.x_high_obs - self.x_low_obs) * x_grasp_accuracy
         self.y_grasp_interval = (self.y_high_obs - self.y_low_obs) * y_grasp_accuracy
@@ -162,7 +162,6 @@ class Arm_env(gym.Env):
         self.max_step = max_step
 
         self.friction = 0.99
-        self.boxes_index = boxes_index
         # self.action_space = np.asarray([np.pi/3, np.pi / 6, np.pi / 4, np.pi / 2, np.pi])
         # self.shift = np.asarray([-np.pi/6, -np.pi/12, 0, 0, 0])
         self.ik_space = np.asarray([0.3, 0.4, 0.06, np.pi])  # x, y, z, yaw
@@ -173,10 +172,10 @@ class Arm_env(gym.Env):
         # 5 6 9不用管，固定的！
         self.init_joint_positions = [0, 0, -1.57, 0, 0, 0, 0, 0, 0, 0]
 
-        # if self.is_render:
-        #     p.connect(p.GUI)
-        # else:
-        #     p.connect(p.DIRECT)
+        if self.is_render:
+            p.connect(p.GUI)
+        else:
+            p.connect(p.DIRECT)
 
         self.camera_parameters = {
             'width': 640.,
@@ -206,28 +205,54 @@ class Arm_env(gym.Env):
             nearVal=self.camera_parameters['near'],
             farVal=self.camera_parameters['far'])
 
-        if random.uniform(0, 1) > 0.5:
-            p.configureDebugVisualizer(lightPosition=[random.randint(1, 1), random.uniform(0, 1), 2],
-                                       shadowMapResolution=8192, shadowMapIntensity=np.random.randint(5, 7) / 10)
-        else:
-            p.configureDebugVisualizer(lightPosition=[random.randint(1, 1), random.uniform(-1, 0), 2],
-                                       shadowMapResolution=8192, shadowMapIntensity=np.random.randint(5, 7) / 10)
         p.resetDebugVisualizerCamera(cameraDistance=0.7,
                                      cameraYaw=45,
                                      cameraPitch=-45,
                                      cameraTargetPosition=[0.1, 0, 0.4])
         p.setAdditionalSearchPath(pd.getDataPath())
+        # p.setPhysicsEngineParameter(numSolverIterations=10)
+        p.setTimeStep(1. / 120.)
 
-    def reset_table(self, close_flag = False, texture_flag = False, use_lego_urdf = None, lego_list = None):
-        self.r = 0
-        self.step_counter = 0
+    def reset_table(self, close_flag = False, texture_flag = False, use_lego_urdf = None, lego_list = None, boxes_index=None):
 
         p.resetSimulation()
 
-        baseid = p.loadURDF(os.path.join(self.urdf_path, "plane_1.urdf"), basePosition=[0, -0.2, 0],
-                            baseOrientation=p.getQuaternionFromEuler([0, 0, 0]),useFixedBase=1,
-                            flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
+        self.r = 0
+        self.step_counter = 0
+        self.boxes_index = boxes_index
 
+        if random.uniform(0, 1) > 0.5:
+            p.configureDebugVisualizer(lightPosition=[random.randint(1, 1), random.uniform(0, 1), 2],
+                                       shadowMapResolution=8192, shadowMapIntensity=np.random.randint(6, 10) / 10)
+        else:
+            p.configureDebugVisualizer(lightPosition=[random.randint(1, 1), random.uniform(-1, 0), 2],
+                                       shadowMapResolution=8192, shadowMapIntensity=np.random.randint(6, 10) / 10)
+
+        # baseid = p.loadURDF(os.path.join(self.urdf_path, "plane_zzz.urdf"), basePosition=[0, -0.2, 0],
+        #                     baseOrientation=p.getQuaternionFromEuler([0, 0, 0]),useFixedBase=1,
+        #                     flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
+        baseid = p.loadURDF(self.urdf_path + "plane_zzz.urdf", useMaximalCoordinates=True)
+
+        # Draw workspace lines
+        p.addUserDebugLine(
+            lineFromXYZ=[self.x_low_obs - self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs],
+            lineToXYZ=[self.x_high_obs + self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs])
+        p.addUserDebugLine(
+            lineFromXYZ=[self.x_low_obs - self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs],
+            lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
+        p.addUserDebugLine(
+            lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
+            lineToXYZ=[self.x_high_obs + self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs])
+        p.addUserDebugLine(
+            lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
+            lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
+
+        # Texture change
+        background = np.random.randint(4, 5)
+        textureId = p.loadTexture(f"../urdf/img_{background}.png")
+        p.changeVisualShape(baseid, -1, textureUniqueId=textureId, specularColor=[0, 0, 0])
+
+        p.changeDynamics(baseid, -1, lateralFriction=self.friction)
 
         if not close_flag:
             p.setGravity(0, 0, -10)
@@ -251,40 +276,6 @@ class Arm_env(gym.Env):
 
             p.changeVisualShape(wallid, -1, rgbaColor=[1, 1, 1, 0])
 
-        # Draw workspace lines
-        p.addUserDebugLine(
-            lineFromXYZ=[self.x_low_obs - self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs],
-            lineToXYZ=[self.x_high_obs + self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs])
-        p.addUserDebugLine(
-            lineFromXYZ=[self.x_low_obs - self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs],
-            lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
-        p.addUserDebugLine(
-            lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
-            lineToXYZ=[self.x_high_obs + self.table_boundary, self.y_low_obs - self.table_boundary, self.z_low_obs])
-        p.addUserDebugLine(
-            lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
-            lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
-
-        # Texture change
-        background = np.random.randint(1, 5)
-        textureId = p.loadTexture(f"../urdf/img_{background}.png")
-        # textureId = p.loadTexture(f"../urdf/textures/red2.png")
-        p.changeVisualShape(baseid, -1, textureUniqueId=textureId, specularColor=[0, 0, 0])
-
-        # visual_shape_id = -1
-        # for i in range(p.getNumBodies()):
-        #     if p.getBodyUniqueId(i) == baseid:
-        #         visual_shape_id = p.getBodyInfo(i)[0]
-        #         break
-        # material_id = -1
-        # for i in range(p.getNumVisualShape(visual_shape_id)):
-        #     material_id = p.getVisualShapeData(visual_shape_id, i)[10]
-        #     if material_id != -1:
-        #         break
-        # material_props = p.getPhysicsEngineParameters()["material_" + str(material_id)]
-
-        p.changeDynamics(baseid, -1, lateralFriction=self.friction)
-
         # Generate the pos and orin of objects randomly.
         self.obj_idx = []
 
@@ -292,7 +283,7 @@ class Arm_env(gym.Env):
             # for i in range(1):
             dis_flag = True
 
-            rdm_pos_z = 0.006
+            rdm_pos_z = 0.01
             rdm_ori_yaw = np.random.uniform(0, np.pi, size=(len(self.boxes_index) - 1))
             # rdm_ori_yaw = np.zeros(self.num_objects -1)
             rdm_ori_yaw = np.append(rdm_ori_yaw, rdm_ori_yaw[0])
@@ -302,25 +293,25 @@ class Arm_env(gym.Env):
                 # print(wall_flag)
                 if wall_flag == 0: # x
                     rdm_pos_x = np.random.uniform(wall_pos+0.02, wall_pos+0.25, size=(len(self.boxes_index) - 1))
-                    rdm_pos_y = np.random.uniform(-0.14, 0.14, size=(len(self.boxes_index) - 1))
+                    rdm_pos_y = np.random.uniform(-0.15, 0.15, size=(len(self.boxes_index) - 1))
                 else: # y
                     rdm_pos_x = np.random.uniform(0.06, 0.25, size=(len(self.boxes_index) - 1))
                     rdm_pos_y = np.random.uniform(wall_pos + 0.02, wall_pos+0.25, size=(len(self.boxes_index) - 1))
             else:
-                rdm_pos_x = np.random.uniform(0.06, 0.25, size=(len(self.boxes_index) - 1))
-                rdm_pos_y = np.random.uniform(-0.14, 0.14, size=(len(self.boxes_index) - 1))
+                rdm_pos_x = np.random.uniform(0.06, 0.25, size=(len(self.boxes_index)))
+                rdm_pos_y = np.random.uniform(-0.15, 0.15, size=(len(self.boxes_index)))
 
             rot_parallel = [[np.cos(rdm_ori_yaw[0]), -np.sin(rdm_ori_yaw[0])],
                             [np.sin(rdm_ori_yaw[0]), np.cos(rdm_ori_yaw[0])]]
             rot_parallel = np.asarray(rot_parallel)
 
-            xy_parallel = np.dot(rot_parallel, np.asarray([np.random.uniform(-0.016, 0.016), 0.050]))
+            xy_parallel = np.dot(rot_parallel, np.asarray([np.random.uniform(-0.016, 0.016), 0.040]))
 
             xy_parallel = np.add(xy_parallel, np.asarray([rdm_pos_x[0], rdm_pos_y[0]]))
             # print(xy_parallel)
 
-            rdm_pos_x = np.append(rdm_pos_x, xy_parallel[0])
-            rdm_pos_y = np.append(rdm_pos_y, xy_parallel[1])
+            # rdm_pos_x = np.append(rdm_pos_x, xy_parallel[0])
+            # rdm_pos_y = np.append(rdm_pos_y, xy_parallel[1])
 
             # rdm_pos_x = [0.15, 0.15, 0.15]
             # rdm_pos_y = [0.18, -0.18, 0]
@@ -328,18 +319,18 @@ class Arm_env(gym.Env):
                 if dis_flag == False:
                     break
 
-                if i == 0:
-                    num2 = len(self.boxes_index) - 1
-
-                else:
-                    num2 = len(self.boxes_index)
+                # if i == 0:
+                #     num2 = len(self.boxes_index) - 1
+                # else:
+                #     num2 = len(self.boxes_index)
+                num2 = len(self.boxes_index)
 
                 # print(num2)
                 for j in range(i + 1, num2):
 
                     dis_check = math.dist([rdm_pos_x[i], rdm_pos_y[i]], [rdm_pos_x[j], rdm_pos_y[j]])
 
-                    if dis_check < 0.048:
+                    if dis_check < 0.050:
                         # print(i,"and",j,"gg")
                         dis_flag = False
 
@@ -382,7 +373,7 @@ class Arm_env(gym.Env):
         else:
             lego_path = "../urdf/box_generator/generation_1/"
             for i in range(len(self.boxes_index)):
-                boxes = URDF.load('../urdf/box_generator/box_%d.urdf' % self.boxes_index[i])
+                boxes = URDF.load('../urdf/box_generator/generation_1/box_%d.urdf' % self.boxes_index[i])
                 lw_list.append(boxes.links[0].visuals[0].geometry.box.size)
 
                 self.obj_idx.append(p.loadURDF((lego_path + "box_%d.urdf" % self.boxes_index[i]), basePosition=[rdm_pos_x[i], rdm_pos_y[i], rdm_pos_z],
@@ -398,11 +389,11 @@ class Arm_env(gym.Env):
                 else:
                     p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r, g, b, 1))
 
-                if len(self.boxes_index) >= 3:
-                    if i == 0 or i == (len(self.boxes_index) - 1):
-                        p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r1, g1, b1, 1))
-                else:
-                    pass
+                # if len(self.boxes_index) >= 3:
+                #     if i == 0 or i == (len(self.boxes_index) - 1):
+                #         p.changeVisualShape(self.obj_idx[i], -1, rgbaColor=(r1, g1, b1, 1))
+                # else:
+                #     pass
 
         lw_list = np.asarray(lw_list)
 
@@ -453,6 +444,11 @@ class Arm_env(gym.Env):
         # rgbim = Image.fromarray(rgb_opengl)
         # rgbim_no_alpha = rgbim.convert('RGB')
         rgbim_no_alpha = image
+
+
+
+        # for i in range(len(self.obj_idx)):
+        #     p.removeBody(i + 1)
 
         return rgbim_no_alpha
 

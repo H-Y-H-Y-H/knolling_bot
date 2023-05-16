@@ -161,7 +161,7 @@ class Arm:
             lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
             lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
 
-        baseid = p.loadURDF(self.urdf_path + "plane_1.urdf", basePosition=[0, -0.2, 0], useFixedBase=1,
+        baseid = p.loadURDF(self.urdf_path + "plane_zzz.urdf", basePosition=[0, -0.2, 0], useFixedBase=1,
                             flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         # self.arm_id = p.loadURDF(self.urdf_path + "robot_arm928/robot_arm1.urdf",
         #                          basePosition=[-0.08, 0, 0.02], useFixedBase=True,
@@ -305,7 +305,7 @@ class Arm:
             lineFromXYZ=[self.x_high_obs + self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs],
             lineToXYZ=[self.x_low_obs - self.table_boundary, self.y_high_obs + self.table_boundary, self.z_low_obs])
 
-        baseid = p.loadURDF(self.urdf_path + "plane_1.urdf", basePosition=[0, -0.2, 0], useFixedBase=1,
+        baseid = p.loadURDF(self.urdf_path + "plane_zzz.urdf", basePosition=[0, -0.2, 0], useFixedBase=1,
                             flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT)
         # self.arm_id = p.loadURDF(self.urdf_path + "robot_arm928/robot_arm1.urdf",
         #                          basePosition=[-0.08, 0, 0.02], useFixedBase=True,
@@ -363,17 +363,17 @@ class Arm:
 
 if __name__ == '__main__':
 
-    command = 'knolling'
+    command = 'recover'
     before_after = 'after'
-    configuration = '3'
+    configuration = '4'
 
-    start_evaluations = 90000
-    end_evaluations = 100000
+    start_evaluations = 950000
+    end_evaluations =   1000000
     range_low = 30
     range_high = 31
     total_urdf = 30
 
-    area_num = 4
+    area_num = 2
     ratio_num = 1
 
     item_odd_prevent = True
@@ -386,7 +386,7 @@ if __name__ == '__main__':
 
     forced_rotate_box = False
 
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_512_large/cfg_%s/' % configuration
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_514_large/cfg_%s/' % configuration
     images_log_path = target_path + 'images_%s/' % before_after
     preprocess_label_path = target_path + 'preprocess_label_%s/' % before_after
     os.makedirs(images_log_path, exist_ok=True)
@@ -403,7 +403,7 @@ if __name__ == '__main__':
                 data = data.reshape(1, len(data))
 
             lego_num = i
-
+            print('this is len data', len(data))
             new_data = []
             # new_index_flag = []
             for j in range(start_evaluations, end_evaluations):
