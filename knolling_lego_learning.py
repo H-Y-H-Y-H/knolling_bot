@@ -518,7 +518,7 @@ class Arm:
             # self.xyz_list, pos_before, ori_before, self.all_index, self.kind = items_sort.get_data_real()
             num_lego = 0
             sim_pos = np.copy(self.pos_before)
-            sim_pos[2] += 0.006
+            sim_pos[:, :2] += 0.006
             for i in range(len(self.xyz_list)):
                 self.lego_idx.append(
                     p.loadURDF(self.urdf_path + f"knolling_box/knolling_box_{self.urdf_index[i]}.urdf",
@@ -531,8 +531,11 @@ class Arm:
                 p.changeVisualShape(self.lego_idx[num_lego], -1, rgbaColor=(r, g, b, 1))
                 num_lego += 1
 
+            for i in range(30):
+                p.stepSimulation()
+
         data_before = np.concatenate((self.pos_before[:, :2], self.xyz_list[:, :2], self.ori_before[:, 2].reshape(-1, 1)), axis=1)
-        np.savetxt('./learning_data_demo/cfg_4/labels_before/label_6_%d.txt' % self.evaluations, data_before, fmt='%.03f')
+        # np.savetxt('./learning_data_demo/cfg_4/labels_before/label_6_%d.txt' % self.evaluations, data_before, fmt='%.03f')
 
         return self.get_obs('images')
         # return self.pos_before, self.ori_before, self.xyz_list
@@ -639,7 +642,7 @@ class Arm:
         # if the urdf is lego, all ori after knolling should be 0, not pi / 2
         self.items_ori_list[:, 2] = 0
         data_after = np.concatenate((self.items_pos_list[:, :2], self.xyz_list[:, :2], self.items_ori_list[:, 2].reshape(-1, 1)), axis=1)
-        np.savetxt('./learning_data_demo/cfg_4/labels_after/label_6_%d.txt' % self.evaluations, data_after, fmt='%.03f')
+        # np.savetxt('./learning_data_demo/cfg_4/labels_after/label_6_%d.txt' % self.evaluations, data_after, fmt='%.03f')
 
         return self.get_obs('images')
 

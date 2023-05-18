@@ -248,16 +248,13 @@ def adjust_img(img):
 
 def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, data_path=None, model_path=None, real_flag=None, target=None):
 
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_508/weights/best.pt'
-    # source_pth = data_path + img_path
-    # source_pth = data_path + 'real_image_collect/'
-    # source_pth = data_path + 'yolo_pose4keypoints/images/val/'
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_516_2/weights/best.pt'
 
     # img = adjust_img(img)
 
     cv2.imwrite(img_path + '.png', img)
     img_path_input = img_path + '.png'
-    args = dict(model=model, source=img_path_input, conf=0.3, iou=0.2)
+    args = dict(model=model, source=img_path_input, conf=0.4, iou=0.2)
     use_python = True
     if use_python:
         from ultralytics import YOLO

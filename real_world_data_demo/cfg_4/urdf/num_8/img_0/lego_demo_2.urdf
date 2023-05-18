@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<robot name="2x2">
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="0.01"/>
+      <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="0.022 0.031 0.012"/>
+      </geometry>
+      <material name=""/>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.022 0.031 0.012"/>
+      </geometry>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+    </collision>
+  </link>
+  <material name="">
+    <color rgba="1. 1. 1. 1."/>
+  </material>
+  <contact>
+    <lateral_friction value="1.0"/>
+    <rolling_friction value="0.0"/>
+    <contact_cfm value="0.0"/>
+    <contact_erp value="1.0"/>
+  </contact>
+</robot>

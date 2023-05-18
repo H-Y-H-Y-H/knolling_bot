@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.special import comb, perm
+from itertools import combinations, permutations
 
 cur = np.array([-0.027, 0.139, 0.045])
 seg = np.array([0, 0.15, 0.049])
@@ -61,3 +63,21 @@ print(min(134, 2))
 print(50*0.05 + 80*0.2 + 96*0.25 + 115*0.25 + 100*0.25)
 
 print(np.array([0.012] * 10).reshape(10, 1))
+
+A=perm(3,2)
+print(A)
+
+print(list(permutations([i for i in range(0,4)],4)))
+result = list(permutations([i for i in range(0,4)],4))
+print(np.asarray(result))
+print(np.arange(4))
+
+# print(np.random.choice(30, 30))
+
+A = np.arange(80).reshape(5, 16)
+print(A)
+print(A[:, np.concatenate((np.arange(3), np.arange(7, 10)))])
+
+# x=np.arange(32).reshape((8,4))
+# print(x)
+# print (x[np.ix_([1,5,7,2],[0,3,1,2])])
