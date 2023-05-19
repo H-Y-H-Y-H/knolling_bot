@@ -25,11 +25,19 @@ categories: 100 random boxes (height 0.012)
 texture: None
 quantity: 10000
 label: 1, x, y, yolo_l, yolo_w, ori
-urdf_cfg: None
+urdf_cfg: generation_1
 
 yolo_pose4points_4
 categories: 100 random boxes (height 0.012 - 0.02)
 texture: None
+quantity: 20000
+label: 1, x, y, yolo_l, yolo_w, ori
+urdf_cfg: generation_1
+
+yolo_pose4points_4
+categories: real random boxes (height 0.012 - 0.02)
+texture: None
 quantity: 10000
 label: 1, x, y, yolo_l, yolo_w, ori
-urdf_cfg: None
+urdf_cfg: random
+max_num: 10

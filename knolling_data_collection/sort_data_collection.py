@@ -22,7 +22,7 @@ class Sort_objects():
 
         length_range = np.round(np.random.uniform(0.016, 0.048, size=(box_num, 1)), decimals=3)
         width_range = np.round(np.random.uniform(0.016, np.minimum(length_range, 0.036), size=(box_num, 1)), decimals=3)
-        height_range = np.round(np.random.uniform(0.012, 0.012, size=(box_num, 1)), decimals=3)
+        height_range = np.round(np.random.uniform(0.010, 0.020, size=(box_num, 1)), decimals=3)
         pos_list = []
         ori_list = []
         xyz_list = np.concatenate((length_range, width_range, height_range), axis=1)

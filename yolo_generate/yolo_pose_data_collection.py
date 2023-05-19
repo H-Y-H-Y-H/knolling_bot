@@ -41,11 +41,12 @@ def yolo_box(img, label):
 
 if __name__ == '__main__':
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_4/'
+    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_5/'
     os.makedirs(data_root, exist_ok=True)
 
-    startnum = 19000
-    endnum = 20000
+    startnum = 7000
+    endnum = 8000
+    thread = 7
     lebal_list = []
 
     num_reset = True
@@ -65,12 +66,14 @@ if __name__ == '__main__':
         num_item = int(np.random.uniform(4, max_lego_num + 1))
         boxes_index = np.random.choice(total_box_urdf, num_item)
 
+
         num_2x2 = np.random.randint(1, 5)
         num_2x3 = np.random.randint(1, 5)
         num_2x4 = np.random.randint(1, 5)
         lego_list = np.array([num_2x2, num_2x3, num_2x4])
 
-        state, lw_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag, use_lego_urdf=use_lego_urdf, lego_list=lego_list, boxes_index=boxes_index)
+        state, lw_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag, use_lego_urdf=use_lego_urdf,
+                                         lego_list=lego_list, num_item=num_item, thread=thread)
 
         label = np.zeros((num_item, 6))
 
@@ -100,6 +103,7 @@ if __name__ == '__main__':
         # add = int((640 - 480) / 2)
         # img = cv2.copyMakeBorder(my_im2, add, add, 0, 0, cv2.BORDER_CONSTANT, None, value=(0, 0, 0, 255))
 
+        os.makedirs(data_root + 'origin_images/', exist_ok=True)
+        os.makedirs(data_root + 'origin_labels/', exist_ok=True)
         cv2.imwrite(os.path.join(data_root, 'origin_images/%012d.png') % epoch, my_im2)
-
         np.savetxt(os.path.join(data_root, "origin_labels/%012d.txt" % epoch), label)

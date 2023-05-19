@@ -175,7 +175,7 @@ class Arm:
                                                             renderer=p.ER_BULLET_HARDWARE_OPENGL)
 
             img = image[:, :,:3]
-            img_path = 'Test_images/image_sim'
+            img_path = './Test_images/image_sim'
             # cv2.imwrite(img_path + '.png', img)
 
             ############### order the ground truth depend on x, y in the world coordinate system ###############
@@ -208,18 +208,9 @@ class Arm:
             ground_truth_pose = ground_truth_pose[order_ground_truth, :]
             ############### order the ground truth depend on x, y in the world coordinate system ###############
 
-
-
             ################### the results of object detection has changed the order!!!! ####################
             # structure of results: x, y, length, width, ori
-            if self.real_operate == False:
-                results, env_loss = yolov8_predict(img_path=img_path, img=img,
-                                                             real_flag=self.real_operate,
-                                                             target=ground_truth_pose)
-            else:
-                results = yolov8_predict(img_path=img_path, img=img,
-                                          real_flag=self.real_operate,
-                                          target=ground_truth_pose)
+            results, env_loss = yolov8_predict(img_path=img_path, img=img, real_flag=self.real_operate, target=ground_truth_pose)
             print('this is the result of yolo-pose\n', results)
             ################### the results of object detection has changed the order!!!! ####################
 
@@ -239,7 +230,6 @@ class Arm:
                         #     width_index.append(i)
                         else:
                             pass
-
 
             # # arange the sequence based on categories of cubes
             # index = []
@@ -279,51 +269,50 @@ class Arm:
 
         def get_real_image_obs():
 
-            pipeline = rs.pipeline()
-            config = rs.config()
+            # pipeline = rs.pipeline()
+            # config = rs.config()
+            #
+            # # Get device product line for setting a supporting resolution
+            # pipeline_wrapper = rs.pipeline_wrapper(pipeline)
+            # pipeline_profile = config.resolve(pipeline_wrapper)
+            # device = pipeline_profile.get_device()
+            # device_product_line = str(device.get_info(rs.camera_info.product_line))
+            #
+            # found_rgb = False
+            # for s in device.sensors:
+            #     if s.get_info(rs.camera_info.name) == 'RGB Camera':
+            #         found_rgb = True
+            #         break
+            # if not found_rgb:
+            #     print("The demo requires Depth camera with Color sensor")
+            #     exit(0)
+            #
+            # # config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+            #
+            # if device_product_line == 'L500':
+            #     config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
+            # else:
+            #     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+            #     # config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 6)
+            # # Start streaming
+            # pipeline.start(config)
+            #
+            # for _ in range(100):
+            #     # Wait for a coherent pair of frames: depth and color
+            #     frames = pipeline.wait_for_frames()
+            #     # depth_frame = frames.get_depth_frame()
+            #     color_frame = frames.get_color_frame()
+            #     color_image = np.asanyarray(color_frame.get_data())
+            #     color_colormap_dim = color_image.shape
+            #     resized_color_image = color_image
+            #
+            #     img_path = 'Test_images/image_real'
+            #     # cv2.imwrite(img_path + '.png', resized_color_image)
+            #     # cv2.waitKey(1)
 
-            # Get device product line for setting a supporting resolution
-            pipeline_wrapper = rs.pipeline_wrapper(pipeline)
-            pipeline_profile = config.resolve(pipeline_wrapper)
-            device = pipeline_profile.get_device()
-            device_product_line = str(device.get_info(rs.camera_info.product_line))
-
-            found_rgb = False
-            for s in device.sensors:
-                if s.get_info(rs.camera_info.name) == 'RGB Camera':
-                    found_rgb = True
-                    break
-            if not found_rgb:
-                print("The demo requires Depth camera with Color sensor")
-                exit(0)
-
-            # config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-
-            if device_product_line == 'L500':
-                config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
-            else:
-                config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-                # config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 6)
-            # Start streaming
-            pipeline.start(config)
-
-            for _ in range(100):
-                # Wait for a coherent pair of frames: depth and color
-                frames = pipeline.wait_for_frames()
-                # depth_frame = frames.get_depth_frame()
-                color_frame = frames.get_color_frame()
-                color_image = np.asanyarray(color_frame.get_data())
-                color_colormap_dim = color_image.shape
-                resized_color_image = color_image
-
-                img_path = 'Test_images/image_real'
-                # cv2.imwrite(img_path + '.png', resized_color_image)
-                # cv2.waitKey(1)
-
+            img_path = 'Test_images/image_real'
             # structure: x,y,length,width,yaw
-            results = yolov8_predict(img_path=img_path, img=resized_color_image,
-                                     real_flag=self.real_operate,
-                                     target=None)
+            results = yolov8_predict(img_path=img_path, real_flag=self.real_operate, target=None)
             print('this is the result of yolo-pose', results)
 
             z = 0

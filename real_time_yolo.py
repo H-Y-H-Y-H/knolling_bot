@@ -39,7 +39,7 @@ class PosePredictor(DetectionPredictor):
 
 def real_time_yolo(num_box_one_img, evaluations=None):
 
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_518_2/weights/best.pt'
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_518_3/weights/best.pt'
 
     pipeline = rs.pipeline()
     config = rs.config()
