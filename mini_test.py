@@ -67,17 +67,8 @@ print(np.array([0.012] * 10).reshape(10, 1))
 A=perm(3,2)
 print(A)
 
-print(list(permutations([i for i in range(0,4)],4)))
-result = list(permutations([i for i in range(0,4)],4))
-print(np.asarray(result))
-print(np.arange(4))
-
-# print(np.random.choice(30, 30))
-
-A = np.arange(80).reshape(5, 16)
-print(A)
-print(A[:, np.concatenate((np.arange(3), np.arange(7, 10)))])
-
-# x=np.arange(32).reshape((8,4))
-# print(x)
-# print (x[np.ix_([1,5,7,2],[0,3,1,2])])
+box_num = 10
+length_range = np.random.uniform(0.016, 0.048, size=(box_num, 1))
+width_range = np.random.uniform(0.016, np.minimum(length_range, 0.036), size=(box_num, 1))
+print(length_range)
+print(width_range)

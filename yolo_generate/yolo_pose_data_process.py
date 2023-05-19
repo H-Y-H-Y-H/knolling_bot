@@ -201,6 +201,114 @@ def pose_estimation():
 
         np.savetxt(os.path.join(data_root, "label/yolo_label_418/%012d.txt") % i, label, fmt='%.8s')
 
+def color_segmentation(image, num_clusters, label):
+
+    # Reshape the image to a 2D array of pixels
+
+    image_part = []
+
+    for i in range(len(label)):
+        # label = label[i]
+        # print('1',label)
+        x_lt = int(label[i][1] * 640 - label[i][3] * 640/2)
+        y_lt = int(label[i][2] * 480 - label[i][4] * 480/2)
+
+        x_rb = int(label[i][1] * 640 + label[i][3] * 640/2)
+        y_rb = int(label[i][2] * 480 + label[i][4] * 480/2)
+
+        image_part = image[y_lt:y_rb, x_lt:x_rb, :]
+        shape = image_part.shape[:2]
+
+        pixels = image_part.reshape((-1, 3))
+
+        # Convert the pixel values to floating point
+        pixels = np.float32(pixels)
+
+        # Define the criteria and apply k-means clustering
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        _, labels, centers = cv2.kmeans(pixels, num_clusters, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+
+        # Reshape the labels to the original image shape
+        labels = labels.reshape(image_part.shape[:2])
+        center_label = labels[int(shape[0] / 2), int(shape[1] / 2)]
+        center_mask = np.array(labels == center_label)
+
+        result = cv2.bitwise_and(image_part, image_part, mask=center_mask)
+        result[np.where(result != 0)] = 30
+
+        cv2.namedWindow("zzz", 0)
+        cv2.imshow('zzz', result)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+        bg_mask = cv2.bitwise_not(center_mask)
+        image_part_bg = cv2.bitwise_and(image_part, image_part, mask=bg_mask)
+
+        cv2.namedWindow("zzz", 0)
+        cv2.imshow('zzz', image_part_bg)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+        new_image_part = cv2.add(image_part_bg, result)
+
+        cv2.namedWindow("zzz", 0)
+        cv2.imshow('zzz', new_image_part)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+        # Create masks for each cluster label
+        masks = []
+        for j in range(num_clusters):
+            masks.append(np.uint8(labels == j))
+
+        # Show the segmented regions
+        for j, mask in enumerate(masks):
+            result = cv2.bitwise_and(image_part, image_part, mask=mask)
+            cv2.namedWindow("Segmented Region " + str(j + 1), 0)
+            cv2.imshow("Segmented Region " + str(j + 1), result)
+
+    # cv2.namedWindow("zzz", 0)
+    # cv2.imshow('zzz', image_part)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+    # image = cv2.resize(image, (1280, 960), interpolation=cv2.INTER_AREA)
+    # # cv2.namedWindow("zzz", 0)
+    # cv2.imshow('zzz', image)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+    # for j in range(len(image_part)):
+    #
+    #     pixels = image_part[j].reshape((-1, 3))
+    #
+    #     # Convert the pixel values to floating point
+    #     pixels = np.float32(pixels)
+    #
+    #     # Define the criteria and apply k-means clustering
+    #     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    #     _, labels, centers = cv2.kmeans(pixels, num_clusters, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+    #
+    #     # Reshape the labels to the original image shape
+    #     labels = labels.reshape(image_part[j].shape[:2])
+    #
+    #     # Create masks for each cluster label
+    #     masks = []
+    #     for j in range(num_clusters):
+    #         masks.append(np.uint8(labels == j))
+    #
+    #     # Show the segmented regions
+    #     for j, mask in enumerate(masks):
+    #         result = cv2.bitwise_and(image_part[j], image_part[j], mask=mask)
+    #         cv2.namedWindow("Segmented Region " + str(j + 1), 0)
+    #         cv2.imshow("Segmented Region " + str(j + 1), result)
+
+        # Wait for key press and exit gracefully
+
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    # cv2.imwrite(data_root + 'images/%012d.png' % i, raw_img)
 
 total_1 = 0
 total_2 = 0
@@ -223,11 +331,11 @@ def find_keypoints(xpos, ypos, l, w, ori, mm2px, total_1, total_2):
     keypoint4 = np.dot(rot_z, kp4)
     keypoints = np.concatenate((keypoint1, keypoint2, keypoint3, keypoint4), axis=0).reshape(-1, 2)
 
-    top_left_corner =
+    # top_left_corner =
 
-    # # change the sequence of keypoints based on xy
-    # keypoints_order = np.lexsort((keypoints[:, 1], keypoints[:, 0]))[::-1]
-    # keypoints = keypoints[keypoints_order]
+    # change the sequence of keypoints based on xy
+    keypoints_order = np.lexsort((keypoints[:, 1], keypoints[:, 0]))[::-1]
+    keypoints = keypoints[keypoints_order]
 
     # # fine-tuning the pos of keypoints to avoid the ambiguity!
     # if np.abs(keypoints[0, 0] - keypoints[1, 0]) < 0.001 and keypoints[0, 1] < keypoints[1, 1]:
@@ -244,28 +352,28 @@ def find_keypoints(xpos, ypos, l, w, ori, mm2px, total_1, total_2):
     # # keypoint4 = np.array([((keypoint4[1] + ypos) * mm2px + 320) / 640, ((keypoint4[0] + xpos) * mm2px + 6) / 480, 1])
     # # keypoints = np.concatenate((keypoint1, keypoint2, keypoint3, keypoint4), axis=0).reshape(-1, 3)
 
-    # top-left, top-right, bottom-left, bottom-right
-    # change sequence of kpts based on the minimum value of the sum of the distance from the kpts to the corner
-    real_world_corner = np.array([[0, -0.17],
-                                  [0, 0.17],
-                                  [0.3, -0.17],
-                                  [0.3, 0.17]])
-    real_world_keypoints = np.copy(keypoints)
-    real_world_keypoints[:, 1] += ypos
-    real_world_keypoints[:, 0] += xpos
-
-    keypoints_order = np.asarray(list(permutations([i for i in range(0, 4)], 4)))
-    min_dist = np.inf
-    best_order = np.arange(4)
-    for i in range(len(keypoints_order)):
-        real_world_keypoints = real_world_keypoints[keypoints_order[i]]
-        test_dist = np.sum(np.linalg.norm(real_world_keypoints - real_world_corner, axis=1))
-        if test_dist < min_dist:
-            min_dist = test_dist
-            best_order = keypoints_order[i]
-        else:
-            pass
-    new_keypoints = keypoints[best_order]
+    # # top-left, top-right, bottom-left, bottom-right
+    # # change sequence of kpts based on the minimum value of the sum of the distance from the kpts to the corner
+    # real_world_corner = np.array([[0, -0.17],
+    #                               [0, 0.17],
+    #                               [0.3, -0.17],
+    #                               [0.3, 0.17]])
+    # real_world_keypoints = np.copy(keypoints)
+    # real_world_keypoints[:, 1] += ypos
+    # real_world_keypoints[:, 0] += xpos
+    #
+    # keypoints_order = np.asarray(list(permutations([i for i in range(0, 4)], 4)))
+    # min_dist = np.inf
+    # best_order = np.arange(4)
+    # for i in range(len(keypoints_order)):
+    #     real_world_keypoints = real_world_keypoints[keypoints_order[i]]
+    #     test_dist = np.sum(np.linalg.norm(real_world_keypoints - real_world_corner, axis=1))
+    #     if test_dist < min_dist:
+    #         min_dist = test_dist
+    #         best_order = keypoints_order[i]
+    #     else:
+    #         pass
+    # new_keypoints = keypoints[best_order]
 
 
 
@@ -281,7 +389,7 @@ def pose4keypoints(data_root, target_path):
     os.makedirs(target_path + 'images/', exist_ok=True)
     os.makedirs(target_path + 'labels/', exist_ok=True)
     mm2px = 530 / 0.34  # (1558)
-    total_num = 10000
+    total_num = 15000
     start_index = 2000
     num_item = 15
 
@@ -354,10 +462,6 @@ def pose4keypoints(data_root, target_path):
                 width = w * 3
                 # ensure the yolo sequence!
                 keypoints, total_1, total_2 = find_keypoints(xpos1, ypos1, l, w, yawori, mm2px, total_1, total_2)
-                # keypoints_order = np.lexsort((keypoints[:, 0], keypoints[:, 1]))
-                # keypoints = keypoints[keypoints_order]
-
-
 
                 element = np.concatenate(([0], [label_x, label_y], [length, width], keypoints.reshape(-1)))
                 # print(label)
@@ -411,6 +515,7 @@ def pose4keypoints(data_root, target_path):
             np.savetxt(os.path.join(data_root, "labels/%012d.txt") % i, label, fmt='%.8s')
             # img = cv2.imread(os.path.join(data_root, "images/%012d.png") % i)
             # img = yolo_box(real_world_img, label_plot)
+            # color_segmentation(real_world_img, 5, label_plot)
         print('this is total_1', total_1)
         print('this is total_2', total_2)
 
@@ -526,7 +631,7 @@ def train_test_split(data_root, target_path):
 
     import shutil
     ratio = 0.8
-    total_num = 10000
+    total_num = 15000
     train_num = int(total_num * ratio)
     test_num = int(total_num - train_num)
     print(train_num)
@@ -561,12 +666,12 @@ if __name__ == '__main__':
     # target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_510_tuning/'
     # manual_pose4keypoints(data_root, target_path)
 
-    data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_4/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_518_3/'
-    pose4keypoints(data_root, target_path)
+    # data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_4/'
+    # target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_518_2/'
+    # pose4keypoints(data_root, target_path)
 
     data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_4/'
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_518_3/'
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/datasets/yolo_pose4keypoints_518_2/'
     train_test_split(data_root, target_path)
 
     # data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints/labels/'

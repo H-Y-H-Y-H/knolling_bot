@@ -44,8 +44,8 @@ if __name__ == '__main__':
     data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_4/'
     os.makedirs(data_root, exist_ok=True)
 
-    startnum = 9000
-    endnum = 10000
+    startnum = 19000
+    endnum = 20000
     lebal_list = []
 
     num_reset = True

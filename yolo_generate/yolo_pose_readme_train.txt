@@ -96,3 +96,25 @@ urdf_cfg: normal
 change sequence of kpts based on xy
 no flip idx
 epoch: 100
+
+yolo_pose4points_518_gray
+categories: 100 random boxes (generation_1)
+texture: None
+quantity: 15000
+label: 1, x, y, yolo_l, yolo_w, ori
+urdf_cfg: normal
+change sequence of kpts based on xy
+no flip idx
+epoch: 200
+gray images!
+
+yolo_pose4points_518_3
+categories: 100 random boxes (generation_1)
+texture: None
+quantity: 15000
+label: 1, x, y, yolo_l, yolo_w, ori
+urdf_cfg: normal
+change sequence of kpts based on xy
+no flip idx
+epoch: 100
+based on 518_2

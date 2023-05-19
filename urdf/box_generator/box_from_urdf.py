@@ -13,7 +13,7 @@ for i in range(num_box):
     lego_cube.links[0].visuals[0].material.color = color_range
     length_range = np.random.uniform(0.016, 0.048)
     width_range = np.random.uniform(0.016, min(length_range, 0.036))
-    height_range = np.random.uniform(0.01, 0.020)
+    height_range = np.random.uniform(0.010, 0.020)
     lego_cube.links[0].visuals[0].geometry.box.size[0] = np.around(length_range, decimals=3)
     lego_cube.links[0].visuals[0].geometry.box.size[1] = np.around(width_range, decimals=3)
     lego_cube.links[0].visuals[0].geometry.box.size[2] = np.around(height_range, decimals=3)

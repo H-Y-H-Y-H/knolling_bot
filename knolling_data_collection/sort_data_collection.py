@@ -9,23 +9,23 @@ class Sort_objects():
     def __init__(self, configuration):
         self.configuration = configuration
 
-    def get_data_virtual(self, area_num, ratio_num, lego_num, boxes_index):
+    def get_data_virtual(self, area_num, ratio_num, box_num, boxes_index):
 
-        boxes = []
-        xyz_list = []
-        # for i in range(lego_num):
-        #     boxes.append(URDF.load('../urdf/box_generator/box_%d.urdf' % i))
+        # boxes = []
+        # xyz_list = []
+        # for i in range(len(boxes_index)):
+        #     boxes.append(URDF.load('../urdf/box_generator/box_%d.urdf' % boxes_index[i]))
         #     xyz_list.append(boxes[i].links[0].visuals[0].geometry.box.size)
-        # print(boxes_index)
-        for i in range(len(boxes_index)):
-            # print(boxes_index[i])
-            boxes.append(URDF.load('../urdf/box_generator/box_%d.urdf' % boxes_index[i]))
-            xyz_list.append(boxes[i].links[0].visuals[0].geometry.box.size)
+        # pos_list = []
+        # ori_list = []
+        # xyz_list = np.asarray(xyz_list, dtype=np.float32)
 
+        length_range = np.round(np.random.uniform(0.016, 0.048, size=(box_num, 1)), decimals=3)
+        width_range = np.round(np.random.uniform(0.016, np.minimum(length_range, 0.036), size=(box_num, 1)), decimals=3)
+        height_range = np.round(np.random.uniform(0.012, 0.012, size=(box_num, 1)), decimals=3)
         pos_list = []
         ori_list = []
-        xyz_list = np.asarray(xyz_list, dtype=np.float32)
-        # print(xyz_list)
+        xyz_list = np.concatenate((length_range, width_range, height_range), axis=1)
 
         return self.judge(xyz_list, pos_list, ori_list, area_num, ratio_num)
     

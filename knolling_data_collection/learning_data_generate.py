@@ -93,7 +93,7 @@ class Arm:
                                      cameraTargetPosition=[0.1, 0, 0])
         p.setAdditionalSearchPath(pd.getDataPath())
 
-    def get_parameters(self, lego_num=None, area_num=None, ratio_num=None, boxes_index=None,
+    def get_parameters(self, box_num=None, area_num=None, ratio_num=None, boxes_index=None,
                        total_offset=None, configuration=None,
                        gap_item=0.03, gap_block=0.02,
                        real_operate=False, obs_order='1',
@@ -109,7 +109,7 @@ class Arm:
         self.real_operate = real_operate
         self.obs_order = obs_order
         self.random_offset = random_offset
-        self.num_list = lego_num
+        self.num_list = box_num
         self.check_detection_loss = check_detection_loss
         self.obs_img_from = obs_img_from
         self.use_yolo_pos = use_yolo_pos
@@ -134,9 +134,9 @@ class Arm:
             image = get_images()
             return image
 
-    def label2image(self, labels_data, index_flag):
-        print(index_flag)
-        index_flag = index_flag.reshape(2, -1)
+    def label2image(self, labels_data, img_index, save_urdf_path):
+        # print(index_flag)
+        # index_flag = index_flag.reshape(2, -1)
         labels_data = labels_data.reshape(-1, 5)
         pos_data = labels_data[:, :2]
         pos_data = np.concatenate((pos_data, np.zeros(len(pos_data)).reshape(-1, 1)), axis=1)
@@ -181,46 +181,67 @@ class Arm:
         xyz_list = []
         new_pos_data = []
         new_ori_data = []
-        for i in range(len(index_flag[0])):
-            boxes.append(URDF.load('../urdf/box_generator/box_%d.urdf' % index_flag[0, i]))
-            xyz_list.append(boxes[i].links[0].visuals[0].geometry.box.size)
-        # for i in range(50):
-        #     boxes.append(URDF.load('../urdf/box_generator/box_%d.urdf' % i))
+        # for i in range(len(index_flag[0])):
+        #     boxes.append(URDF.load('../urdf/box_generator/box_%d.urdf' % index_flag[0, i]))
         #     xyz_list.append(boxes[i].links[0].visuals[0].geometry.box.size)
+
+        temp_box = URDF.load('../urdf/box_generator/template.urdf')
+        save_urdf_path_one_img = save_urdf_path + 'img_%d/' % img_index
+        os.makedirs(save_urdf_path_one_img, exist_ok=True)
+        for i in range(len(lw_data)):
+            temp_box.links[0].collisions[0].origin[2, 3] = 0
+            length = lw_data[i, 0]
+            width = lw_data[i, 1]
+            height = 0.012
+            temp_box.links[0].visuals[0].geometry.box.size = [length, width, height]
+            temp_box.links[0].collisions[0].geometry.box.size = [length, width, height]
+            temp_box.links[0].visuals[0].material.color = [np.random.random(), np.random.random(), np.random.random(), 1]
+            temp_box.save(save_urdf_path_one_img + 'box_%d.urdf' % (i))
+
         lego_idx = []
         selected_lw_data = []
         selected_urdf = []
+        # for i in range(len(lw_data)):
+        #     for j in range(len(xyz_list)):
+        #         if np.abs(xyz_list[j][0] - lw_data[i][0]) < 0.0001 and np.abs(xyz_list[j][1] - lw_data[i][1]) < 0.0001:
+        #             if i not in selected_lw_data and j not in selected_urdf:
+        #                 selected_lw_data.append(i)
+        #                 selected_urdf.append(j)
+        #                 print(f'this is matching urdf{j}')
+        #                 print(pos_data[i])
+        #                 print(xyz_list[j])
+        #                 print(ori_data[i])
+        #                 pos_data[i, 2] += 0.006
+        #                 lego_idx.append(
+        #                     p.loadURDF(self.urdf_path + f"box_generator/box_{int(index_flag[0, j])}.urdf",
+        #                                basePosition=pos_data[i],
+        #                                baseOrientation=p.getQuaternionFromEuler(ori_data[i]), useFixedBase=False,
+        #                                flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+        #         if np.abs(xyz_list[j][1] - lw_data[i][0]) < 0.0001 and np.abs(xyz_list[j][0] - lw_data[i][1]) < 0.0001:
+        #             if i not in selected_lw_data and j not in selected_urdf:
+        #                 ori_data[i, 2] += np.pi / 2
+        #                 selected_lw_data.append(i)
+        #                 selected_urdf.append(j)
+        #                 print(f'this is matching urdf{j}')
+        #                 print(pos_data[i])
+        #                 print(xyz_list[j])
+        #                 print(ori_data[i])
+        #                 pos_data[i, 2] += 0.006
+        #                 lego_idx.append(
+        #                     p.loadURDF(self.urdf_path + f"box_generator/box_{int(index_flag[0, j])}.urdf",
+        #                                basePosition=pos_data[i],
+        #                                baseOrientation=p.getQuaternionFromEuler(ori_data[i]), useFixedBase=False,
+        #                                flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
         for i in range(len(lw_data)):
-            for j in range(len(xyz_list)):
-                if np.abs(xyz_list[j][0] - lw_data[i][0]) < 0.0001 and np.abs(xyz_list[j][1] - lw_data[i][1]) < 0.0001:
-                    if i not in selected_lw_data and j not in selected_urdf:
-                        selected_lw_data.append(i)
-                        selected_urdf.append(j)
-                        print(f'this is matching urdf{j}')
-                        print(pos_data[i])
-                        print(xyz_list[j])
-                        print(ori_data[i])
-                        pos_data[i, 2] += 0.006
-                        lego_idx.append(
-                            p.loadURDF(self.urdf_path + f"box_generator/box_{int(index_flag[0, j])}.urdf",
-                                       basePosition=pos_data[i],
-                                       baseOrientation=p.getQuaternionFromEuler(ori_data[i]), useFixedBase=False,
-                                       flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-                if np.abs(xyz_list[j][1] - lw_data[i][0]) < 0.0001 and np.abs(xyz_list[j][0] - lw_data[i][1]) < 0.0001:
-                    if i not in selected_lw_data and j not in selected_urdf:
-                        ori_data[i, 2] += np.pi / 2
-                        selected_lw_data.append(i)
-                        selected_urdf.append(j)
-                        print(f'this is matching urdf{j}')
-                        print(pos_data[i])
-                        print(xyz_list[j])
-                        print(ori_data[i])
-                        pos_data[i, 2] += 0.006
-                        lego_idx.append(
-                            p.loadURDF(self.urdf_path + f"box_generator/box_{int(index_flag[0, j])}.urdf",
-                                       basePosition=pos_data[i],
-                                       baseOrientation=p.getQuaternionFromEuler(ori_data[i]), useFixedBase=False,
-                                       flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+            print(f'this is matching urdf{j}')
+            print(pos_data[i])
+            print(lw_data[i])
+            print(ori_data[i])
+            pos_data[i, 2] += 0.006
+            lego_idx.append(p.loadURDF(save_urdf_path_one_img + 'box_%d.urdf' % (i),
+                           basePosition=pos_data[i],
+                           baseOrientation=p.getQuaternionFromEuler(ori_data[i]), useFixedBase=False,
+                           flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
         ################### recover urdf boxes based on lw_data ###################
 
         return self.get_obs('images', None)
@@ -367,47 +388,51 @@ if __name__ == '__main__':
     before_after = 'after'
     configuration = '4'
 
-    start_evaluations = 950000
+    start_evaluations = 900000
     end_evaluations =   1000000
-    range_low = 30
-    range_high = 31
+    step_num = 10
+    save_point = np.linspace(int((end_evaluations - start_evaluations) / step_num + start_evaluations), end_evaluations, step_num)
+
+    range_low = 10
+    range_high = 11
     total_urdf = 30
 
     area_num = 2
     ratio_num = 1
 
     item_odd_prevent = True
-
     # always true
     block_odd_prevent = True
     # always true
-
     upper_left_max = True
-
     forced_rotate_box = False
 
-    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_514_large/cfg_%s/' % configuration
+    target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_518_large/cfg_%s/' % configuration
     images_log_path = target_path + 'images_%s/' % before_after
     preprocess_label_path = target_path + 'preprocess_label_%s/' % before_after
     os.makedirs(images_log_path, exist_ok=True)
-    os.makedirs(preprocess_label_path, exist_ok=True)
+    # os.makedirs(preprocess_label_path, exist_ok=True)
 
     if command == 'recover':
 
         env = Arm(is_render=False)
         for i in range(range_low, range_high):
+
             data = np.loadtxt(target_path + 'labels_%s/num_%d.txt' % (before_after, i))
-            index_flag = np.loadtxt(target_path + 'index_flag/num_%s_flag.txt' % i).reshape(-1, i * 2)
+            # index_flag = np.loadtxt(target_path + 'index_flag/num_%s_flag.txt' % i).reshape(-1, i * 2)
 
             if len(data.shape) == 1:
                 data = data.reshape(1, len(data))
 
-            lego_num = i
+            box_num = i
             print('this is len data', len(data))
+            save_urdf_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_518_large/cfg_%s/box_urdf/num_%d/' % (configuration, box_num)
+            os.makedirs(save_urdf_path, exist_ok=True)
+
             new_data = []
             # new_index_flag = []
             for j in range(start_evaluations, end_evaluations):
-                env.get_parameters(lego_num=lego_num)
+                env.get_parameters(box_num=box_num)
                 print(f'this is data {j}')
                 one_img_data = data[j].reshape(-1, 5)
                 # one_img_index_flag = index_flag[j].reshape(2, -1)
@@ -417,7 +442,7 @@ if __name__ == '__main__':
                 new_data.append(one_img_data)
                 # new_index_flag.append(one_img_index_flag)
 
-                image = env.label2image(data[j], index_flag[j])
+                image = env.label2image(data[j], j, save_urdf_path)
                 image = image[..., :3]
                 # print('this is shape of image', image.shape)
                 # image = np.transpose(image, (2, 0, 1))
@@ -439,26 +464,24 @@ if __name__ == '__main__':
     if command == 'knolling':
 
         # target_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/learning_data_505/'
-        before_path = target_path + 'labels_before/'
+        # before_path = target_path + 'labels_before/'
         after_path = target_path + 'labels_after/'
-        index_flag_path = target_path + 'index_flag/'
-        os.makedirs(before_path, exist_ok=True)
+        # index_flag_path = target_path + 'index_flag/'
+        # os.makedirs(before_path, exist_ok=True)
         os.makedirs(after_path, exist_ok=True)
-        os.makedirs(index_flag_path, exist_ok=True)
+        # os.makedirs(index_flag_path, exist_ok=True)
 
         env = Arm(is_render=False)
         for num in range(range_low, range_high):
 
-            data_before = []
+            # data_before = []
             data_after = []
-            index_flag = []
+            # index_flag = []
             j = 0
+            index_point = 0
             while True:
 
-                # if j == 2:
-                #     print('here!')
-                lego_num = num
-                boxes_index = np.random.choice(total_urdf, lego_num)
+                box_num = num
 
                 total_offset = [0.016, -0.17 + 0.016, 0]
                 gap_item = 0.015
@@ -470,7 +493,7 @@ if __name__ == '__main__':
                 obs_img_from = 'env'
                 use_yolo_pos = False
 
-                env.get_parameters(lego_num=lego_num, area_num=area_num, ratio_num=ratio_num, boxes_index=boxes_index,
+                env.get_parameters(box_num=box_num, area_num=area_num, ratio_num=ratio_num,
                                    total_offset=total_offset, configuration=configuration,
                                    gap_item=gap_item, gap_block=gap_block,
                                    real_operate=real_operate, obs_order=obs_order,
@@ -478,15 +501,11 @@ if __name__ == '__main__':
                                    obs_img_from=obs_img_from, use_yolo_pos=use_yolo_pos,
                                    item_odd_prevent=item_odd_prevent, block_odd_prevent = block_odd_prevent,
                                    upper_left_max = upper_left_max, forced_rotate_box=forced_rotate_box)
-
-                # pos_before, ori_before, xy_before, transform_before = env.reset()
-                # data_before.append(
-                #     np.concatenate((pos_before, xy_before, ori_before.reshape(-1, 1)), axis=1).reshape(-1, ))
                 pos_after, ori_after, xy_after, transform_after = env.change_config()
 
                 break_flag = False
                 for i in range(len(pos_after)):
-                    if pos_after[i, 0] > 0.28 or pos_after[i, 1] > 0.2 or pos_after[i, 1] < -0.2:
+                    if pos_after[i, 0] > 0.27 or pos_after[i, 1] > 0.19 or pos_after[i, 1] < -0.19:
                         print(f'num{num}, evaluation {j} out of the boundary!')
                         break_flag = True
                 if break_flag == True:
@@ -494,27 +513,20 @@ if __name__ == '__main__':
                 else:
                     print(j)
                     data_after.append(np.concatenate((pos_after, xy_after, ori_after.reshape(-1, 1)), axis=1).reshape(-1))
-                    index_flag.append(np.concatenate((boxes_index, transform_after)))
+                    # index_flag.append(np.concatenate((boxes_index, transform_after)))
                     j += 1
 
-                if len(data_after) == int(end_evaluations - start_evaluations):
+                if len(data_after) == int((end_evaluations - start_evaluations) / step_num):
+                    data_after = np.asarray(data_after)
+                    np.savetxt(after_path + 'num_%s_%s.txt' % (num, int(save_point[index_point])), data_after)
+                    data_after = []
+                    index_point += 1
+                if j + start_evaluations == int(save_point[-1]):
                     break
 
-                # print(data_before[j].shape[0])
-                # print(data_after[j].shape[0])
-                # if data_before[j].shape[0] != 5 * num:
-                #     print('before error')
-                #     print(j, data_before[j].shape[0])
-                #     print(data_before[j].reshape(-1, 5))
-                #     exit()
-                # if data_after[j].shape[0] != 5 * num:
-                #     print('after error')
-                #     print(j, data_after[j].shape[0])
-                #     exit()
-
-            data_before = np.asarray(data_before)
-            data_after = np.asarray(data_after)
-            index_flag = np.asarray(index_flag)
-            # np.savetxt(before_path + 'num_%s_%s.txt' % (num, end_evaluations), data_before)
-            np.savetxt(after_path + 'num_%s_%s.txt' % (num, end_evaluations), data_after)
-            np.savetxt(index_flag_path + 'num_%s_%s_flag.txt' % (num, end_evaluations), index_flag)
+            # # data_before = np.asarray(data_before)
+            # data_after = np.asarray(data_after)
+            # # index_flag = np.asarray(index_flag)
+            # # np.savetxt(before_path + 'num_%s_%s.txt' % (num, end_evaluations), data_before)
+            # np.savetxt(after_path + 'num_%s_%s.txt' % (num, end_evaluations), data_after)
+            # # np.savetxt(index_flag_path + 'num_%s_%s_flag.txt' % (num, end_evaluations), index_flag)

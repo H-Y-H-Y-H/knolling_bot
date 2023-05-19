@@ -250,8 +250,8 @@ if __name__ == '__main__':
     forced_rotate_box = False
     configuration = None
 
-    num_collect_img = 3
-    num_box_one_img = 12
+    num_collect_img = 5
+    num_box_one_img = 6
     total_offset = [0.016, -0.17 + 0.016, 0]
 
     for i in range(num_collect_img):
