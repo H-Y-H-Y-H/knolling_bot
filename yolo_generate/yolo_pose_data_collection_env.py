@@ -379,7 +379,7 @@ class Arm_env(gym.Env):
 
             length_range = np.round(np.random.uniform(0.016, 0.048, size=(self.num_item, 1)), decimals=3)
             width_range = np.round(np.random.uniform(0.016, np.minimum(length_range, 0.036), size=(self.num_item, 1)),decimals=3)
-            height_range = np.round(np.random.uniform(0.012, 0.012, size=(self.num_item, 1)), decimals=3)
+            height_range = np.round(np.random.uniform(0.010, 0.020, size=(self.num_item, 1)), decimals=3)
 
             for i in range(self.num_item):
                 temp_box.links[0].collisions[0].origin[2, 3] = 0

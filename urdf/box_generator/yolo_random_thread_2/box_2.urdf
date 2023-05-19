@@ -8,20 +8,20 @@
     </inertial>
     <visual>
       <geometry>
-        <box size="0.024 0.022 0.012"/>
+        <box size="0.018 0.017 0.012"/>
       </geometry>
       <material name=""/>
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
     </visual>
     <collision>
       <geometry>
-        <box size="0.024 0.022 0.012"/>
+        <box size="0.018 0.017 0.012"/>
       </geometry>
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
     </collision>
   </link>
   <material name="">
-    <color rgba="0.0663872  0.46814032 0.44352211 1.        "/>
+    <color rgba="0.41654484 0.20986704 0.38032937 1.        "/>
   </material>
   <contact>
     <lateral_friction value="1.0"/>
