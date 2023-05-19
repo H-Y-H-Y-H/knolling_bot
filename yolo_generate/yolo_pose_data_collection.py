@@ -44,9 +44,9 @@ if __name__ == '__main__':
     data_root = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_5/'
     os.makedirs(data_root, exist_ok=True)
 
-    startnum = 7000
-    endnum = 8000
-    thread = 7
+    startnum = 11000
+    endnum = 12000
+    thread = 11
     lebal_list = []
 
     num_reset = True
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         lego_list = np.array([num_2x2, num_2x3, num_2x4])
 
         state, lw_list = env.reset_table(close_flag=CLOSE_FLAG, texture_flag=texture_flag, use_lego_urdf=use_lego_urdf,
-                                         lego_list=lego_list, num_item=num_item, thread=thread)
+                                         lego_list=lego_list, num_item=num_item, thread=thread, epoch=epoch)
 
         label = np.zeros((num_item, 6))
 

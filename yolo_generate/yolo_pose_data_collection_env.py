@@ -213,7 +213,7 @@ class Arm_env(gym.Env):
         # p.setPhysicsEngineParameter(numSolverIterations=10)
         p.setTimeStep(1. / 120.)
 
-    def reset_table(self, close_flag = False, texture_flag = False, use_lego_urdf = None, lego_list = None, num_item=None, thread=0):
+    def reset_table(self, close_flag = False, texture_flag = False, use_lego_urdf = None, lego_list = None, num_item=None, thread=None, epoch=None):
 
         p.resetSimulation()
 
@@ -371,7 +371,7 @@ class Arm_env(gym.Env):
                     else:
                         pass
         else:
-            box_path = "../urdf/box_generator/yolo_random_thread_%d/" % thread
+            box_path = "/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_5/box_urdf/thread_%d/epoch_%d/" % (thread, epoch)
             os.makedirs(box_path, exist_ok=True)
             temp_box = URDF.load('../urdf/box_generator/template.urdf')
             for f in os.listdir(box_path):
@@ -388,8 +388,6 @@ class Arm_env(gym.Env):
                 temp_box.links[0].collisions[0].geometry.box.size = np.concatenate((length_range[i], width_range[i], height_range[i]))
                 temp_box.links[0].visuals[0].material.color = [np.random.random(), np.random.random(), np.random.random(), 1]
                 temp_box.save(box_path + 'box_%d.urdf' % (i))
-
-            for i in range(self.num_item):
                 self.obj_idx.append(p.loadURDF((box_path + "box_%d.urdf" % i), basePosition=[rdm_pos_x[i], rdm_pos_y[i], rdm_pos_z],
                                                baseOrientation=p.getQuaternionFromEuler([0, 0, rdm_ori_yaw[i]]), useFixedBase=0,
                                                flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
