@@ -93,20 +93,20 @@ class Sort_objects():
         results = yolov8_predict(img_path=img_path,real_flag=True,target=None)
 
         item_pos = results[:, :2]
-        item_lw = results[:, 2:4]
-        item_ori = results[:, 4]
+        item_lw = np.concatenate((results[:, 2:4], (np.ones(len(results)) * 0.012).reshape(-1, 1)), axis=1)
+        item_ori = np.concatenate((np.zeros((len(results), 2)), results[:, 4].reshape(-1, 1)), axis=1)
 
-        ##################### generate customize boxes based on the result of yolo ######################
-        temp_box = URDF.load('./urdf/box_generator/template.urdf')
-        for i in range(len(results)):
-            temp_box.links[0].collisions[0].origin[2, 3] = 0
-            length = item_lw[i, 0]
-            width = item_lw[i, 1]
-            height = 0.012
-            temp_box.links[0].visuals[0].geometry.box.size = [length, width, height]
-            temp_box.links[0].collisions[0].geometry.box.size = [length, width, height]
-            temp_box.save('./urdf/knolling_box/knolling_box_%d.urdf' % i)
-        ##################### generate customize boxes based on the result of yolo ######################
+        # ##################### generate customize boxes based on the result of yolo ######################
+        # temp_box = URDF.load('./urdf/box_generator/template.urdf')
+        # for i in range(len(results)):
+        #     temp_box.links[0].collisions[0].origin[2, 3] = 0
+        #     length = item_lw[i, 0]
+        #     width = item_lw[i, 1]
+        #     height = 0.012
+        #     temp_box.links[0].visuals[0].geometry.box.size = [length, width, height]
+        #     temp_box.links[0].collisions[0].geometry.box.size = [length, width, height]
+        #     temp_box.save('./urdf/knolling_box/knolling_box_%d.urdf' % i)
+        # ##################### generate customize boxes based on the result of yolo ######################
 
         category_num = int(area_num * ratio_num + 1)
         s = item_lw[:, 0] * item_lw[:, 1]
@@ -119,6 +119,8 @@ class Sort_objects():
         # ! initiate the number of items
         all_index = []
         new_item_xyz = []
+        new_item_pos = []
+        new_item_ori = []
         transform_flag = []
         rest_index = np.arange(len(item_lw))
         index = 0
@@ -136,12 +138,16 @@ class Sort_objects():
                                 # print(f'boxes{m} matches in area{i}, ratio{j}!')
                                 kind_index.append(index)
                                 new_item_xyz.append(item_lw[m])
+                                new_item_pos.append(item_pos[m])
+                                new_item_ori.append(item_ori[m])
                                 index += 1
                                 rest_index = np.delete(rest_index, np.where(rest_index == m))
                 if len(kind_index) != 0:
                     all_index.append(kind_index)
 
         new_item_xyz = np.asarray(new_item_xyz).reshape(-1, 3)
+        new_item_pos = np.asarray(new_item_pos)
+        new_item_ori = np.asarray(new_item_ori)
         transform_flag = np.asarray(transform_flag)
         if len(rest_index) != 0:
             # we should implement the rest of boxes!
@@ -150,7 +156,8 @@ class Sort_objects():
             all_index.append(list(np.arange(index, len(item_lw))))
             transform_flag = np.append(transform_flag, np.zeros(len(item_lw) - index))
 
-        return new_item_xyz, item_pos, item_ori, all_index, transform_flag
+        # the sequence of them are based on area and ratio!
+        return new_item_xyz, new_item_pos, new_item_ori, all_index, transform_flag
 
     def judge(self, item_xyz, item_pos, item_ori, area_num, ratio_num, boxes_index, use_lego_urdf, lego_num):
 

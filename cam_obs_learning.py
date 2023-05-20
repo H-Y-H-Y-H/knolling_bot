@@ -224,7 +224,7 @@ def plot_and_transform(im, box, label='', color=(0, 0, 0), txt_color=(255, 255, 
         im = cv2.circle(im, (int(x_coord), int(y_coord)), radius, color_k, -1, lineType=cv2.LINE_AA)
     ############### zzz plot the keypoints ###############
 
-    result = np.concatenate((box_center, [round(length, 3)], [round(width, 3)], [my_ori]))
+    result = np.concatenate((box_center, [round(length, 4)], [round(width, 4)], [my_ori]))
 
     return im, result
 
@@ -277,6 +277,7 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, r
 
         mean_floor = (160, 160, 160)
 
+        total_pred_result = []
         while True:
             # Wait for a coherent pair of frames: depth and color
             frames = pipeline.wait_for_frames()
@@ -351,6 +352,7 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, r
                                                         truth_flag=False)
                 pred_result.append(result)
                 # print('this is j', j)
+            total_pred_result.append(pred_result)
 
             cv2.namedWindow('zzz', 0)
             cv2.imshow('zzz', origin_img)
@@ -359,6 +361,7 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, r
                 img_path_output = img_path + '_pred.png'
                 cv2.imwrite(img_path_output, origin_img)
                 break
+        total_pred_result = np.asarray(total_pred_result)
 
         pred_result = np.asarray(pred_result)
 

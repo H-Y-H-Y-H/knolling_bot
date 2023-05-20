@@ -653,15 +653,15 @@ class Arm:
             last_ori = np.asarray(p.getEulerFromQuaternion(p.getLinkState(self.arm_id, 9)[1]))
 
             if self.test_error_motion == True:
-                trajectory_pos_list = np.array([[0.01, 0.016],
-                                                [0.01, 0.024],
-                                                [0.01, 0.032],
-                                                [0.01, 0.040],
-                                                [0.01, 0.048]])
-                # trajectory_pos_list = np.array([[0.24, -0.17, 0.03],
-                #                                 [0.24, -0.17, 0.005],
-                #                                 [0.24, 0.17, 0.03],
-                #                                 [0.24, 0.17, 0.005]])
+                # trajectory_pos_list = np.array([[0.01, 0.016],
+                #                                 [0.01, 0.024],
+                #                                 [0.01, 0.032],
+                #                                 [0.01, 0.040],
+                #                                 [0.01, 0.048]])
+                trajectory_pos_list = np.array([[0.14, -0.1, 0.03],
+                                                [0.14, -0.1, 0.005],
+                                                [0.14, 0.1, 0.03],
+                                                [0.14, 0.1, 0.005]])
                 for j in range(len(trajectory_pos_list)):
 
                     if len(trajectory_pos_list[j]) == 3:
@@ -688,7 +688,7 @@ class Arm:
                         last_ori = np.copy(rest_ori)
 
                     elif len(trajectory_pos_list[j]) == 2:
-                        gripper(trajectory_pos_list[j][0])
+                        gripper(trajectory_pos_list[j][0], trajectory_pos_list[j][1])
 
             # back to the reset pos and ori
             ik_angles0 = p.calculateInverseKinematics(self.arm_id, 9, targetPosition=[0, 0, 0.06],

@@ -1,9 +1,9 @@
 import numpy as np
 configuration = 4
-path = './cfg_%d/labels_after/' % configuration
+path = './cfg_%d_520/labels_after/' % configuration
 
 total_data = []
-total_images = 5
+total_images = 1
 
 num_box_one_img = 10
 

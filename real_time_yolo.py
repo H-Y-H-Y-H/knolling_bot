@@ -82,7 +82,7 @@ def real_time_yolo(num_box_one_img, evaluations=None):
         # resized_color_image[:, np.concatenate((np.arange(60), np.arange(580, 640))), ] = mean_floor
 
 
-        img_path = './real_world_data_demo/cfg_4/images_before/%d/image_%d' % (num_box_one_img, evaluations)
+        img_path = './real_world_data_demo/cfg_4_520/images_before/%d/image_%d' % (num_box_one_img, evaluations)
 
         # img = adjust_img(img)
 
@@ -250,13 +250,15 @@ if __name__ == '__main__':
     forced_rotate_box = False
     configuration = None
 
-    num_collect_img = 5
-    num_box_one_img = 6
+    num_collect_img = 1
+    num_box_one_img = 10
     total_offset = [0.016, -0.17 + 0.016, 0]
+
+    origin_point = np.array([0, -0.2])
 
     for i in range(num_collect_img):
         real_time_yolo_results = real_time_yolo(num_box_one_img, i)
-        new_item_lw, new_item_pos, new_item_ori, all_index, transform_flag, new_urdf_index = label_sort(real_time_yolo_results)
+        new_item_lw, new_item_pos_before, new_item_ori_before, all_index, transform_flag, new_urdf_index = label_sort(real_time_yolo_results)
 
         calculate_reorder = configuration_zzz(new_item_lw, all_index, gap_item, gap_block,
                                               transform_flag, configuration,
@@ -266,9 +268,19 @@ if __name__ == '__main__':
         # determine the center of the tidy configuration
         items_pos_list, items_ori_list = calculate_reorder.calculate_block()
         items_pos_list = items_pos_list + total_offset
+
+        distance = np.linalg.norm(items_pos_list[:, :2] - origin_point, axis=1)
+        order = np.argsort(distance)
+        items_pos_list = items_pos_list[order]
+        items_ori_list = items_ori_list[order]
+        new_item_lw = new_item_lw[order]
+        new_item_pos_before = new_item_pos_before[order]
+        new_item_ori_before = new_item_ori_before[order]
+        items_ori_list_arm = np.copy(items_ori_list)
+
         print('this is pos list\n', items_pos_list)
         print('this is ori list\n', items_ori_list)
 
         items_ori_list[:, 2] = 0
         data_after = np.concatenate((items_pos_list[:, :2], new_item_lw[:, :2], items_ori_list[:, 2].reshape(-1, 1)), axis=1)
-        np.savetxt('./real_world_data_demo/cfg_4/labels_after/label_%d_%d.txt' % (num_box_one_img, i), data_after, fmt='%.03f')
+        np.savetxt('./real_world_data_demo/cfg_4_520/labels_after/label_%d_%d.txt' % (num_box_one_img, i), data_after, fmt='%.03f')

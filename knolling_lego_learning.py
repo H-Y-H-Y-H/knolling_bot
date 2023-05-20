@@ -33,6 +33,7 @@ import torch.nn.functional as F
 from sklearn.preprocessing import MinMaxScaler
 from shapely.geometry import Polygon
 from knolling_configuration import configuration_zzz
+from urdfpy import URDF
 
 torch.manual_seed(42)
 np.random.seed(202)
@@ -159,12 +160,16 @@ class Arm:
 
         def get_images():
 
-            (width, length, image, _, _) = p.getCameraImage(width=640,
+            (width, length, my_im, _, _) = p.getCameraImage(width=640,
                                                             height=480,
                                                             viewMatrix=self.view_matrix,
                                                             projectionMatrix=self.projection_matrix,
                                                             renderer=p.ER_BULLET_HARDWARE_OPENGL)
-            return image
+            my_im = my_im[:, :, :3]
+            temp = np.copy(my_im[:, :, 0])  # change rgb image to bgr for opencv to save
+            my_im[:, :, 0] = my_im[:, :, 2]
+            my_im[:, :, 2] = temp
+            return my_im
 
         def get_sim_image_obs():
 
@@ -313,27 +318,31 @@ class Arm:
             img_path = 'Test_images/image_real'
             # structure: x,y,length,width,yaw
             results = yolov8_predict(img_path=img_path, real_flag=self.real_operate, target=None)
-            print('this is the result of yolo-pose', results)
+            print('this is the result of yolo-pose\n', results)
 
             z = 0
             roll = 0
             pitch = 0
             index = []
-            print('this is self.xyz', self.xyz_list)
+            print('this is self.xyz\n', self.xyz_list)
             for i in range(len(self.xyz_list)):
                 for j in range(len(results)):
-                    if (np.abs(self.xyz_list[i, 0] - results[j, 2]) < 0.0015 and np.abs(
-                            self.xyz_list[i, 1] - results[j, 3]) < 0.0015) or \
-                            (np.abs(self.xyz_list[i, 1] - results[j, 2]) < 0.0015 and np.abs(
-                                self.xyz_list[i, 0] - results[j, 3]) < 0.0015):
+                    if (np.abs(self.xyz_list[i, 0] - results[j, 2]) <= 0.002 and np.abs(
+                            self.xyz_list[i, 1] - results[j, 3]) <= 0.002) or \
+                            (np.abs(self.xyz_list[i, 1] - results[j, 2]) <= 0.002 and np.abs(
+                                self.xyz_list[i, 0] - results[j, 3]) <= 0.002):
                         if j not in index:
+                            print(f"find first xyz{i} in second xyz{j}")
                             index.append(j)
+                            break
                         else:
                             pass
 
             manipulator_before = []
             for i in index:
                 manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, results[i][4]])
+            # for i in range(len(self.xyz_list)):
+            #     manipulator_before.append([self.pos_before[i][0], self.pos_before[i][1], z, roll, pitch, self.ori_before[i][2]])
             manipulator_before = np.asarray(manipulator_before)
             new_xyz_list = self.xyz_list
             print('this is manipulator before after the detection \n', manipulator_before)
@@ -508,23 +517,23 @@ class Arm:
             num_lego = 0
             sim_pos = np.copy(self.pos_before)
             sim_pos[:, :2] += 0.006
-            for i in range(len(self.xyz_list)):
-                self.lego_idx.append(
-                    p.loadURDF(self.urdf_path + f"knolling_box/knolling_box_{self.urdf_index[i]}.urdf",
-                               basePosition=sim_pos[i],
-                               baseOrientation=p.getQuaternionFromEuler(self.ori_before[i]), useFixedBase=False,
-                               flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-                r = np.random.uniform(0, 0.9)
-                g = np.random.uniform(0, 0.9)
-                b = np.random.uniform(0, 0.9)
-                p.changeVisualShape(self.lego_idx[num_lego], -1, rgbaColor=(r, g, b, 1))
-                num_lego += 1
+            # for i in range(len(self.xyz_list)):
+            #     self.lego_idx.append(
+            #         p.loadURDF(self.save_urdf_path_one_img + 'box_%d.urdf' % (i),
+            #                    basePosition=sim_pos[i],
+            #                    baseOrientation=p.getQuaternionFromEuler(self.ori_before[i]), useFixedBase=False,
+            #                    flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
+            #     r = np.random.uniform(0, 0.9)
+            #     g = np.random.uniform(0, 0.9)
+            #     b = np.random.uniform(0, 0.9)
+            #     p.changeVisualShape(self.lego_idx[num_lego], -1, rgbaColor=(r, g, b, 1))
+            #     num_lego += 1
 
             for i in range(30):
                 p.stepSimulation()
 
         data_before = np.concatenate((self.pos_before[:, :2], self.xyz_list[:, :2], self.ori_before[:, 2].reshape(-1, 1)), axis=1)
-        # np.savetxt('./learning_data_demo/cfg_4/labels_before/label_6_%d.txt' % self.evaluations, data_before, fmt='%.03f')
+        np.savetxt('./learning_data_demo/cfg_4_519/labels_before/label_8_%d.txt' % self.evaluations, data_before, fmt='%.03f')
 
         return self.get_obs('images')
         # return self.pos_before, self.ori_before, self.xyz_list
@@ -564,7 +573,22 @@ class Arm:
         if self.real_operate == False:
             self.xyz_list, _, _, self.all_index, self.transform_flag, self.urdf_index, self.lego_urdf_index = items_sort.get_data_virtual(self.area_num, self.ratio_num, self.num_list, self.boxes_index, self.use_lego_urdf)
         else:
-            self.xyz_list, self.pos_before, self.ori_before, self.all_index, self.transform_flag, self.urdf_index = items_sort.get_data_real(self.area_num, self.ratio_num, self.num_list)
+            self.xyz_list, self.pos_before, self.ori_before, self.all_index, self.transform_flag = items_sort.get_data_real(self.area_num, self.ratio_num, self.num_list)
+
+            temp_box = URDF.load('./urdf/box_generator/template.urdf')
+            self.save_urdf_path_one_img = './urdf/knolling_box/'
+            os.makedirs(self.save_urdf_path_one_img, exist_ok=True)
+            for i in range(len(self.xyz_list)):
+                temp_box.links[0].collisions[0].origin[2, 3] = 0
+                length = self.xyz_list[i, 0]
+                width = self.xyz_list[i, 1]
+                height = 0.012
+                temp_box.links[0].visuals[0].geometry.box.size = [length, width, height]
+                temp_box.links[0].collisions[0].geometry.box.size = [length, width, height]
+                temp_box.links[0].visuals[0].material.color = [np.random.random(), np.random.random(),
+                                                               np.random.random(), 1]
+                temp_box.save(self.save_urdf_path_one_img + 'box_%d.urdf' % (i))
+
         print(f'this is standard trim xyz list\n {self.xyz_list}')
         print(f'this is standard trim index list\n {self.all_index}')
 
@@ -591,8 +615,20 @@ class Arm:
             pass
         # self.items_pos_list = self.items_pos_list + self.total_offset - center
         self.items_pos_list = self.items_pos_list + self.total_offset
+
+        ############### reorder sequence of all results based on the distance to the top-left corner #################
+        origin_point = np.array([0, -0.2])
+        distance = np.linalg.norm(self.items_pos_list[:, :2] - origin_point, axis=1)
+        order = np.argsort(distance)
+        self.items_pos_list = self.items_pos_list[order]
+        self.items_ori_list = self.items_ori_list[order]
+        self.xyz_list = self.items_pos_list[order]
+        self.pos_before = self.pos_before[order]
+        self.ori_before = self.ori_before[order]
         items_ori_list_arm = np.copy(self.items_ori_list)
-        ################### after generate the neat configuration, we should recover the lw based on that in the urdf files!
+        ############### reorder sequence of all results based on the distance to the top-left corner #################
+
+        ############### after generate the neat configuration, we should recover the lw based on that in the urdf files!
         for i in range(len(self.transform_flag)):
             if self.transform_flag[i] == 1:
                 print(f'ori changed in index{i}!')
@@ -600,13 +636,13 @@ class Arm:
                     items_ori_list_arm[i, 2] = self.items_ori_list[i, 2] - np.pi / 2
                 else:
                     items_ori_list_arm[i, 2] = self.items_ori_list[i, 2] + np.pi / 2
-        ################### after generate the neat configuration, we should recover the lw based on that in the urdf files!
-        self.manipulator_after = np.concatenate((self.items_pos_list, items_ori_list_arm), axis=1)
-        print('this is manipulation after', self.manipulator_after)
+        ############### after generate the neat configuration, we should recover the lw based on that in the urdf files!
 
+        self.manipulator_after = np.concatenate((self.items_pos_list, items_ori_list_arm), axis=1)
+        print('this is manipulation after\n', self.manipulator_after)
 
         self.lego_idx = []
-        for i in range(len(self.urdf_index)):
+        for i in range(len(self.xyz_list)):
             if self.real_operate == False:
                 if self.use_lego_urdf == True:
                     pass
@@ -618,7 +654,7 @@ class Arm:
             else:
                 sim_pos = np.copy(self.items_pos_list)
                 sim_pos[:, 2] += 0.006
-                self.lego_idx.append(p.loadURDF(self.urdf_path + f"knolling_box/knolling_box_{self.urdf_index[i]}.urdf",
+                self.lego_idx.append(p.loadURDF(self.save_urdf_path_one_img + 'box_%d.urdf' % (i),
                                    basePosition=sim_pos[i],
                                    baseOrientation=p.getQuaternionFromEuler(self.items_ori_list[i]), useFixedBase=False,
                                    flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
@@ -631,7 +667,7 @@ class Arm:
         # if the urdf is lego, all ori after knolling should be 0, not pi / 2
         self.items_ori_list[:, 2] = 0
         data_after = np.concatenate((self.items_pos_list[:, :2], self.xyz_list[:, :2], self.items_ori_list[:, 2].reshape(-1, 1)), axis=1)
-        # np.savetxt('./learning_data_demo/cfg_4/labels_after/label_6_%d.txt' % self.evaluations, data_after, fmt='%.03f')
+        np.savetxt('./real_world_data_demo/cfg_4_519/labels_after/label_8_%d.txt' % self.evaluations, data_after, fmt='%.03f')
 
         return self.get_obs('images')
 
@@ -649,7 +685,7 @@ class Arm:
 
             # sequence pos_before, ori_before, pos_after, ori_after
             start_end = []
-            for i in range(len(self.lego_idx)):
+            for i in range(len(self.xyz_list)):
                 start_end.append([manipulator_before[i][0], manipulator_before[i][1], arm_z, roll, pitch, manipulator_before[i][5],
                                   self.manipulator_after[i][0], self.manipulator_after[i][1], arm_z, roll, pitch, self.manipulator_after[i][5]])
             start_end = np.asarray((start_end))
@@ -668,7 +704,7 @@ class Arm:
                 z_bias = np.array([-0.005, 0.004])
                 x_bias = np.array([-0.002, 0.00])# yolo error is +2mm along x axis!
                 y_bias = np.array([0, -0.004, -0.001, 0.004])
-                y_bias = np.array([0.002, 0.006])
+                y_bias = np.array([0.001, 0.006])
                 # z_parameters = np.polyfit(d, z_bias, 3)
                 z_parameters = np.polyfit(d, z_bias, 1)
                 x_parameters = np.polyfit(d, x_bias, 1)
@@ -1011,8 +1047,8 @@ class Arm:
                     if len(trajectory_pos_list[j]) == 3:
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
                         last_ori = np.copy(trajectory_ori_list[j])
-                    elif len(trajectory_pos_list[j]) == 1:
-                        gripper(trajectory_pos_list[j][0])
+                    elif len(trajectory_pos_list[j]) == 2:
+                        gripper(trajectory_pos_list[j][0], trajectory_pos_list[j][1])
 
                 break_flag = False
                 barricade_pos = []
@@ -1211,8 +1247,8 @@ class Arm:
                     if len(trajectory_pos_list[j]) == 3:
                         last_pos = move(last_pos, last_ori, trajectory_pos_list[j], trajectory_ori_list[j])
                         last_ori = np.copy(trajectory_ori_list[j])
-                    elif len(trajectory_pos_list[j]) == 1:
-                        gripper(trajectory_pos_list[j][0])
+                    elif len(trajectory_pos_list[j]) == 2:
+                        gripper(trajectory_pos_list[j][0], trajectory_pos_list[j][1])
 
                 ######################### remove the debug lines after moving ######################
                 for i in line_id:
@@ -1265,7 +1301,7 @@ class Arm:
 
             grasp_width = np.min(new_xyz_list_knolling[:, :2], axis=1)
 
-            for i in range(len(self.lego_idx)):
+            for i in range(len(self.xyz_list)):
 
                 trajectory_pos_list = [[0.01, grasp_width[i]], # open!
                                        offset_high + start_end[i][:3],
@@ -1301,8 +1337,8 @@ class Arm:
                         last_ori = np.copy(trajectory_ori_list[j])
                         # print('this is last ori after moving', last_ori)
 
-                    elif len(trajectory_pos_list[j]) == 1:
-                        gripper(trajectory_pos_list[j][0])
+                    elif len(trajectory_pos_list[j]) == 2:
+                        gripper(trajectory_pos_list[j][0], trajectory_pos_list[j][1])
 
             # back to the reset pos and ori
             last_pos = move(last_pos, last_ori, rest_pos, rest_ori)
@@ -1459,7 +1495,7 @@ class Arm:
                 f.truncate(0)
 
             HOST = "192.168.0.186"  # Standard loopback interface address (localhost)
-            PORT = 8880  # Port to listen on (non-privileged ports are > 1023)
+            PORT = 8881  # Port to listen on (non-privileged ports are > 1023)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((HOST, PORT))
             # It should be an integer from 1 to 65535, as 0 is reserved. Some systems may require superuser privileges if the port number is less than 8192.
@@ -1583,7 +1619,7 @@ if __name__ == '__main__':
         obs_order = 'real_image_obj'
         check_detection_loss = False
         obs_img_from = 'env'
-        use_lego_urdf = True
+        use_lego_urdf = False
 
         item_odd_prevent = True
         block_odd_prevent = True
@@ -1609,6 +1645,7 @@ if __name__ == '__main__':
 
         # for i in range(evaluations):
         image_trim = env.change_config()
+        cv2.imwrite('./Test_images/image_real_tar.png', image_trim)
         _ = env.reset()
         env.step()
 
