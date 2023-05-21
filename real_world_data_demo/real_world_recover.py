@@ -219,7 +219,7 @@ if __name__ == '__main__':
     env = Arm(is_render=True)
 
     num_boxes = 10
-    num_image = 1
+    num_image = 5
 
     target_path = '../real_world_data_demo/cfg_4_520/'
     img_sim_path = target_path + 'images_after_sim/num_%d/' % num_boxes
@@ -248,3 +248,4 @@ if __name__ == '__main__':
         cv2.imshow("zzz", image)
         cv2.waitKey()
         cv2.destroyAllWindows()
+        cv2.imwrite(target_path + 'images_after_sim/num_%d/img_%d.png' % (num_boxes, i), image)

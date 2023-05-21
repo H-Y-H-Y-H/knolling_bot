@@ -3,7 +3,7 @@ configuration = 4
 path = './cfg_%d_520/labels_after/' % configuration
 
 total_data = []
-total_images = 1
+total_images = 5
 
 num_box_one_img = 10
 

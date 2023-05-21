@@ -9,6 +9,9 @@ from ultralytics.yolo.utils import DEFAULT_CFG, ROOT, ops
 from ultralytics.yolo.v8.detect.predict import DetectionPredictor
 from urdfpy import URDF
 
+manual_measure = False
+movie = False
+
 class PosePredictor(DetectionPredictor):
 
     def postprocess(self, preds, img, orig_img):
@@ -39,7 +42,7 @@ class PosePredictor(DetectionPredictor):
 
 def real_time_yolo(num_box_one_img, evaluations=None):
 
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_518_3/weights/best.pt'
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_519/weights/best.pt'
 
     pipeline = rs.pipeline()
     config = rs.config()
@@ -64,9 +67,9 @@ def real_time_yolo(num_box_one_img, evaluations=None):
     # config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 6)
     # Start streaming
     pipeline.start(config)
-
     mean_floor = (160, 160 ,160)
 
+    total_pred_result = []
     while True:
         # Wait for a coherent pair of frames: depth and color
         frames = pipeline.wait_for_frames()
@@ -76,18 +79,25 @@ def real_time_yolo(num_box_one_img, evaluations=None):
 
         color_colormap_dim = color_image.shape
         resized_color_image = color_image
+        # print(resized_color_image)
         # img_path = 'Test_images/image_real'
 
         # resized_color_image[np.concatenate((np.arange(10), np.arange(470, 480))), :, ] = mean_floor
         # resized_color_image[:, np.concatenate((np.arange(60), np.arange(580, 640))), ] = mean_floor
 
-
-        img_path = './real_world_data_demo/cfg_4_520/images_before/%d/image_%d' % (num_box_one_img, evaluations)
-
+        if manual_measure == False:
+            img_path = './real_world_data_demo/cfg_4_520/images_before/%d/image_%d' % (num_box_one_img, evaluations)
+        else:
+            img_path = './real_world_data_demo/test_yolo_lw_loss/images_before/%d/image_%d' % (num_box_one_img, evaluations)
+        if movie == True:
+            img_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_tuning/origin_images/'
         # img = adjust_img(img)
-
-        cv2.imwrite(img_path + '.png', resized_color_image)
-        img_path_input = img_path + '.png'
+        if movie == True:
+            cv2.imwrite(img_path + '%012d.png' % evaluations, resized_color_image)
+            img_path_input = img_path + '%012d.png' % evaluations
+        else:
+            cv2.imwrite(img_path + '.png', resized_color_image)
+            img_path_input = img_path + '.png'
         args = dict(model=model, source=img_path_input, conf=0.4, iou=0.2)
         use_python = True
         if use_python:
@@ -106,6 +116,8 @@ def real_time_yolo(num_box_one_img, evaluations=None):
 
         pred_result = []
         pred_xylws = one_img.boxes.xywhn.cpu().detach().numpy()
+        if len(pred_xylws) == 0:
+            continue
         pred_keypoints = one_img.keypoints.cpu().detach().numpy()
         pred_keypoints[:, :, :2] = pred_keypoints[:, :, :2] / np.array([640, 480])
         pred_keypoints = pred_keypoints.reshape(len(pred_xylws), -1)
@@ -138,7 +150,7 @@ def real_time_yolo(num_box_one_img, evaluations=None):
             # pred_label = (f'{pred_name}')
 
             # plot pred
-            print('this is pred xylw', pred_xylw)
+            # print('this is pred xylw', pred_xylw)
             # print('this is pred cos sin', pred_cos_sin)
             origin_img, result = plot_and_transform(im=origin_img, box=pred_xylw, label='0:, predic', color=(0, 0, 0),
                                                     txt_color=(255, 255, 255), index=j,
@@ -147,15 +159,28 @@ def real_time_yolo(num_box_one_img, evaluations=None):
             pred_result.append(result)
             # print('this is j', j)
 
+        pred_result = np.asarray(pred_result)
+        # total_pred_result.append(pred_result)
+        # print(pred_result)
+
+
         cv2.namedWindow('zzz', 0)
+        cv2.resizeWindow('zzz', 1280, 960)
         cv2.imshow('zzz', origin_img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
-            img_path_output = img_path + '_pred.png'
-            cv2.imwrite(img_path_output, origin_img)
+            if movie == True:
+                img_path_output = img_path + 'pred/%012d.png' % evaluations
+                cv2.imwrite(img_path_output, origin_img)
+            else:
+                img_path_output = img_path + '_pred.png'
+                cv2.imwrite(img_path_output, origin_img)
             break
+    total_pred_result = np.asarray(total_pred_result)
+    # print('this is total pred result', total_pred_result)
+    # pred_result = np.concatenate((np.mean(total_pred_result, axis=0), np.max(total_pred_result, axis=0)), axis=1)
+    print('this is pred result\n', pred_result)
 
-    pred_result = np.asarray(pred_result)
     return pred_result
 
 def label_sort(results):
@@ -250,13 +275,16 @@ if __name__ == '__main__':
     forced_rotate_box = False
     configuration = None
 
-    num_collect_img = 1
+    num_collect_img_start = 0
+    num_collect_img_end = 10
     num_box_one_img = 10
     total_offset = [0.016, -0.17 + 0.016, 0]
 
     origin_point = np.array([0, -0.2])
 
-    for i in range(num_collect_img):
+    total_loss = []
+
+    for i in range(num_collect_img_start, num_collect_img_end):
         real_time_yolo_results = real_time_yolo(num_box_one_img, i)
         new_item_lw, new_item_pos_before, new_item_ori_before, all_index, transform_flag, new_urdf_index = label_sort(real_time_yolo_results)
 
@@ -278,9 +306,234 @@ if __name__ == '__main__':
         new_item_ori_before = new_item_ori_before[order]
         items_ori_list_arm = np.copy(items_ori_list)
 
-        print('this is pos list\n', items_pos_list)
-        print('this is ori list\n', items_ori_list)
+        if movie == False:
+            if manual_measure == False:
+                with open('real_after_pred.txt', 'r') as file:
+                    data = file.read().replace(',', ' ')
+                    data = list(data.split())
+                    temp_data = np.array([float(d) for d in data]).reshape(-1, 5)[:10]
+                    target = np.copy(temp_data)[:, 2:]
+                    # print('demo target', target)
+            else:
+                data = input('please input the size (length and width):')
+                # print(data)
+                data = list(data.split())
+                temp_data = np.array([float(d) for d in data]).reshape(num_box_one_img, -1)
+                target = np.copy(temp_data)
+                print(target)
+                # print(target.shape)
 
-        items_ori_list[:, 2] = 0
-        data_after = np.concatenate((items_pos_list[:, :2], new_item_lw[:, :2], items_ori_list[:, 2].reshape(-1, 1)), axis=1)
-        np.savetxt('./real_world_data_demo/cfg_4_520/labels_after/label_%d_%d.txt' % (num_box_one_img, i), data_after, fmt='%.03f')
+            target_exist_list = []
+            pred_exist_list = []
+            temp_item_lw = []
+            temp_item_pos = []
+            temp_item_ori = []
+            print('this is new item lw\n', new_item_lw)
+            print('this is known label\n', target)
+
+            if manual_measure == False:
+
+                for j in range(len(new_item_lw)):
+                    for m in range(len(target)):
+                        if (np.abs(new_item_lw[j, 0] - target[m, 0]) < 0.002 and np.abs(new_item_lw[j, 1] - target[m, 1]) < 0.002):
+                            if m not in target_exist_list:
+                                print(f'new item lw {j} match temp data {m}!')
+                                target_exist_list.append(m)
+                                pred_exist_list.append(j)
+                                target[m, :2] = new_item_lw[j, :2]
+                                # target[m, 2:4] = new_item_lw[j, :2]
+                                temp_item_pos.append(target[m, :2])
+                                temp_item_ori.append(target[m, :4])
+                                break
+                        elif (np.abs(new_item_lw[j, 1] - target[m, 0]) < 0.002 and np.abs(new_item_lw[j, 0] - target[m, 1]) < 0.002):
+                            if m not in target_exist_list:
+                                print(f'new item lw {j} match temp data {m}!')
+                                target_exist_list.append(m)
+                                pred_exist_list.append(j)
+                                temp = new_item_lw[j][0]
+                                new_item_lw[j][0] = new_item_lw[j][1]
+                                new_item_lw[j][1] = temp
+                                target[m, :2] = new_item_lw[j, :2]
+                                # target[m, 2:4] = new_item_lw[j, :2]
+                                temp_item_pos.append(target[m, :2])
+                                temp_item_ori.append(target[m, :4])
+                                break
+
+            #     # for j in range(len(new_item_lw)):
+            #     #     for m in range(len(target)):
+            #     #         if (np.abs(new_item_lw[j, 0] - target[m, 2]) < 0.002 and np.abs(new_item_lw[j, 1] - target[m, 3]) < 0.002):
+            #     #             if m not in target_exist_list:
+            #     #                 print(f'new item lw {j} match temp data {m}!')
+            #     #                 target_exist_list.append(m)
+            #     #                 pred_exist_list.append(j)
+            #     #                 # target[m, :2] = new_item_lw[j, :2]
+            #     #                 target[m, 2:4] = new_item_lw[j, :2]
+            #     #                 temp_item_pos.append(target[m, :2])
+            #     #                 temp_item_ori.append(target[m, :4])
+            #     #                 break
+            #     #         elif (np.abs(new_item_lw[j, 1] - target[m, 2]) < 0.002 and np.abs(new_item_lw[j, 0] - target[m, 3]) < 0.002):
+            #     #             if m not in target_exist_list:
+            #     #                 print(f'new item lw {j} match temp data {m}!')
+            #     #                 target_exist_list.append(m)
+            #     #                 pred_exist_list.append(j)
+            #     #                 temp = new_item_lw[j][0]
+            #     #                 new_item_lw[j][0] = new_item_lw[j][1]
+            #     #                 new_item_lw[j][1] = temp
+            #     #                 # target[m, :2] = new_item_lw[j, :2]
+            #     #                 target[m, 2:4] = new_item_lw[j, :2]
+            #     #                 temp_item_pos.append(target[m, :2])
+            #     #                 temp_item_ori.append(target[m, :4])
+            #     #                 break
+            # else:
+            #     for j in range(len(new_item_lw)):
+            #         for m in range(len(target)):
+            #             if (np.abs(new_item_lw[j, 0] - target[m, 0]) < 0.002 and np.abs(new_item_lw[j, 1] - target[m, 1]) < 0.002):
+            #                 if m not in target_exist_list:
+            #                     print(f'new item lw {j} match temp data {m}!')
+            #                     target_exist_list.append(m)
+            #                     pred_exist_list.append(j)
+            #                     target[m, :2] = new_item_lw[j, :2]
+            #                     # target[m, 2:4] = new_item_lw[j, :2]
+            #                     temp_item_pos.append(target[m, :2])
+            #                     temp_item_ori.append(target[m, :4])
+            #                     break
+            #             elif (np.abs(new_item_lw[j, 1] - target[m, 0]) < 0.002 and np.abs(new_item_lw[j, 0] - target[m, 1]) < 0.002):
+            #                 if m not in target_exist_list:
+            #                     print(f'new item lw {j} match temp data {m}!')
+            #                     target_exist_list.append(m)
+            #                     pred_exist_list.append(j)
+            #                     temp = new_item_lw[j][0]
+            #                     new_item_lw[j][0] = new_item_lw[j][1]
+            #                     new_item_lw[j][1] = temp
+            #                     target[m, :2] = new_item_lw[j, :2]
+            #                     # target[m, 2:4] = new_item_lw[j, :2]
+            #                     temp_item_pos.append(target[m, :2])
+            #                     temp_item_ori.append(target[m, :4])
+            #                     break
+
+            if len(target_exist_list) != len(target):
+                target_exist_list = np.asarray(target_exist_list)
+                pred_exist_list = np.asarray(pred_exist_list)
+                print(target_exist_list)
+                if len(target_exist_list) == 0:
+                    rest_target = target
+                    rest_target_index = np.arange(num_box_one_img)
+                    rest_pred = new_item_lw
+                    rest_pred_backup = rest_pred[:, [1, 0, 2]]
+                    rest_pred_index = np.arange(num_box_one_img)
+                    rest_pred_index = np.tile(rest_pred_index, 2)
+                else:
+                    rest_target_index = np.delete(np.arange(num_box_one_img), target_exist_list)
+                    rest_target = np.delete(target, target_exist_list, axis=0)
+                    rest_pred = np.delete(new_item_lw, pred_exist_list, axis=0)
+                    rest_pred_backup = rest_pred[:, [1, 0, 2]]
+                    rest_pred = np.concatenate((rest_pred, rest_pred_backup), axis=0)
+                    rest_pred_index = np.delete(np.arange(num_box_one_img), pred_exist_list)
+                    rest_pred_index = np.tile(rest_pred_index, 2)
+
+                print('rest_target', rest_target)
+                print('rest_pred', rest_pred)
+                if manual_measure == False:
+                    for z in range(len(rest_target)):
+                        add_index = np.argmin(np.linalg.norm(rest_pred - rest_target[z, :], axis=1))
+                        print('this is add', add_index)
+                        print(int(add_index - len(rest_pred) / 2))
+                        print(int(add_index + len(rest_pred) / 2))
+                        if add_index + 1 > int(len(rest_pred) / 2):
+                            print(
+                                f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [1, 0]]}, reverse')
+                            target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [1, 0]]
+                            rest_pred[add_index, :2].fill(-2)
+                            rest_pred[int(add_index - len(rest_pred) / 2), :2].fill(-2)
+                            rest_target[z, :].fill(0)
+                        else:
+                            print(
+                                f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [0, 1]]}')
+                            target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [0, 1]]
+                            rest_pred[add_index, :2].fill(-2)
+                            rest_pred[int(add_index + len(rest_pred) / 2), :2].fill(-2)
+                            rest_target[z, :].fill(0)
+                        print('this is reset target after', rest_target)
+                        print('this is reset pred after', rest_pred)
+
+                        # add_index = np.argmin(np.linalg.norm(rest_pred - rest_target[z, 2:], axis=1))
+                        # if add_index >= len(rest_target):
+                        #     print(f'target {target[rest_target_index[z], 2:4]} matches pred{new_item_lw[rest_pred_index[add_index], [1, 0]]}')
+                        #     target[rest_target_index[z], 2:4] = new_item_lw[rest_pred_index[add_index], [1, 0]]
+                        #     # rest_target[i, 2:] == np.array([0, 0, 0])
+                        #     rest_target[z] == np.array([0, 0, 0])
+                        # else:
+                        #     print(f'target {target[rest_target_index[z], 2:4]} matches pred{new_item_lw[rest_pred_index[add_index], [0, 1]]}')
+                        #     target[rest_target_index[z], 2:4] = new_item_lw[rest_pred_index[add_index], [0, 1]]
+                        #     # rest_target[i, 2:] == np.array([0, 0, 0])
+                        #     rest_target[z] == np.array([0, 0, 0])
+                # else:
+                #     for z in range(len(rest_target)):
+                #         add_index = np.argmin(np.linalg.norm(rest_pred - rest_target[z, :], axis=1))
+                #         print('this is add', add_index)
+                #         print(int(add_index - len(rest_pred) / 2))
+                #         print(int(add_index + len(rest_pred) / 2))
+                #         if add_index + 1 > int(len(rest_pred) / 2):
+                #             print(
+                #                 f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [1, 0]]}, reverse')
+                #             target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [1, 0]]
+                #             rest_pred[add_index, :2].fill(-2)
+                #             rest_pred[int(add_index - len(rest_pred) / 2), :2].fill(-2)
+                #             rest_target[z, :].fill(0)
+                #         else:
+                #             print(
+                #                 f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [0, 1]]}')
+                #             target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [0, 1]]
+                #             rest_pred[add_index, :2].fill(-2)
+                #             rest_pred[int(add_index + len(rest_pred) / 2), :2].fill(-2)
+                #             rest_target[z, :].fill(0)
+                #         print('this is reset target after', rest_target)
+                #         print('this is reset pred after', rest_pred)
+                #
+                #     # for z in range(len(rest_target)):
+                #     #     add_index = np.argmin(np.linalg.norm(rest_pred - rest_target[z, :], axis=1))
+                #     #     if add_index >= len(rest_target):
+                #     #         print(f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [1, 0]]}')
+                #     #         target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [1, 0]]
+                #     #         # rest_target[i, 2:] == np.array([0, 0, 0])
+                #     #         rest_target[z] == np.array([0, 0, 0])
+                #     #     else:
+                #     #         print(f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [1, 0]]}')
+                #     #         target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [0, 1]]
+                #     #         # rest_target[i, 2:] == np.array([0, 0, 0])
+                #     #         rest_target[z] == np.array([0, 0, 0])
+
+            loss = np.mean((target[:, :2] - temp_data[:, 2:4]), axis=0)
+            print('this is temp data\n', temp_data)
+            print('this is target\n', target)
+            print('this is loss', loss)
+            total_loss.append(loss)
+
+            if manual_measure == False:
+                target = np.concatenate((temp_data[:, :2], target), axis=1)
+                np.savetxt('./real_world_data_demo/cfg_4_520/labels_after/label_%d_%d.txt' % (num_box_one_img, i),
+                           target, fmt='%.04f')
+            else:
+                np.savetxt('./real_world_data_demo/test_yolo_lw_loss/labels_after/label_%d.txt' % (i), target,
+                           fmt='%.04f')
+        else:
+            items_ori_list[:, 2] = 0
+            # data_after = np.concatenate((items_pos_list[:, :2], new_item_lw[:, :2], items_ori_list[:, 2].reshape(-1, 1)), axis=1)
+            data_before = np.concatenate(
+                (np.ones(len(new_item_pos_before)).reshape(-1, 1), new_item_pos_before[:, :2], new_item_lw[:, :2], new_item_ori_before[:, 2].reshape(-1, 1)), axis=1)
+            print('this is data before\n', data_before)
+            np.savetxt('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_tuning/origin_labels/origin_labels_pred/%012d.txt' % i, data_before)
+            # print('this is pos list\n', items_pos_list)
+            # print('this is ori list\n', items_ori_list)
+
+    if movie == False:
+        total_loss.append(np.mean(total_loss, axis=0))
+        total_loss = np.asarray(total_loss)
+        if manual_measure == False:
+            np.savetxt('./real_world_data_demo/cfg_4_520/labels_after/label_%d_loss.txt' % (num_box_one_img), total_loss)
+        else:
+            np.savetxt('./real_world_data_demo/test_yolo_lw_loss/labels_after/%d/label_loss_%d.txt' % (num_box_one_img, num_collect_img_end), total_loss)
+    else:
+        pass
+
+############## -0.0021 -0.0013
