@@ -10,7 +10,7 @@ from ultralytics.yolo.v8.detect.predict import DetectionPredictor
 from urdfpy import URDF
 
 manual_measure = False
-movie = False
+movie = True
 
 class PosePredictor(DetectionPredictor):
 
@@ -276,8 +276,8 @@ if __name__ == '__main__':
     configuration = None
 
     num_collect_img_start = 0
-    num_collect_img_end = 10
-    num_box_one_img = 10
+    num_collect_img_end = 100
+    num_box_one_img = 1
     total_offset = [0.016, -0.17 + 0.016, 0]
 
     origin_point = np.array([0, -0.2])
@@ -359,58 +359,6 @@ if __name__ == '__main__':
                                 temp_item_ori.append(target[m, :4])
                                 break
 
-            #     # for j in range(len(new_item_lw)):
-            #     #     for m in range(len(target)):
-            #     #         if (np.abs(new_item_lw[j, 0] - target[m, 2]) < 0.002 and np.abs(new_item_lw[j, 1] - target[m, 3]) < 0.002):
-            #     #             if m not in target_exist_list:
-            #     #                 print(f'new item lw {j} match temp data {m}!')
-            #     #                 target_exist_list.append(m)
-            #     #                 pred_exist_list.append(j)
-            #     #                 # target[m, :2] = new_item_lw[j, :2]
-            #     #                 target[m, 2:4] = new_item_lw[j, :2]
-            #     #                 temp_item_pos.append(target[m, :2])
-            #     #                 temp_item_ori.append(target[m, :4])
-            #     #                 break
-            #     #         elif (np.abs(new_item_lw[j, 1] - target[m, 2]) < 0.002 and np.abs(new_item_lw[j, 0] - target[m, 3]) < 0.002):
-            #     #             if m not in target_exist_list:
-            #     #                 print(f'new item lw {j} match temp data {m}!')
-            #     #                 target_exist_list.append(m)
-            #     #                 pred_exist_list.append(j)
-            #     #                 temp = new_item_lw[j][0]
-            #     #                 new_item_lw[j][0] = new_item_lw[j][1]
-            #     #                 new_item_lw[j][1] = temp
-            #     #                 # target[m, :2] = new_item_lw[j, :2]
-            #     #                 target[m, 2:4] = new_item_lw[j, :2]
-            #     #                 temp_item_pos.append(target[m, :2])
-            #     #                 temp_item_ori.append(target[m, :4])
-            #     #                 break
-            # else:
-            #     for j in range(len(new_item_lw)):
-            #         for m in range(len(target)):
-            #             if (np.abs(new_item_lw[j, 0] - target[m, 0]) < 0.002 and np.abs(new_item_lw[j, 1] - target[m, 1]) < 0.002):
-            #                 if m not in target_exist_list:
-            #                     print(f'new item lw {j} match temp data {m}!')
-            #                     target_exist_list.append(m)
-            #                     pred_exist_list.append(j)
-            #                     target[m, :2] = new_item_lw[j, :2]
-            #                     # target[m, 2:4] = new_item_lw[j, :2]
-            #                     temp_item_pos.append(target[m, :2])
-            #                     temp_item_ori.append(target[m, :4])
-            #                     break
-            #             elif (np.abs(new_item_lw[j, 1] - target[m, 0]) < 0.002 and np.abs(new_item_lw[j, 0] - target[m, 1]) < 0.002):
-            #                 if m not in target_exist_list:
-            #                     print(f'new item lw {j} match temp data {m}!')
-            #                     target_exist_list.append(m)
-            #                     pred_exist_list.append(j)
-            #                     temp = new_item_lw[j][0]
-            #                     new_item_lw[j][0] = new_item_lw[j][1]
-            #                     new_item_lw[j][1] = temp
-            #                     target[m, :2] = new_item_lw[j, :2]
-            #                     # target[m, 2:4] = new_item_lw[j, :2]
-            #                     temp_item_pos.append(target[m, :2])
-            #                     temp_item_ori.append(target[m, :4])
-            #                     break
-
             if len(target_exist_list) != len(target):
                 target_exist_list = np.asarray(target_exist_list)
                 pred_exist_list = np.asarray(pred_exist_list)
@@ -455,53 +403,6 @@ if __name__ == '__main__':
                             rest_target[z, :].fill(0)
                         print('this is reset target after', rest_target)
                         print('this is reset pred after', rest_pred)
-
-                        # add_index = np.argmin(np.linalg.norm(rest_pred - rest_target[z, 2:], axis=1))
-                        # if add_index >= len(rest_target):
-                        #     print(f'target {target[rest_target_index[z], 2:4]} matches pred{new_item_lw[rest_pred_index[add_index], [1, 0]]}')
-                        #     target[rest_target_index[z], 2:4] = new_item_lw[rest_pred_index[add_index], [1, 0]]
-                        #     # rest_target[i, 2:] == np.array([0, 0, 0])
-                        #     rest_target[z] == np.array([0, 0, 0])
-                        # else:
-                        #     print(f'target {target[rest_target_index[z], 2:4]} matches pred{new_item_lw[rest_pred_index[add_index], [0, 1]]}')
-                        #     target[rest_target_index[z], 2:4] = new_item_lw[rest_pred_index[add_index], [0, 1]]
-                        #     # rest_target[i, 2:] == np.array([0, 0, 0])
-                        #     rest_target[z] == np.array([0, 0, 0])
-                # else:
-                #     for z in range(len(rest_target)):
-                #         add_index = np.argmin(np.linalg.norm(rest_pred - rest_target[z, :], axis=1))
-                #         print('this is add', add_index)
-                #         print(int(add_index - len(rest_pred) / 2))
-                #         print(int(add_index + len(rest_pred) / 2))
-                #         if add_index + 1 > int(len(rest_pred) / 2):
-                #             print(
-                #                 f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [1, 0]]}, reverse')
-                #             target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [1, 0]]
-                #             rest_pred[add_index, :2].fill(-2)
-                #             rest_pred[int(add_index - len(rest_pred) / 2), :2].fill(-2)
-                #             rest_target[z, :].fill(0)
-                #         else:
-                #             print(
-                #                 f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [0, 1]]}')
-                #             target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [0, 1]]
-                #             rest_pred[add_index, :2].fill(-2)
-                #             rest_pred[int(add_index + len(rest_pred) / 2), :2].fill(-2)
-                #             rest_target[z, :].fill(0)
-                #         print('this is reset target after', rest_target)
-                #         print('this is reset pred after', rest_pred)
-                #
-                #     # for z in range(len(rest_target)):
-                #     #     add_index = np.argmin(np.linalg.norm(rest_pred - rest_target[z, :], axis=1))
-                #     #     if add_index >= len(rest_target):
-                #     #         print(f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [1, 0]]}')
-                #     #         target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [1, 0]]
-                #     #         # rest_target[i, 2:] == np.array([0, 0, 0])
-                #     #         rest_target[z] == np.array([0, 0, 0])
-                #     #     else:
-                #     #         print(f'target {target[rest_target_index[z], :]} matches pred{new_item_lw[rest_pred_index[add_index], [1, 0]]}')
-                #     #         target[rest_target_index[z], :2] = new_item_lw[rest_pred_index[add_index], [0, 1]]
-                #     #         # rest_target[i, 2:] == np.array([0, 0, 0])
-                #     #         rest_target[z] == np.array([0, 0, 0])
 
             loss = np.mean((target[:, :2] - temp_data[:, 2:4]), axis=0)
             print('this is temp data\n', temp_data)

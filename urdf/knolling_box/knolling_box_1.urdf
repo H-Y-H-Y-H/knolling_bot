@@ -8,14 +8,14 @@
     </inertial>
     <visual>
       <geometry>
-        <box size="     0.0313      0.0169       0.012"/>
+        <box size="     0.0163      0.0078       0.012"/>
       </geometry>
       <material name=""/>
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
     </visual>
     <collision>
       <geometry>
-        <box size="     0.0313      0.0169       0.012"/>
+        <box size="     0.0163      0.0078       0.012"/>
       </geometry>
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
     </collision>
