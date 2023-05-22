@@ -78,6 +78,7 @@ else:
                         rest_target_index = np.arange(num_box_one_img)
                         rest_pred = pred_label
                         rest_pred_backup = rest_pred[:, [1, 0, 2]]
+                        rest_pred = np.concatenate((rest_pred, rest_pred_backup), axis=0)
                         rest_pred_index = np.arange(num_box_one_img)
                         rest_pred_index = np.tile(rest_pred_index, 2)
                     else:
@@ -94,6 +95,7 @@ else:
                     for z in range(len(rest_target)):
                         add_index = np.argmin(np.linalg.norm(rest_pred[:, :2] - rest_target[z, :2], axis=1))
                         print('this is add', add_index)
+                        print(len(rest_pred))
                         if add_index + 1 > int(len(rest_pred) / 2):
                             print(
                                 f'target {target[rest_target_index[z], :]} matches pred{pred_label[rest_pred_index[add_index], [1, 0]]}, reverse')
@@ -116,7 +118,7 @@ else:
                 print('this is target\n', target)
                 print('this is loss', loss)
                 total_loss.append(loss)
-                target = np.concatenate((pred_label_temp, temp_data, pred_label[:, 2].reshape(-1, 1)), axis=1)
+                target = np.concatenate((pred_label_temp, temp_data[:, :2], pred_label[:, 2].reshape(-1, 1)), axis=1)
 
                 np.savetxt('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_tuning/origin_labels/%012d.txt' % q,
                            target, fmt='%.04f')

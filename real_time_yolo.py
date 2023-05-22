@@ -1,4 +1,5 @@
-from items_real_learning import Sort_objects
+import os
+# from items_real_learning import Sort_objects
 from cam_obs_learning import plot_and_transform
 from knolling_configuration import configuration_zzz
 import pyrealsense2 as rs
@@ -10,7 +11,7 @@ from ultralytics.yolo.v8.detect.predict import DetectionPredictor
 from urdfpy import URDF
 
 manual_measure = False
-movie = True
+manual_yolo_label = False
 
 class PosePredictor(DetectionPredictor):
 
@@ -42,7 +43,7 @@ class PosePredictor(DetectionPredictor):
 
 def real_time_yolo(num_box_one_img, evaluations=None):
 
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_519/weights/best.pt'
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_521_tuning/weights/best.pt'
 
     pipeline = rs.pipeline()
     config = rs.config()
@@ -86,13 +87,14 @@ def real_time_yolo(num_box_one_img, evaluations=None):
         # resized_color_image[:, np.concatenate((np.arange(60), np.arange(580, 640))), ] = mean_floor
 
         if manual_measure == False:
-            img_path = './real_world_data_demo/cfg_4_520/images_before/%d/image_%d' % (num_box_one_img, evaluations)
+            img_path = './real_world_data_demo/demo_3/images_before/%d/images_%d' % (num_box_one_img, evaluations)
+            # os.makedirs(img_path, exist_ok=True)
         else:
             img_path = './real_world_data_demo/test_yolo_lw_loss/images_before/%d/image_%d' % (num_box_one_img, evaluations)
-        if movie == True:
-            img_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_tuning/origin_images/'
+        if manual_yolo_label == True:
+            img_path = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_dataset/yolo_pose4keypoints_tuning_522/origin_images/'
+            os.makedirs(img_path, exist_ok=True)
         # img = adjust_img(img)
-        if movie == True:
             cv2.imwrite(img_path + '%012d.png' % evaluations, resized_color_image)
             img_path_input = img_path + '%012d.png' % evaluations
         else:
@@ -123,18 +125,27 @@ def real_time_yolo(num_box_one_img, evaluations=None):
         pred_keypoints = pred_keypoints.reshape(len(pred_xylws), -1)
 
         pred = np.concatenate((np.zeros((len(pred_xylws), 1)), pred_xylws, pred_keypoints), axis=1)
-        pred_order = np.lexsort((pred[:, 2], pred[:, 1]))
+        # pred_order = np.lexsort((pred[:, 2], pred[:, 1]))
 
-        pred_test = np.copy(pred[pred_order])
-        for i in range(len(pred) - 1):
-            if np.abs(pred_test[i, 1] - pred_test[i + 1, 1]) < 0.01:
-                if pred_test[i, 2] < pred_test[i + 1, 2]:
-                    # ground_truth_pose[order_ground_truth[i]], ground_truth_pose[order_ground_truth[i+1]] = ground_truth_pose[order_ground_truth[i+1]], ground_truth_pose[order_ground_truth[i]]
-                    pred_order[i], pred_order[i + 1] = pred_order[i + 1], pred_order[i]
-                    print('pred change the order!')
-                else:
-                    pass
-        print('this is the pred order', pred_order)
+        ######## order based on distance to draw it on the image!!!
+        mm2px = 530 / 0.34
+        x_px_center = pred_xylws[:, 1] * 480
+        y_px_center = pred_xylws[:, 0] * 640
+        mm_center = np.concatenate(
+            (((x_px_center - 6) / mm2px).reshape(-1, 1), ((y_px_center - 320) / mm2px).reshape(-1, 1)), axis=1)
+        distance = np.linalg.norm(mm_center - origin_point, axis=1)
+        pred_order = np.argsort(distance)
+
+        # pred_test = np.copy(pred[pred_order])
+        # for i in range(len(pred) - 1):
+        #     if np.abs(pred_test[i, 1] - pred_test[i + 1, 1]) < 0.01:
+        #         if pred_test[i, 2] < pred_test[i + 1, 2]:
+        #             # ground_truth_pose[order_ground_truth[i]], ground_truth_pose[order_ground_truth[i+1]] = ground_truth_pose[order_ground_truth[i+1]], ground_truth_pose[order_ground_truth[i]]
+        #             pred_order[i], pred_order[i + 1] = pred_order[i + 1], pred_order[i]
+        #             print('pred change the order!')
+        #         else:
+        #             pass
+        # print('this is the pred order', pred_order)
 
         pred = pred[pred_order]
         pred_xylws = pred_xylws[pred_order]
@@ -169,7 +180,7 @@ def real_time_yolo(num_box_one_img, evaluations=None):
         cv2.imshow('zzz', origin_img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
-            if movie == True:
+            if manual_yolo_label == True:
                 img_path_output = img_path + 'pred/%012d.png' % evaluations
                 cv2.imwrite(img_path_output, origin_img)
             else:
@@ -189,7 +200,7 @@ def label_sort(results):
     item_ori = results[:, 4]
 
     ##################### generate customize boxes based on the result of yolo ######################
-    temp_box = URDF.load('./urdf/box_generator/template.urdf')
+    temp_box = URDF.load('urdf/box_generator/template.urdf')
     for i in range(len(results)):
         temp_box.links[0].collisions[0].origin[2, 3] = 0
         length = item_lw[i, 0]
@@ -276,16 +287,21 @@ if __name__ == '__main__':
     configuration = None
 
     num_collect_img_start = 0
-    num_collect_img_end = 100
-    num_box_one_img = 1
+    num_collect_img_end = 1
+    num_box_one_img = 10
     total_offset = [0.016, -0.17 + 0.016, 0]
 
     origin_point = np.array([0, -0.2])
 
     total_loss = []
-
+    zzz_demo_result = []
     for i in range(num_collect_img_start, num_collect_img_end):
         real_time_yolo_results = real_time_yolo(num_box_one_img, i)
+        zzz_demo_result.append(real_time_yolo_results)
+        os.makedirs('./real_world_data_demo/demo_3/labels_before/', exist_ok=True)
+        # np.savetxt('./real_world_data_demo/demo_3/labels_before/label_%d_%d.txt' % (num_box_one_img, i),
+        #             real_time_yolo_results.reshape(1, -1), fmt='%.04f')
+        continue
         new_item_lw, new_item_pos_before, new_item_ori_before, all_index, transform_flag, new_urdf_index = label_sort(real_time_yolo_results)
 
         calculate_reorder = configuration_zzz(new_item_lw, all_index, gap_item, gap_block,
@@ -306,7 +322,7 @@ if __name__ == '__main__':
         new_item_ori_before = new_item_ori_before[order]
         items_ori_list_arm = np.copy(items_ori_list)
 
-        if movie == False:
+        if manual_yolo_label == False:
             if manual_measure == False:
                 with open('real_after_pred.txt', 'r') as file:
                     data = file.read().replace(',', ' ')
@@ -412,7 +428,7 @@ if __name__ == '__main__':
 
             if manual_measure == False:
                 target = np.concatenate((temp_data[:, :2], target), axis=1)
-                np.savetxt('./real_world_data_demo/cfg_4_520/labels_after/label_%d_%d.txt' % (num_box_one_img, i),
+                np.savetxt('./real_world_data_demo/demo_3/label_%d_%d.txt' % (num_box_one_img, i),
                            target, fmt='%.04f')
             else:
                 np.savetxt('./real_world_data_demo/test_yolo_lw_loss/labels_after/label_%d.txt' % (i), target,
@@ -427,13 +443,19 @@ if __name__ == '__main__':
             # print('this is pos list\n', items_pos_list)
             # print('this is ori list\n', items_ori_list)
 
-    if movie == False:
+    zzz_demo_result = np.asarray(zzz_demo_result)
+    np.savetxt('./real_world_data_demo/demo_3/labels_before/label_%d_%d.txt' % (num_box_one_img, i),
+               zzz_demo_result.reshape(num_collect_img_end, -1), fmt='%.04f')
+    print(zzz_demo_result)
+
+
+    if manual_yolo_label == False:
         total_loss.append(np.mean(total_loss, axis=0))
         total_loss = np.asarray(total_loss)
-        if manual_measure == False:
-            np.savetxt('./real_world_data_demo/cfg_4_520/labels_after/label_%d_loss.txt' % (num_box_one_img), total_loss)
-        else:
-            np.savetxt('./real_world_data_demo/test_yolo_lw_loss/labels_after/%d/label_loss_%d.txt' % (num_box_one_img, num_collect_img_end), total_loss)
+        # if manual_measure == False:
+        #     np.savetxt('./real_world_data_demo/cfg_4_520/labels_after/label_%d_loss.txt' % (num_box_one_img), total_loss)
+        # else:
+        #     np.savetxt('./real_world_data_demo/test_yolo_lw_loss/labels_after/%d/label_loss_%d.txt' % (num_box_one_img, num_collect_img_end), total_loss)
     else:
         pass
 

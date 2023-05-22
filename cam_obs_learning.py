@@ -247,7 +247,7 @@ def adjust_img(img):
     return new_img
 
 def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, real_flag=None, target=None):
-    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_518_3/weights/best.pt'
+    model = '/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics/yolo_runs/train_standard_521_tuning/weights/best.pt'
 
     if real_flag == True:
 
@@ -276,27 +276,22 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, r
         pipeline.start(config)
 
         mean_floor = (160, 160, 160)
+        origin_point = np.array([0, -0.20])
 
         total_pred_result = []
         while True:
             # Wait for a coherent pair of frames: depth and color
             frames = pipeline.wait_for_frames()
-
             color_frame = frames.get_color_frame()
             color_image = np.asanyarray(color_frame.get_data())
-
             color_colormap_dim = color_image.shape
             resized_color_image = color_image
-            # img_path = 'Test_images/image_real'
-
-            # resized_color_image[np.concatenate((np.arange(10), np.arange(470, 480))), :, ] = mean_floor
-            # resized_color_image[:, np.concatenate((np.arange(60), np.arange(580, 640))), ] = mean_floor
 
             # img = adjust_img(img)
 
             cv2.imwrite(img_path + '.png', resized_color_image)
             img_path_input = img_path + '.png'
-            args = dict(model=model, source=img_path_input, conf=0.4, iou=0.2)
+            args = dict(model=model, source=img_path_input, conf=0.5, iou=0.2)
             use_python = True
             if use_python:
                 from ultralytics import YOLO
@@ -309,28 +304,39 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, r
             origin_img = cv2.imread(img_path_input)
 
             use_xylw = False  # use lw or keypoints to export length and width
-
             one_img = images[0]
 
             pred_result = []
             pred_xylws = one_img.boxes.xywhn.cpu().detach().numpy()
+            if len(pred_xylws) == 0:
+                continue
             pred_keypoints = one_img.keypoints.cpu().detach().numpy()
             pred_keypoints[:, :, :2] = pred_keypoints[:, :, :2] / np.array([640, 480])
             pred_keypoints = pred_keypoints.reshape(len(pred_xylws), -1)
 
             pred = np.concatenate((np.zeros((len(pred_xylws), 1)), pred_xylws, pred_keypoints), axis=1)
-            pred_order = np.lexsort((pred[:, 2], pred[:, 1]))
+            # pred_order = np.lexsort((pred[:, 2], pred[:, 1]))
 
-            pred_test = np.copy(pred[pred_order])
-            for i in range(len(pred) - 1):
-                if np.abs(pred_test[i, 1] - pred_test[i + 1, 1]) < 0.01:
-                    if pred_test[i, 2] < pred_test[i + 1, 2]:
-                        # ground_truth_pose[order_ground_truth[i]], ground_truth_pose[order_ground_truth[i+1]] = ground_truth_pose[order_ground_truth[i+1]], ground_truth_pose[order_ground_truth[i]]
-                        pred_order[i], pred_order[i + 1] = pred_order[i + 1], pred_order[i]
-                        print('pred change the order!')
-                    else:
-                        pass
-            print('this is the pred order', pred_order)
+            ######## order based on distance to draw it on the image!!!
+            mm2px = 530 / 0.34
+            x_px_center = pred_xylws[:, 1] * 480
+            y_px_center = pred_xylws[:, 0] * 640
+            mm_center = np.concatenate((((x_px_center - 6) / mm2px).reshape(-1, 1), ((y_px_center - 320) / mm2px).reshape(-1, 1)), axis=1)
+            distance = np.linalg.norm(mm_center - origin_point, axis=1)
+            pred_order = np.argsort(distance)
+
+
+
+            # pred_test = np.copy(pred[pred_order])
+            # for i in range(len(pred) - 1):
+            #     if np.abs(pred_test[i, 1] - pred_test[i + 1, 1]) < 0.01:
+            #         if pred_test[i, 2] < pred_test[i + 1, 2]:
+            #             # ground_truth_pose[order_ground_truth[i]], ground_truth_pose[order_ground_truth[i+1]] = ground_truth_pose[order_ground_truth[i+1]], ground_truth_pose[order_ground_truth[i]]
+            #             pred_order[i], pred_order[i + 1] = pred_order[i + 1], pred_order[i]
+            #             print('pred change the order!')
+            #         else:
+            #             pass
+            # # print('this is the pred order', pred_order)
 
             pred = pred[pred_order]
             pred_xylws = pred_xylws[pred_order]
@@ -344,7 +350,7 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, r
                 # pred_label = (f'{pred_name}')
 
                 # plot pred
-                print('this is pred xylw', pred_xylw)
+                # print('this is pred xylw', pred_xylw)
                 # print('this is pred cos sin', pred_cos_sin)
                 origin_img, result = plot_and_transform(im=origin_img, box=pred_xylw, label='0:, predic', color=(0, 0, 0),
                                                         txt_color=(255, 255, 255), index=j,
@@ -352,9 +358,17 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, r
                                                         truth_flag=False)
                 pred_result.append(result)
                 # print('this is j', j)
+            pred_result = np.asarray(pred_result)
+
+            distance = np.linalg.norm(pred_result[:, :2] - origin_point, axis=1)
+            order = np.argsort(distance)
+            print('this is order', order)
+            pred_result = pred_result[order]
+            print('this is result\n', pred_result)
             total_pred_result.append(pred_result)
 
             cv2.namedWindow('zzz', 0)
+            cv2.resizeWindow('zzz', 1280, 960)
             cv2.imshow('zzz', origin_img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 cv2.destroyAllWindows()
@@ -362,8 +376,10 @@ def yolov8_predict(cfg=DEFAULT_CFG, use_python=False, img_path=None, img=None, r
                 cv2.imwrite(img_path_output, origin_img)
                 break
         total_pred_result = np.asarray(total_pred_result)
-
-        pred_result = np.asarray(pred_result)
+        # pred_result = np.concatenate((np.mean(total_pred_result, axis=0), np.max(total_pred_result[:, :, 2:4], axis=0),
+        #                               np.mean(total_pred_result[:, :, 4], axis=0).reshape(-1, 1)), axis=1)
+        # pred_result = np.mean(total_pred_result, axis=0)
+        # print(pred_result)
 
     else:
         # img = adjust_img(img)

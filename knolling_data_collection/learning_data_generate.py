@@ -233,7 +233,7 @@ class Arm:
         #                                baseOrientation=p.getQuaternionFromEuler(ori_data[i]), useFixedBase=False,
         #                                flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
         for i in range(len(lw_data)):
-            print(f'this is matching urdf{j}')
+            print(f'this is matching urdf{i}')
             print(pos_data[i])
             print(lw_data[i])
             print(ori_data[i])

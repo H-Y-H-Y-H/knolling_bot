@@ -246,7 +246,7 @@ class configuration_zzz():
             item_xyz[:, 0] = item_xyz[:, 1]
             item_xyz[:, 1] = temp
             # 如果用的乐高块，这里是pi / 2, 否则是0
-            item_ori[:, 2] = np.pi / 2
+            item_ori[:, 2] = 0
             # print(item_ori)
             temp = item_row
             item_row = item_column

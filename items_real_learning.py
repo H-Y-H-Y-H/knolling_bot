@@ -48,51 +48,11 @@ class Sort_objects():
 
     def get_data_real(self, area_num, ratio_num, lego_num):
 
-        # pipeline = rs.pipeline()
-        # config = rs.config()
-        #
-        # # Get device product line for setting a supporting resolution
-        # pipeline_wrapper = rs.pipeline_wrapper(pipeline)
-        # pipeline_profile = config.resolve(pipeline_wrapper)
-        # device = pipeline_profile.get_device()
-        # device_product_line = str(device.get_info(rs.camera_info.product_line))
-        #
-        # found_rgb = False
-        # for s in device.sensors:
-        #     if s.get_info(rs.camera_info.name) == 'RGB Camera':
-        #         found_rgb = True
-        #         break
-        # if not found_rgb:
-        #     print("The demo requires Depth camera with Color sensor")
-        #     exit(0)
-        #
-        # # config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        #
-        # config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-        #     # config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 6)
-        # # Start streaming
-        # pipeline.start(config)
-        #
-        # frames = None
-        # for _ in range(100):
-        #     # Wait for a coherent pair of frames: depth and color
-        #     frames = pipeline.wait_for_frames()
-        #     # depth_frame = frames.get_depth_frame()
-        # color_frame = frames.get_color_frame()
-        #
-        # color_image = np.asanyarray(color_frame.get_data())
-        #
-        # color_colormap_dim = color_image.shape
-        # resized_color_image = color_image
-        # # img_path = 'Test_images/image_real'
-        # # img_path = './learning_data_demo/cfg_4/images_before/6/image_%d' % self.evaluations
-        # img_path = './Test_images/image_real'
-
         img_path = './Test_images/image_real'
         # structure of results: x, y, length, width, ori
-        results = yolov8_predict(img_path=img_path,real_flag=True,target=None)
+        results = yolov8_predict(img_path=img_path, real_flag=True, target=None)
 
-        item_pos = results[:, :2]
+        item_pos = np.concatenate((results[:, :2], np.zeros(len(results)).reshape(-1, 1)), axis=1)
         item_lw = np.concatenate((results[:, 2:4], (np.ones(len(results)) * 0.012).reshape(-1, 1)), axis=1)
         item_ori = np.concatenate((np.zeros((len(results), 2)), results[:, 4].reshape(-1, 1)), axis=1)
 

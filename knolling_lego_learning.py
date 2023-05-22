@@ -274,75 +274,37 @@ class Arm:
 
         def get_real_image_obs():
 
-            # pipeline = rs.pipeline()
-            # config = rs.config()
+            # # temp useless because of knolling demo
+            # img_path = 'Test_images/image_real'
+            # # structure: x,y,length,width,yaw
+            # results = yolov8_predict(img_path=img_path, real_flag=self.real_operate, target=None)
+            # print('this is the result of yolo-pose\n', results)
             #
-            # # Get device product line for setting a supporting resolution
-            # pipeline_wrapper = rs.pipeline_wrapper(pipeline)
-            # pipeline_profile = config.resolve(pipeline_wrapper)
-            # device = pipeline_profile.get_device()
-            # device_product_line = str(device.get_info(rs.camera_info.product_line))
-            #
-            # found_rgb = False
-            # for s in device.sensors:
-            #     if s.get_info(rs.camera_info.name) == 'RGB Camera':
-            #         found_rgb = True
-            #         break
-            # if not found_rgb:
-            #     print("The demo requires Depth camera with Color sensor")
-            #     exit(0)
-            #
-            # # config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-            #
-            # if device_product_line == 'L500':
-            #     config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
-            # else:
-            #     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-            #     # config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 6)
-            # # Start streaming
-            # pipeline.start(config)
-            #
-            # for _ in range(100):
-            #     # Wait for a coherent pair of frames: depth and color
-            #     frames = pipeline.wait_for_frames()
-            #     # depth_frame = frames.get_depth_frame()
-            #     color_frame = frames.get_color_frame()
-            #     color_image = np.asanyarray(color_frame.get_data())
-            #     color_colormap_dim = color_image.shape
-            #     resized_color_image = color_image
-            #
-            #     img_path = 'Test_images/image_real'
-            #     # cv2.imwrite(img_path + '.png', resized_color_image)
-            #     # cv2.waitKey(1)
-
-            img_path = 'Test_images/image_real'
-            # structure: x,y,length,width,yaw
-            results = yolov8_predict(img_path=img_path, real_flag=self.real_operate, target=None)
-            print('this is the result of yolo-pose\n', results)
-
-            z = 0
-            roll = 0
-            pitch = 0
-            index = []
-            print('this is self.xyz\n', self.xyz_list)
-            for i in range(len(self.xyz_list)):
-                for j in range(len(results)):
-                    if (np.abs(self.xyz_list[i, 0] - results[j, 2]) <= 0.002 and np.abs(
-                            self.xyz_list[i, 1] - results[j, 3]) <= 0.002) or \
-                            (np.abs(self.xyz_list[i, 1] - results[j, 2]) <= 0.002 and np.abs(
-                                self.xyz_list[i, 0] - results[j, 3]) <= 0.002):
-                        if j not in index:
-                            print(f"find first xyz{i} in second xyz{j}")
-                            index.append(j)
-                            break
-                        else:
-                            pass
-
-            manipulator_before = []
-            for i in index:
-                manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, results[i][4]])
+            # z = 0
+            # roll = 0
+            # pitch = 0
+            # index = []
+            # print('this is self.xyz\n', self.xyz_list)
             # for i in range(len(self.xyz_list)):
-            #     manipulator_before.append([self.pos_before[i][0], self.pos_before[i][1], z, roll, pitch, self.ori_before[i][2]])
+            #     for j in range(len(results)):
+            #         if (np.abs(self.xyz_list[i, 0] - results[j, 2]) <= 0.002 and np.abs(
+            #                 self.xyz_list[i, 1] - results[j, 3]) <= 0.002) or \
+            #                 (np.abs(self.xyz_list[i, 1] - results[j, 2]) <= 0.002 and np.abs(
+            #                     self.xyz_list[i, 0] - results[j, 3]) <= 0.002):
+            #             if j not in index:
+            #                 print(f"find first xyz{i} in second xyz{j}")
+            #                 index.append(j)
+            #                 break
+            #             else:
+            #                 pass
+            #
+            # manipulator_before = []
+            # for i in index:
+            #     manipulator_before.append([results[i][0], results[i][1], z, roll, pitch, results[i][4]])
+            # # for i in range(len(self.xyz_list)):
+            # #     manipulator_before.append([self.pos_before[i][0], self.pos_before[i][1], z, roll, pitch, self.ori_before[i][2]])
+
+            manipulator_before = np.concatenate((self.pos_before, self.ori_before), axis=1)
             manipulator_before = np.asarray(manipulator_before)
             new_xyz_list = self.xyz_list
             print('this is manipulator before after the detection \n', manipulator_before)
@@ -533,7 +495,7 @@ class Arm:
                 p.stepSimulation()
 
         data_before = np.concatenate((self.pos_before[:, :2], self.xyz_list[:, :2], self.ori_before[:, 2].reshape(-1, 1)), axis=1)
-        np.savetxt('./learning_data_demo/cfg_4_519/labels_before/label_8_%d.txt' % self.evaluations, data_before, fmt='%.03f')
+        # np.savetxt('./learning_data_demo/cfg_4_519/labels_before/label_8_%d.txt' % self.evaluations, data_before, fmt='%.03f')
 
         return self.get_obs('images')
         # return self.pos_before, self.ori_before, self.xyz_list
@@ -575,20 +537,6 @@ class Arm:
         else:
             self.xyz_list, self.pos_before, self.ori_before, self.all_index, self.transform_flag = items_sort.get_data_real(self.area_num, self.ratio_num, self.num_list)
 
-            temp_box = URDF.load('./urdf/box_generator/template.urdf')
-            self.save_urdf_path_one_img = './urdf/knolling_box/'
-            os.makedirs(self.save_urdf_path_one_img, exist_ok=True)
-            for i in range(len(self.xyz_list)):
-                temp_box.links[0].collisions[0].origin[2, 3] = 0
-                length = self.xyz_list[i, 0]
-                width = self.xyz_list[i, 1]
-                height = 0.012
-                temp_box.links[0].visuals[0].geometry.box.size = [length, width, height]
-                temp_box.links[0].collisions[0].geometry.box.size = [length, width, height]
-                temp_box.links[0].visuals[0].material.color = [np.random.random(), np.random.random(),
-                                                               np.random.random(), 1]
-                temp_box.save(self.save_urdf_path_one_img + 'box_%d.urdf' % (i))
-
         print(f'this is standard trim xyz list\n {self.xyz_list}')
         print(f'this is standard trim index list\n {self.all_index}')
 
@@ -597,9 +545,40 @@ class Arm:
                                               self.transform_flag, self.configuration,
                                               self.item_odd_prevent, self.block_odd_prevent, self.upper_left_max,
                                               self.forced_rotate_box)
+        ######################## knolling demo ###############################
+
+        origin_point = np.array([0, -0.2])
+        distance = np.linalg.norm(self.pos_before[:, :2] - origin_point, axis=1)
+        order = np.argsort(distance)
+        self.pos_before = self.pos_before[order]
+        self.ori_before = self.ori_before[order]
+        self.xyz_list = self.xyz_list[order]
+
+        ################## input the demo data ##################
+        knolling_demo_data = np.loadtxt('./num_10_after_demo_3.txt')[0].reshape(-1, 5)
+        # with open('real_after_pred.txt', 'r') as file:
+        #     data = file.read().replace(',', ' ')
+        #     data = list(data.split())
+        #     temp_data = np.array([float(d) for d in data]).reshape(-1, 5)[:10]
+        #     knolling_demo_data = temp_data
+        ################## input the demo data ##################
+
+        index = []
+        after_knolling = []
+        after_knolling = np.asarray(after_knolling)
+
+        self.items_pos_list = np.concatenate((knolling_demo_data[:, :2], np.zeros(len(knolling_demo_data)).reshape(-1, 1)), axis=1)
+        self.items_ori_list = np.concatenate((np.zeros((len(knolling_demo_data), 2)), knolling_demo_data[:, 4].reshape(-1, 1)),
+                                             axis=1)
+        items_ori_list_arm = np.copy(self.items_ori_list)
+
+        # self.items_pos_list = np.concatenate((after_knolling[:, :2], np.zeros(len(after_knolling)).reshape(-1, 1)), axis=1)
+        # self.items_ori_list = np.concatenate((np.zeros((len(after_knolling), 2)), after_knolling[:, 4].reshape(-1, 1)), axis=1)
+        # self.xyz_list = np.concatenate((after_knolling[:, 2:4], (np.ones(len(after_knolling)) * 0.012).reshape(-1, 1)), axis=1)
+        ######################## knolling demo ###############################
 
         # determine the center of the tidy configuration
-        self.items_pos_list, self.items_ori_list = calculate_reorder.calculate_block()
+        # self.items_pos_list, self.items_ori_list = calculate_reorder.calculate_block()
         x_low = np.min(self.items_pos_list, axis=0)[0]
         x_high = np.max(self.items_pos_list, axis=0)[0]
         y_low = np.min(self.items_pos_list, axis=0)[1]
@@ -614,19 +593,10 @@ class Arm:
         else:
             pass
         # self.items_pos_list = self.items_pos_list + self.total_offset - center
-        self.items_pos_list = self.items_pos_list + self.total_offset
 
-        ############### reorder sequence of all results based on the distance to the top-left corner #################
-        origin_point = np.array([0, -0.2])
-        distance = np.linalg.norm(self.items_pos_list[:, :2] - origin_point, axis=1)
-        order = np.argsort(distance)
-        self.items_pos_list = self.items_pos_list[order]
-        self.items_ori_list = self.items_ori_list[order]
-        self.xyz_list = self.items_pos_list[order]
-        self.pos_before = self.pos_before[order]
-        self.ori_before = self.ori_before[order]
-        items_ori_list_arm = np.copy(self.items_ori_list)
-        ############### reorder sequence of all results based on the distance to the top-left corner #################
+
+
+        # self.items_pos_list = self.items_pos_list + self.total_offset
 
         ############### after generate the neat configuration, we should recover the lw based on that in the urdf files!
         for i in range(len(self.transform_flag)):
@@ -640,6 +610,21 @@ class Arm:
 
         self.manipulator_after = np.concatenate((self.items_pos_list, items_ori_list_arm), axis=1)
         print('this is manipulation after\n', self.manipulator_after)
+
+        if self.real_operate == True:
+            temp_box = URDF.load('./urdf/box_generator/template.urdf')
+            self.save_urdf_path_one_img = './urdf/knolling_box/'
+            os.makedirs(self.save_urdf_path_one_img, exist_ok=True)
+            for i in range(len(self.xyz_list)):
+                temp_box.links[0].collisions[0].origin[2, 3] = 0
+                length = self.xyz_list[i, 0]
+                width = self.xyz_list[i, 1]
+                height = 0.012
+                temp_box.links[0].visuals[0].geometry.box.size = [length, width, height]
+                temp_box.links[0].collisions[0].geometry.box.size = [length, width, height]
+                temp_box.links[0].visuals[0].material.color = [np.random.random(), np.random.random(),
+                                                               np.random.random(), 1]
+                temp_box.save(self.save_urdf_path_one_img + 'box_%d.urdf' % (i))
 
         self.lego_idx = []
         for i in range(len(self.xyz_list)):
@@ -667,7 +652,7 @@ class Arm:
         # if the urdf is lego, all ori after knolling should be 0, not pi / 2
         self.items_ori_list[:, 2] = 0
         data_after = np.concatenate((self.items_pos_list[:, :2], self.xyz_list[:, :2], self.items_ori_list[:, 2].reshape(-1, 1)), axis=1)
-        np.savetxt('./real_world_data_demo/cfg_4_519/labels_after/label_8_%d.txt' % self.evaluations, data_after, fmt='%.03f')
+        # np.savetxt('./real_world_data_demo/cfg_4_519/labels_after/label_8_%d.txt' % self.evaluations, data_after, fmt='%.03f')
 
         return self.get_obs('images')
 
@@ -701,10 +686,10 @@ class Arm:
                 d = np.array([0, 0.3])
                 d_y = np.array((0, 0.17, 0.21, 0.30))
                 d_y = d
-                z_bias = np.array([-0.005, 0.004])
-                x_bias = np.array([-0.002, 0.00])# yolo error is +2mm along x axis!
+                z_bias = np.array([-0.003, 0.004])
+                x_bias = np.array([-0.002, 0.000])# yolo error is +2mm along x axis!
                 y_bias = np.array([0, -0.004, -0.001, 0.004])
-                y_bias = np.array([0.001, 0.006])
+                y_bias = np.array([0.001, 0.005])
                 # z_parameters = np.polyfit(d, z_bias, 3)
                 z_parameters = np.polyfit(d, z_bias, 1)
                 x_parameters = np.polyfit(d, x_bias, 1)
@@ -720,9 +705,9 @@ class Arm:
                 tar_pos[0] = tar_pos[0] + new_x_formula(distance)
                 print('this is x add', new_x_formula(distance))
                 if tar_pos[1] > 0:
-                    tar_pos[1] += new_y_formula(distance_y) * np.clip((6 * (tar_pos[1] + 0.01)), 0, 1)
+                    tar_pos[1] += new_y_formula(distance_y) * np.clip((6 * (tar_pos[1] + 0.01)), 0, 1) + 0.0025 # 0.003 is manual!
                 else:
-                    tar_pos[1] -= new_y_formula(distance_y) * np.clip((6 * (tar_pos[1] - 0.01)), 0, 1)
+                    tar_pos[1] -= new_y_formula(distance_y) * np.clip((6 * (tar_pos[1] - 0.01)), 0, 1) - 0.0025 # 0.003 is manual!
                 print('this is tar pos after manual', tar_pos)
 
             if tar_ori[2] > 3.1416 / 2:
@@ -913,7 +898,7 @@ class Arm:
         def gripper(gap, obj_width):
             obj_width += 0.006
             obj_width_range = np.array([0.021, 0.026, 0.032, 0.039, 0.045, 0.052, 0.057])
-            motor_pos_range = np.array([2000, 2100, 2200, 2300, 2400, 2500, 2600])
+            motor_pos_range = np.array([2050, 2150, 2250, 2350, 2450, 2550, 2650])
             formula_parameters = np.polyfit(obj_width_range, motor_pos_range, 3)
             motor_pos = np.poly1d(formula_parameters)
 
