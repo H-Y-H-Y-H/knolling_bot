@@ -314,7 +314,7 @@ class knolling_main:
             else:
                 close_open_gap = 0.053
                 obj_width_range = np.array([0.022, 0.057])
-                motor_pos_range = np.array([0.02, 0.012]) # 0.0273
+                motor_pos_range = np.array([0.022, 0.010]) # 0.0273
                 formula_parameters = np.polyfit(obj_width_range, motor_pos_range, 1)
                 motor_pos = np.poly1d(formula_parameters)
 
@@ -356,7 +356,7 @@ class knolling_main:
             restrict_gripper_diagonal = np.sqrt(gripper_width ** 2 + gripper_height ** 2)
             barricade_pos = []
             barricade_index = []
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
+            manipulator_before, new_xyz_list = self.knolling_env.get_obs(self.obs_order)
             print('this is test obs xyz', new_xyz_list)
             for i in range(len(manipulator_before)):
                 for j in range(len(self.manipulator_after)):
@@ -458,7 +458,7 @@ class knolling_main:
                 break_flag = False
                 barricade_pos = []
                 barricade_index = []
-                manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
+                manipulator_before, new_xyz_list = self.knolling_env.get_obs(self.obs_order)
                 for i in range(len(manipulator_before)):
                     for j in range(len(self.manipulator_after)):
                         # 这里会因为漏检的bug而报错！
@@ -664,7 +664,7 @@ class knolling_main:
                 crowded_pos = []
                 crowded_ori = []
                 crowded_index = []
-                manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
+                manipulator_before, new_xyz_list = self.knolling_env.get_obs(self.obs_order)
                 for i in range(len(manipulator_before)):
                     for j in range(len(manipulator_before)):
                         restrict_item_i = np.sqrt((new_xyz_list[i][0]) ** 2 + (new_xyz_list[i][1]) ** 2)
@@ -701,7 +701,7 @@ class knolling_main:
             rest_pos = np.array([0, 0, 0.05])
             rest_ori = np.array([0, 1.57, 0])
             offset_low = np.array([0, 0, 0.0])
-            offset_low_place = np.array([0, 0, 0.004])
+            offset_low_place = np.array([0, 0, 0.002])
             offset_high = np.array([0, 0, 0.035])
             offset_highest = np.array([0, 0, 0.05])
 
@@ -763,7 +763,7 @@ class knolling_main:
         def check_accuracy_sim(): # need improvement
 
 
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order) # the sequence along 2,3,4
+            manipulator_before, new_xyz_list = self.knolling_env.get_obs(self.obs_order) # the sequence along 2,3,4
             manipulator_knolling = manipulator_before[:, :2]
             xyz_knolling = new_xyz_list
             # don't change the order of xyz in sim!!!!!!!!!!!!!
@@ -817,7 +817,7 @@ class knolling_main:
                     print('error!')
 
         def check_accuracy_real():
-            manipulator_before, new_xyz_list = self.get_obs(self.obs_order)
+            manipulator_before, new_xyz_list = self.knolling_env.get_obs(self.obs_order)
             manipulator_knolling = manipulator_before[:, :2]
             xyz_knolling = new_xyz_list
             # don't change the order of xyz in sim!!!!!!!!!!!!!

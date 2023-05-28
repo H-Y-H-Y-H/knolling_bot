@@ -376,10 +376,13 @@ class Yolo_predict():
                     # print('this is j', j)
                 pred_result = np.asarray(pred_result)
 
-                distance = np.linalg.norm(pred_result[:, :2] - origin_point, axis=1)
-                order = np.argsort(distance)
+                # distance = np.linalg.norm(pred_result[:, :2] - origin_point, axis=1)
+                # order = np.argsort(distance)
+                order = change_sequence(pred_result[:, :2])
                 print('this is order', order)
                 pred_result = pred_result[order]
+                if len(pred_result) != 0:
+                    pred_result = np.concatenate((pred_result, np.zeros((1, pred_result.shape[1]))), axis=0)
                 print('this is result\n', pred_result)
                 total_pred_result.append(pred_result)
 
@@ -911,8 +914,8 @@ class Env:
 
         textureId = p.loadTexture(self.urdf_path + "img_1.png")
         p.changeDynamics(baseid, -1, lateralFriction=1, spinningFriction=1, rollingFriction=0.002, linearDamping=0.5, angularDamping=0.5)
-        p.changeDynamics(self.arm_id, 7, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=1, angularDamping=1)
-        p.changeDynamics(self.arm_id, 8, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=1, angularDamping=1)
+        p.changeDynamics(self.arm_id, 7, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=1, angularDamping=1, jointDamping=1)
+        p.changeDynamics(self.arm_id, 8, lateralFriction=1, spinningFriction=1, rollingFriction=0, linearDamping=1, angularDamping=1, jointDamping=1)
         # p.changeVisualShape(baseid, -1, textureUniqueId=textureId,rgbaColor=[np.random.uniform(0.9,1), np.random.uniform(0.9,1),np.random.uniform(0.9,1), 1])
         p.changeVisualShape(baseid, -1, textureUniqueId=textureId)
 
