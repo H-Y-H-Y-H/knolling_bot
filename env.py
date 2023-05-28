@@ -381,9 +381,11 @@ class Yolo_predict():
                 order = change_sequence(pred_result[:, :2])
                 print('this is order', order)
                 pred_result = pred_result[order]
+                ############ fill the rest of result with zeros if the number of result is less than 10 #############
                 if len(pred_result) != 0:
                     pred_result = np.concatenate((pred_result, np.zeros((1, pred_result.shape[1]))), axis=0)
                 print('this is result\n', pred_result)
+                ############ fill the rest of result with zeros if the number of result is less than 10 #############
                 total_pred_result.append(pred_result)
 
                 cv2.namedWindow('zzz', 0)
