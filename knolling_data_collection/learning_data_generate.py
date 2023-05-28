@@ -201,37 +201,6 @@ class Arm:
         lego_idx = []
         selected_lw_data = []
         selected_urdf = []
-        # for i in range(len(lw_data)):
-        #     for j in range(len(xyz_list)):
-        #         if np.abs(xyz_list[j][0] - lw_data[i][0]) < 0.0001 and np.abs(xyz_list[j][1] - lw_data[i][1]) < 0.0001:
-        #             if i not in selected_lw_data and j not in selected_urdf:
-        #                 selected_lw_data.append(i)
-        #                 selected_urdf.append(j)
-        #                 print(f'this is matching urdf{j}')
-        #                 print(pos_data[i])
-        #                 print(xyz_list[j])
-        #                 print(ori_data[i])
-        #                 pos_data[i, 2] += 0.006
-        #                 lego_idx.append(
-        #                     p.loadURDF(self.urdf_path + f"box_generator/box_{int(index_flag[0, j])}.urdf",
-        #                                basePosition=pos_data[i],
-        #                                baseOrientation=p.getQuaternionFromEuler(ori_data[i]), useFixedBase=False,
-        #                                flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-        #         if np.abs(xyz_list[j][1] - lw_data[i][0]) < 0.0001 and np.abs(xyz_list[j][0] - lw_data[i][1]) < 0.0001:
-        #             if i not in selected_lw_data and j not in selected_urdf:
-        #                 ori_data[i, 2] += np.pi / 2
-        #                 selected_lw_data.append(i)
-        #                 selected_urdf.append(j)
-        #                 print(f'this is matching urdf{j}')
-        #                 print(pos_data[i])
-        #                 print(xyz_list[j])
-        #                 print(ori_data[i])
-        #                 pos_data[i, 2] += 0.006
-        #                 lego_idx.append(
-        #                     p.loadURDF(self.urdf_path + f"box_generator/box_{int(index_flag[0, j])}.urdf",
-        #                                basePosition=pos_data[i],
-        #                                baseOrientation=p.getQuaternionFromEuler(ori_data[i]), useFixedBase=False,
-        #                                flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
         for i in range(len(lw_data)):
             print(f'this is matching urdf{i}')
             print(pos_data[i])
