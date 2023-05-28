@@ -27,7 +27,6 @@ import socket
 import cv2
 # from cam_obs_learning import *
 import torch
-from knolling_configuration import configuration_zzz
 from urdfpy import URDF
 from env import Env
 

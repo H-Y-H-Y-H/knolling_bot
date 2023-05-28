@@ -1,12 +1,10 @@
 import numpy as np
 import pyrealsense2 as rs
-from items_real_learning_useless import Sort_objects
 import pybullet_data as pd
 import math
 from func import *
 import socket
 import cv2
-from cam_obs_learning_useless import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -102,7 +100,7 @@ class Yolo_predict():
             length = l * 3
             width = w * 3
             # ensure the yolo sequence!
-            keypoints = find_keypoints(xpos1, ypos1, l, w, yawori, mm2px)
+            keypoints = self.find_keypoints(xpos1, ypos1, l, w, yawori, mm2px)
             keypoints_order = np.lexsort((keypoints[:, 0], keypoints[:, 1]))
             keypoints = keypoints[keypoints_order]
 
@@ -459,7 +457,7 @@ class Yolo_predict():
                 # plot pred
                 print('this is pred xylw', pred_xylw)
                 # print('this is pred cos sin', pred_cos_sin)
-                origin_img, result = plot_and_transform(im=origin_img, box=pred_xylw, label='0:, predic', color=(0, 0, 0), txt_color=(255, 255, 255), index=j,
+                origin_img, result = self.plot_and_transform(im=origin_img, box=pred_xylw, label='0:, predic', color=(0, 0, 0), txt_color=(255, 255, 255), index=j,
                                                 scaled_xylw=pred_xylw, keypoints=pred_keypoint, use_xylw=use_xylw, truth_flag=False)
                 pred_result.append(result)
                 # print('this is j', j)
@@ -475,7 +473,7 @@ class Yolo_predict():
                     # plot target
                     print('this is tar xylw', tar_xylw)
                     # print('this is tar cos sin', tar_keypoints)
-                    origin_img, _ = plot_and_transform(im=origin_img, box=tar_xylw, label='0: target', color=(255, 255, 0), txt_color=(255, 255, 255), index=j,
+                    origin_img, _ = self.plot_and_transform(im=origin_img, box=tar_xylw, label='0: target', color=(255, 255, 0), txt_color=(255, 255, 255), index=j,
                                                     scaled_xylw=tar_xylw, keypoints=tar_keypoints, use_xylw=use_xylw, truth_flag=True)
 
             cv2.namedWindow('zzz', 0)
@@ -521,11 +519,11 @@ class Sort_objects():
 
         return self.judge(xyz_list, pos_list, ori_list, area_num, ratio_num, boxes_num)
 
-    def get_data_real(self, area_num, ratio_num, lego_num):
+    def get_data_real(self, area_num, ratio_num, yolo_model):
 
         img_path = './Test_images/image_real'
         # structure of results: x, y, length, width, ori
-        results = yolov8_predict(img_path=img_path, real_flag=True, target=None)
+        results = yolo_model.yolov8_predict(img_path=img_path, real_flag=True, target=None)
 
         item_pos = np.concatenate((results[:, :2], np.zeros(len(results)).reshape(-1, 1)), axis=1)
         item_lw = np.concatenate((results[:, 2:4], (np.ones(len(results)) * 0.012).reshape(-1, 1)), axis=1)
@@ -1007,7 +1005,7 @@ class Env:
         if self.real_operate == False:
             self.lwh_list, _, _, self.all_index, self.transform_flag = items_sort.get_data_virtual(self.area_num, self.ratio_num, self.boxes_num)
         else:
-            self.lwh_list, self.pos_before, self.ori_before, self.all_index, self.transform_flag = items_sort.get_data_real(self.area_num, self.ratio_num)
+            self.lwh_list, self.pos_before, self.ori_before, self.all_index, self.transform_flag = items_sort.get_data_real(self.area_num, self.ratio_num, self.yolo_model)
 
         print(f'this is standard trim xyz list\n {self.lwh_list}')
         print(f'this is standard trim index list\n {self.all_index}')
