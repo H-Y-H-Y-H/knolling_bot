@@ -10,10 +10,6 @@ import torch
 from urdfpy import URDF
 from env import Env
 
-torch.manual_seed(42)
-np.random.seed(202)
-random.seed(202)
-
 
 class knolling_main:
 
@@ -957,6 +953,10 @@ if __name__ == '__main__':
     check_detection_loss = False
     is_render = True
     use_knolling_model = False
+
+    torch.manual_seed(42)
+    # np.random.seed(202)
+    # random.seed(202)
 
     env = knolling_main()
     evaluations = 3

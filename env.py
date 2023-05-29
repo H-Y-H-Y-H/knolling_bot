@@ -5,12 +5,6 @@ import math
 from func import *
 import socket
 import cv2
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from sklearn.preprocessing import MinMaxScaler
-from shapely.geometry import Polygon
-# from knolling_configuration import configuration_zzz
 from urdfpy import URDF
 import pyrealsense2 as rs
 import sys
