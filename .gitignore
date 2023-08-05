@@ -1,14 +1,5 @@
 /Dataset/
 /Model/
-/yolov7/
-/robotarm_calibration/demo_xyz
-/robotarm_calibration/model_pt
-/robotarm_calibration/model_pt_xyz
-/robotarm_calibration/nn_data
-/robotarm_calibration/nn_data_xyz
-/ResNet_data/Dataset/
-/ResNet_data/Label/
-/ResNet_data/Model/
 /ultralytics/
 /Final report_22Fall/
 /Final report_23Spring/
