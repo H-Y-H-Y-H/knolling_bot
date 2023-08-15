@@ -1,11 +1,18 @@
 from datetime import datetime
 import os
-from new_model import *
+from model import *
+
+
 
 if __name__ == '__main__':
-    import wandb
 
-    wandb.init(project='knolling_multi')  #,mode = 'disabled'
+    # PosEnc = PositionalEncoder(d_input = 2, n_freqs = 5)
+    # model_input_size = PosEnc.d_output
+    # print(model_input_size)
+    import wandb
+    import argparse
+
+    wandb.init(project='knolling')  #,mode = 'disabled'
     config = wandb.config
 
     running_name = wandb.run.name
@@ -18,16 +25,17 @@ if __name__ == '__main__':
     config.max_seq_length = 10
     config.lr = 1e-4
     config.batch_size = 512
-    config.log_pth = 'data/%s/' % running_name
+    config.log_pth = 'data/log_%s/' % running_name
     config.noise_std = 0.
     config.pos_encoding_Flag = True
     config.all_zero_target = 0  # 1 tart_x = zero like, 0: tart_x = tart_x
     config.forward_expansion = 4
-    config.pre_trained = False
+    config.pre_trained = True
     config.high_dim_encoder = True
     config.all_steps = True
     config.object_num = -1
     os.makedirs(config.log_pth, exist_ok=True)
+
 
     model = Knolling_Transformer(
         input_length=config.max_seq_length,
@@ -41,16 +49,14 @@ if __name__ == '__main__':
         pos_encoding_Flag=config.pos_encoding_Flag,
         forwardtype=config.forwardtype,
         high_dim_encoder=config.high_dim_encoder,
-        all_steps = config.all_steps,
-        max_obj_num = 10,
-        num_gaussians = 5)
+        all_steps = config.all_steps)
 
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     config.model_params = num_params
 
     if config.pre_trained:
-        pre_name = 'dulcet-dream-39'
-        PATH = 'data/%s/best_model.pt' % pre_name
+        pre_name = 'copper-firebrand-161'
+        PATH = 'data/log_%s/best_model.pt' % pre_name
         checkpoint = torch.load(PATH, map_location=device)
         model.load_state_dict(checkpoint)
 
@@ -62,28 +68,30 @@ if __name__ == '__main__':
     valid_input_data = []
     valid_output_data = []
 
-    DATA_CUT = 25000
-
-    for cfg in range(5):
-        dataset_path = DATAROOT + 'labels_after_%d/' % cfg
-        for NUM_objects in range(10,11):
+    for cfg in range(4, 5):
+        dataset_path = DATAROOT + '/cfg_%d/' % cfg
+        for NUM_objects in range(2, 11):
             print('load data:', NUM_objects)
+            # raw_data = np.loadtxt(dataset_path + 'labels_after/total_num_%d_1000000.txt'%NUM_objects)[:200000]*SCALE_DATA+SHIFT_DATA
 
-            raw_data = np.loadtxt(dataset_path + 'num_%d.txt' %NUM_objects)[:DATA_CUT]
+            # raw_data = np.loadtxt(dataset_path + 'labels_after/num_%d.txt' % NUM_objects) * SCALE_DATA + SHIFT_DATA
+            raw_data = np.loadtxt(dataset_path + 'labels_after/num_%d.txt' %(10))
             raw_data = raw_data * SCALE_DATA + SHIFT_DATA
 
             train_data = raw_data[:int(len(raw_data) * 0.8)]
             test_data = raw_data[int(len(raw_data) * 0.8):]
 
+            # if config.normalize_ :
+            #     sub_d = (sub_d-np.min(sub_d,0))/(np.max(sub_d,0)-np.min(sub_d,0))
             train_input = []
             valid_input = []
             train_label = []
             valid_label = []
             for i in range(NUM_objects):
                 train_input.append(train_data[:, i * 5 + 2:i * 5 + 4])
-                valid_input.append(test_data [:, i * 5 + 2:i * 5 + 4])
+                valid_input.append(test_data[:, i * 5 + 2:i * 5 + 4])
                 train_label.append(train_data[:, i * 5:i * 5 + 2])
-                valid_label.append(test_data [:, i * 5:i * 5 + 2])
+                valid_label.append(test_data[:, i * 5:i * 5 + 2])
 
             train_input = np.asarray(train_input).transpose(1, 0, 2)
             valid_input = np.asarray(valid_input).transpose(1, 0, 2)
@@ -109,7 +117,7 @@ if __name__ == '__main__':
     val_loader = DataLoader(test_dataset, batch_size=config.batch_size, shuffle=False)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2000, verbose=True)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=20, verbose=True)
 
     num_epochs = 10000
     train_loss_list = []
@@ -140,6 +148,7 @@ if __name__ == '__main__':
                 target_batch_atten_mask = (target_batch == 0).bool()
                 target_batch.masked_fill_(target_batch_atten_mask, -100)
 
+
                 # Mask the target:
                 mask_point = np.random.randint(0, object_num + 1)
 
@@ -148,7 +157,7 @@ if __name__ == '__main__':
                 input_target_batch = torch.clone(target_batch)
 
                 # Add noise
-                # input_target_batch = torch.normal(input_target_batch, noise_std)
+                input_target_batch = torch.normal(input_target_batch, noise_std)
                 input_batch = torch.normal(input_batch, noise_std)
 
                 input_target_batch.masked_fill_(mask, -100)
@@ -188,6 +197,8 @@ if __name__ == '__main__':
                     # zero to False
                     target_batch_atten_mask = (target_batch == 0).bool()
                     target_batch.masked_fill_(target_batch_atten_mask, -100)
+
+
 
                     # Mask the target:
                     mask_point = np.random.randint(0, object_num + 1)
@@ -253,18 +264,14 @@ if __name__ == '__main__':
                 input_batch = input_batch.transpose(1, 0)
                 target_batch = target_batch.transpose(1, 0)
 
-                # # shuffle input data
-                # idx = torch.randperm(input_batch.shape[0])
-                # input_batch  = input_batch[idx]
-                # target_batch = target_batch[idx]
-
                 # zero to False
-                # input_batch_atten_mask = (input_batch == 0).bool()
-                # input_batch = torch.normal(input_batch, noise_std)  ## Add noise
-                # input_batch.masked_fill_(input_batch_atten_mask, -100)
+                input_batch_atten_mask = (input_batch == 0).bool()
+                input_batch = torch.normal(input_batch, noise_std)  ## Add noise
+                input_batch.masked_fill_(input_batch_atten_mask, -100)
 
                 target_batch_atten_mask = (target_batch == 0).bool()
                 target_batch.masked_fill_(target_batch_atten_mask, -100)
+
 
                 # create all -100 input for decoder
                 mask = torch.ones_like(target_batch, dtype=torch.bool)
@@ -280,7 +287,7 @@ if __name__ == '__main__':
                 # Forward pass
                 # object number > masked number
                 output_batch = model(input_batch,
-                                     # obj_num=object_num,
+                                     #obj_num=object_num,
                                      tart_x_gt=input_target_batch)
 
                 # Calculate loss
@@ -307,10 +314,10 @@ if __name__ == '__main__':
                     input_batch = input_batch.transpose(1, 0)
                     target_batch = target_batch.transpose(1, 0)
 
-                    # # zero to False
-                    # input_batch_atten_mask = (input_batch == 0).bool()
-                    # input_batch = torch.normal(input_batch, noise_std)  ## Add noise
-                    # input_batch.masked_fill_(input_batch_atten_mask, -100)
+                    # zero to False
+                    input_batch_atten_mask = (input_batch == 0).bool()
+                    input_batch = torch.normal(input_batch, noise_std)  ## Add noise
+                    input_batch.masked_fill_(input_batch_atten_mask, -100)
 
                     target_batch_atten_mask = (target_batch == 0).bool()
                     target_batch.masked_fill_(target_batch_atten_mask, -100)

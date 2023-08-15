@@ -1,11 +1,13 @@
 import os
-from new_model import *
+from model import *
 from torch.utils.data import DataLoader, random_split
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 def test_model_batch(val_loader, model, log_path, num_obj=10):
+    loss_function = torch.nn.MSELoss()
+
     model.to(device)
     model.eval()
 
@@ -20,10 +22,6 @@ def test_model_batch(val_loader, model, log_path, num_obj=10):
             input_batch = input_batch.transpose(1, 0)
             target_batch = target_batch.transpose(1, 0)
 
-            # # zero to False
-            # input_batch_atten_mask = (input_batch == 0).bool()
-            # input_batch.masked_fill_(input_batch_atten_mask, -100)
-
             # zero to False
             target_batch_atten_mask = (target_batch == 0).bool()
             target_batch.masked_fill_(target_batch_atten_mask, -100)
@@ -34,7 +32,7 @@ def test_model_batch(val_loader, model, log_path, num_obj=10):
             input_target_batch.masked_fill_(mask, -100)
 
             # Forward pass
-            predictions = model(input_batch, tart_x_gt=input_target_batch, temperature=0)
+            predictions = model(input_batch, obj_num=num_obj, tart_x_gt=input_target_batch)
 
             target_batch[num_obj:] = -100
             loss = model.maskedMSELoss(predictions, target_batch)
@@ -43,19 +41,19 @@ def test_model_batch(val_loader, model, log_path, num_obj=10):
             print('target', target_batch[:, 0].flatten())
             total_loss += loss.item()
 
-            print('test_loss', loss)
+            print('test_loss',loss)
 
             predictions = predictions.transpose(1, 0)
             target_batch = target_batch.transpose(1, 0)
 
             outputs.append(predictions.detach().cpu().numpy())
 
-            numpy_pred = (predictions.detach().cpu().numpy() - SHIFT_DATA) / SCALE_DATA
+            numpy_pred =  (predictions.detach().cpu().numpy() - SHIFT_DATA) / SCALE_DATA
             numpy_label = (target_batch.detach().cpu().numpy() - SHIFT_DATA) / SCALE_DATA
 
             numpy_loss = (numpy_pred-numpy_label)**2
             numpy_loss = numpy_loss.reshape(len(numpy_loss),-1)
-            numpy_loss[:, num_obj*2:] = 0
+            numpy_loss[:,num_obj*2:] = 0
 
             # print('numpy_loss',numpy_loss)
             test_loss_list.append(numpy_loss)
@@ -63,8 +61,8 @@ def test_model_batch(val_loader, model, log_path, num_obj=10):
     test_loss_list = np.concatenate(test_loss_list)
     outputs = np.concatenate(outputs)
     outputs = (outputs.reshape(-1, len(outputs[0]) * 2) - SHIFT_DATA) / SCALE_DATA
-    np.savetxt(log_path + '/test_loss_list_num_%d.csv' % num_obj, np.asarray(test_loss_list))
-    np.savetxt(log_path + '/outputs.csv', outputs)
+    np.savetxt(log_path + '/test_loss_list_num_%d.csv'%num_obj, np.asarray(test_loss_list))
+    # np.savetxt(log_path + '/outputs.csv', outputs)
 
     return outputs, test_loss_list
 
@@ -75,9 +73,9 @@ if __name__ == '__main__':
 
     api = wandb.Api()
     # Project is specified by <entity/project-name>
-    runs = api.runs("robotics/knolling_multi")
+    runs = api.runs("robotics/knolling")
 
-    name = "tough-dust-33"
+    name = "cosmic-serenity-151"
     # model_name = 'latest_model.pt'
     model_name = "best_model.pt"
 
@@ -98,18 +96,20 @@ if __name__ == '__main__':
     output_data = []
     valid_input_data = []
     valid_output_data = []
-    cfg = 0
-    dataset_path = DATAROOT + '/labels_after_%d/' % cfg
-    raw_data = 0
+    cfg = 4
+    dataset_path = DATAROOT + '/cfg_%d/' % cfg
+    # dataset_path = DATAROOT + '/cfg_%d_521/' % cfg
 
+
+    raw_data = 0
     for NUM_objects in range(10, 11):
         print('load data:', NUM_objects)
-        raw_data = np.loadtxt(dataset_path + 'num_%d.txt' % NUM_objects)
+        raw_data = np.loadtxt(dataset_path + 'labels_after/num_%d.txt' % NUM_objects)
 
         # raw_data = np.loadtxt(dataset_path + 'real_before/num_%d_d9.txt' % NUM_objects)
         # if len(raw_data[0]) != 50:
         #     raw_data = np.hstack((raw_data,np.zeros((len(raw_data),50-len(raw_data[0])))))
-        # raw_data = raw_data[int(len(raw_data) * 0.8):int(len(raw_data) * 0.81)]
+
 
         raw_data = raw_data[int(len(raw_data) * 0.8):]
         test_data = raw_data * SCALE_DATA + SHIFT_DATA
@@ -129,6 +129,7 @@ if __name__ == '__main__':
     test_label_padded = pad_sequences(valid_output_data, max_seq_length=config.max_seq_length)
 
     test_dataset = CustomDataset(test_input_padded, test_label_padded)
+
     val_loader = DataLoader(test_dataset, batch_size=512, shuffle=False)
 
     model = Knolling_Transformer(
@@ -139,25 +140,25 @@ if __name__ == '__main__':
         forward_expansion=config.forward_expansion,
         heads=config.num_attention_heads,
         dropout=config.dropout_prob,
-        all_zero_target=config.all_zero_target,
+        # all_zero_target=config.all_zero_target,
         pos_encoding_Flag=config.pos_encoding_Flag,
-        forwardtype=config.forwardtype,
+        forwardtype=1,
         high_dim_encoder=config.high_dim_encoder,
-        all_steps = config.all_steps,
-        max_obj_num = 10,
-        num_gaussians=5
+        all_steps= True
     )
 
     # Number of parameters: 87458
     print("Number of parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))
-    PATH = 'data/%s/%s' % (name, model_name)
+    PATH = 'data/log_%s/%s' % (name, model_name)
     checkpoint = torch.load(PATH, map_location=device)
     model.load_state_dict(checkpoint)
 
-    log_path = 'results/%s/cfg_%d' % (name, cfg)
+    log_path = 'results/%s' % name
     os.makedirs(log_path, exist_ok=True)
+    # NUM_objects = 10
     for NUM_objects in range(10,11):
         outputs, loss_list = test_model_batch(val_loader, model, log_path, num_obj=NUM_objects)
+
         for i in range(NUM_objects):
             raw_data[:, i * 5:i * 5 + 2] = outputs[:, i * 2:i * 2 + 2]
             raw_data[:, i * 5 + 4] = 0

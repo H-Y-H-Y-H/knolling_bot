@@ -6,10 +6,11 @@ from torch.nn import Transformer
 from torch.utils.data import Dataset, DataLoader
 import math
 import torch.optim as optim
-import torch.nn.functional as F
+from pos_encoder import *
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device)
+
 
 # input min&max: [0.016, 0.048]
 # label min&max: [-0.14599999962002042, 0.294500007390976]
@@ -17,8 +18,7 @@ print(device)
 # label_min,label_max = -0.14599999962002042, 0.294500007390976
 SCALE_DATA = 100
 SHIFT_DATA = 50
-DATAROOT = "C:/Users/yuhan/Downloads/learning_data_804_20w/"
-
+DATAROOT = "C:/Users/yuhan/Downloads/learning_data_512_large/"
 
 def pad_sequences(sequences, max_seq_length=10, pad_value=0):
     padded_sequences = []
@@ -46,36 +46,6 @@ class CustomDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         return self.input_data[idx], self.output_data[idx]
 
-
-class PositionalEncoder(nn.Module):
-    def __init__(
-            self,
-            d_input: int,
-            n_freqs: int,
-            log_space: bool = False
-    ):
-        super().__init__()
-        self.d_input = d_input
-        self.n_freqs = n_freqs
-        self.log_space = log_space
-        self.d_output = d_input * (1 + 2 * self.n_freqs)
-        self.embed_fns = [lambda x: x]
-
-        if self.log_space:
-            freq_bands = 2. ** torch.linspace(0., self.n_freqs - 1, self.n_freqs)
-        else:
-            freq_bands = torch.linspace(2. ** 0., 2. ** (self.n_freqs - 1), self.n_freqs)
-
-        for freq in freq_bands:
-            self.embed_fns.append(lambda x, freq=freq: torch.sin(x * freq))
-            self.embed_fns.append(lambda x, freq=freq: torch.cos(x * freq))
-    def forward(
-            self,
-            x
-    ) -> torch.Tensor:
-        return torch.concat([fn(x) for fn in self.embed_fns], dim=-1)
-
-
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=10):
         super(PositionalEncoding, self).__init__()
@@ -90,6 +60,14 @@ class PositionalEncoding(nn.Module):
     def forward(self, x):
         return x + self.pe[:x.size(0), :]
 
+# def debug_posencoding():
+    # positional_encoding = PositionalEncoding(d_model = 2)
+    # x = torch.arange(11,21).repeat(10, 1).reshape(-1,10,2)
+    # x = x.transpose(1,0)
+    # print(x)
+    # x = positional_encoding(x)
+    # print(x)
+    # quit()
 
 class TransformerBlock(nn.Module):
     def __init__(self, embed_size, heads, dropout, forward_expansion):
@@ -244,9 +222,7 @@ class Knolling_Transformer(nn.Module):
             pos_encoding_Flag = False,
             forwardtype = 0,
             high_dim_encoder=False,
-            all_steps = False,
-            max_obj_num = 10,
-            num_gaussians=3
+            all_steps = False
     ):
 
         super(Knolling_Transformer, self).__init__()
@@ -256,8 +232,7 @@ class Knolling_Transformer(nn.Module):
         self.high_dim_encoder = high_dim_encoder
         self.all_steps = all_steps
 
-        self.max_obj_num = max_obj_num# maximun 10
-        self.num_gaussians = num_gaussians
+
         self.positional_encoding = PositionalEncoding(d_model = input_size, max_len=input_length)
 
         n_freqs = 5
@@ -288,20 +263,15 @@ class Knolling_Transformer(nn.Module):
         self.l2 = nn.Linear(map_embed_d_dim*2, map_embed_d_dim)
 
         # self.bn1 = nn.BatchNorm1d(map_embed_d_dim)
-        self.l0_out = nn.Linear(map_embed_d_dim, map_embed_d_dim//4)
-        self.l1_out = nn.Linear(map_embed_d_dim//4, output_size*num_gaussians*3)
-
+        self.l_out = nn.Linear(map_embed_d_dim, output_size)
         self.acti = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, tart_x_gt=None,temperature=1):
-        # This section defines the forward pass of the model.
+    def forward(self, x, tart_x_gt=None):
 
-        # If positional encoding is needed, apply it
         if self.pos_encoding_Flag == True:
             x = self.positional_encoding(x)
 
-        # If high dimensional encoder is set, apply it
         if self.high_dim_encoder:
             x = self.position_encoder(x)
             tart_x_gt_high = self.position_encoder(tart_x_gt)
@@ -312,16 +282,18 @@ class Knolling_Transformer(nn.Module):
         # x_mask[:obj_num] = False
         # x.masked_fill_(x_mask, 0)
 
-        # Pass input through the encoder
         enc_x = self.encoder(x)
 
-        # Depending on the forwardtype, pass through a specific set of layers
         if self.forwardtype == 0:
             x = self.l1(enc_x)
             x = self.acti(x)
             x = self.l2(x)
             x = self.acti(x)
+
             out = self.l_out(x)
+
+            # out = self.decoder(enc_x, tart_x_gt)
+            # out = self.l_out(out)
 
         elif self.forwardtype == 2:
             out = self.decoder(enc_x, tart_x_gt_high)
@@ -334,45 +306,12 @@ class Knolling_Transformer(nn.Module):
             #     enc_x.device)  # Initialize with the correct shape and move to the same device as enc_x
             outputs = []
             results = 0
-            for t in range(self.max_obj_num):
+            obj_num = 10  # maximun 10
+            for t in range(obj_num):
                 tart_x_gt_high = self.position_encoder(tart_x)
                 dec_output = self.decoder(enc_x, tart_x_gt_high)
-
-                x = self.l0_out(dec_output)
-                x = self.l1_out(x)
-                x = x.view(x.shape[0],x.shape[1],x.shape[2]//(self.num_gaussians*3),self.num_gaussians*3)
-                means, std_devs, weights = torch.split(x, split_size_or_sections=x.shape[-1] // 3, dim=-1)
-
-                std_devs = torch.exp(std_devs)
-                weights = F.softmax(weights, dim=-1)
-
-                if temperature != 0:
-                    # Apply temperature to weights
-                    weights = torch.exp(weights / temperature)
-                    weights /= weights.sum(dim=-1, keepdim=True)
-
-                # Reshape the weights to a 2D tensor to apply torch.multinomial
-                weights = weights.view(-1, weights.shape[-1])
-                indices = torch.multinomial(weights, 1)
-
-                # Reshape indices back to the original dimensions
-                indices = indices.view(*weights.shape[:-1])
-
-                # Reshape the means and std_devs to match the indices dimensions
-                means = means.view(-1, means.shape[-1])
-                std_devs = std_devs.view(-1, std_devs.shape[-1])
-
-                # Use the indices to gather the means and std_devs
-                chosen_means = torch.gather(means, 1, indices.view(-1, 1))
-                chosen_std_devs = torch.gather(std_devs, 1, indices.view(-1, 1))
-
-                # Reshape the means and std_devs back to the original dimensions
-                chosen_means = chosen_means.view(*x.shape[:-1])
-                chosen_std_devs = chosen_std_devs.view(*x.shape[:-1])
-
-                out = chosen_means + chosen_std_devs * torch.randn_like(chosen_means)
-
-                if t == self.max_obj_num-1:
+                out = self.l_out(dec_output)
+                if t == obj_num-1:
                     results = out
                 out = out[t]
                 outputs.append(out.unsqueeze(0))
@@ -386,9 +325,10 @@ class Knolling_Transformer(nn.Module):
             if self.all_steps:
                 return results
 
-            elif self.max_obj_num < tart_x.size(0):
+            elif obj_num < tart_x.size(0):
                 pad_data_shape = outputs[0].shape
-                outputs = outputs + [torch.zeros(pad_data_shape, device=device) for _ in range(tart_x.size(0) - self.max_obj_num)]
+
+                outputs = outputs + [torch.zeros(pad_data_shape, device=device) for _ in range(tart_x.size(0) - obj_num)]
             out = torch.cat(outputs, dim=0)
             return out
 
@@ -408,6 +348,7 @@ if __name__ == "__main__":
     heads_num = 4
     print(d_dim,layers_num,heads_num)
     model = Knolling_Transformer(
+        temperature= 1,
         input_length=max_length,
         input_size=2,
         map_embed_d_dim=d_dim,

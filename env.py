@@ -1,12 +1,11 @@
 import numpy as np
-import pyrealsense2 as rs
 import pybullet_data as pd
 import math
 from func import *
 import socket
 import cv2
 from urdfpy import URDF
-import pyrealsense2 as rs
+# import pyrealsense2 as rs
 import sys
 sys.path.append('/home/zhizhuo/ADDdisk/Create Machine Lab/knolling_bot/ultralytics')
 from ultralytics.yolo.engine.results import Results
@@ -928,17 +927,16 @@ class Env:
         # get the standard xyz and corresponding index from files in the computer
         items_sort = Sort_objects(self.evaluations)
         if self.real_operate == False:
-
             self.boxes_index = []
             for i in range(self.boxes_num):
                 self.boxes_index.append(p.loadURDF(self.save_urdf_path_one_img + 'box_%d.urdf' % (i),
                                        basePosition=self.pos_before[i],
                                        baseOrientation=p.getQuaternionFromEuler(self.ori_before[i]), useFixedBase=False,
                                        flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
-                r = np.random.uniform(0, 0.9)
-                g = np.random.uniform(0, 0.9)
-                b = np.random.uniform(0, 0.9)
-                p.changeVisualShape(self.boxes_index[i], -1, rgbaColor=(r, g, b, 1))
+                # r = np.random.uniform(0, 0.9)
+                # g = np.random.uniform(0, 0.9)
+                # b = np.random.uniform(0, 0.9)
+                # p.changeVisualShape(self.boxes_index[i], -1, rgbaColor=(r, g, b, 1))
 
             print('this is random ori when reset the environment\n', self.ori_before)
             print('this is random pos when reset the environment\n', self.pos_before)
@@ -1001,6 +999,7 @@ class Env:
 
         # get the standard xyz and corresponding index from files in the computer
         items_sort = Sort_objects(self.evaluations)
+
         if self.real_operate == False:
             self.lwh_list, _, _, self.all_index, self.transform_flag = items_sort.get_data_virtual(self.area_num, self.ratio_num, self.boxes_num)
         else:
@@ -1139,8 +1138,8 @@ class Env:
             height = self.lwh_list[i, 2]
             temp_box.links[0].visuals[0].geometry.box.size = [length, width, height]
             temp_box.links[0].collisions[0].geometry.box.size = [length, width, height]
-            temp_box.links[0].visuals[0].material.color = [np.random.random(), np.random.random(),
-                                                           np.random.random(), 1]
+            # temp_box.links[0].visuals[0].material.color = [np.random.random(), np.random.random(),
+            #                                                np.random.random(), 1]
             temp_box.save(self.save_urdf_path_one_img + 'box_%d.urdf' % (i))
 
         self.boxes_index = []
@@ -1150,10 +1149,10 @@ class Env:
                                                baseOrientation=p.getQuaternionFromEuler(self.ori_after[i]), useFixedBase=False,
                                                flags=p.URDF_USE_SELF_COLLISION or p.URDF_USE_SELF_COLLISION_INCLUDE_PARENT))
 
-            r = np.random.uniform(0, 0.9)
-            g = np.random.uniform(0, 0.9)
-            b = np.random.uniform(0, 0.9)
-            p.changeVisualShape(self.boxes_index[i], -1, rgbaColor=(r, g, b, 1))
+            # r = np.random.uniform(0, 0.9)
+            # g = np.random.uniform(0, 0.9)
+            # b = np.random.uniform(0, 0.9)
+            # p.changeVisualShape(self.boxes_index[i], -1, rgbaColor=(r, g, b, 1))
         for i in range(30):
             p.stepSimulation()
 

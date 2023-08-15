@@ -1,6 +1,6 @@
 import numpy as np
 from stl import mesh
-import pyrealsense2 as rs
+# import pyrealsense2 as rs
 import math
 from urdfpy import URDF
 
