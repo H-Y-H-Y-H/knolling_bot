@@ -3,14 +3,13 @@ import numpy as np
 
 class configuration_zzz():
 
-    def __init__(self, xyz_list, all_index, gap_item, gap_block, transform_flag, configuration, item_odd_prevent, block_odd_prevent, upper_left_max, forced_rotate_box):
+    def __init__(self, xyz_list, all_index, gap_item, gap_block, transform_flag, item_odd_prevent, block_odd_prevent, upper_left_max, forced_rotate_box):
 
         self.xyz_list = xyz_list
         self.all_index = all_index
         self.gap_item = gap_item
         self.gap_block = gap_block
         self.transform_flag = transform_flag
-        self.configuration = configuration
         self.item_odd_prevent = item_odd_prevent
         self.block_odd_prevent = block_odd_prevent
         self.upper_left_max = upper_left_max

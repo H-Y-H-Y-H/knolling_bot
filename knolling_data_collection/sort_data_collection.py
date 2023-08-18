@@ -1,14 +1,12 @@
 import numpy as np
-from stl import mesh
 # import pyrealsense2 as rs
 import math
 from urdfpy import URDF
 
 class Sort_objects():
     
-    def __init__(self, configuration):
-        self.configuration = configuration
-
+    def __init__(self):
+        pass
     def get_data_virtual(self, area_num, ratio_num, box_num, boxes_index):
 
         # boxes = []
