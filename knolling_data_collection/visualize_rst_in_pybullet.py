@@ -399,8 +399,8 @@ if __name__ == '__main__':
     step_num = 10
     save_point = np.linspace(int((end_evaluations - start_evaluations) / step_num + start_evaluations), end_evaluations, step_num)
 
-    range_low = 10
-    range_high = 11
+    range_low = 5
+    range_high = 6
     total_urdf = 30
 
     area_num = 2
@@ -416,7 +416,8 @@ if __name__ == '__main__':
 
     forced_rotate_box = False
 
-    DATAROOT = "C:/Users/yuhan/Downloads/learning_data_804_20w/"
+    # DATAROOT = "C:/Users/yuhan/Downloads/learning_data_804_20w/"
+    DATAROOT = "../../knolling_dataset/learning_data_818_2"
 
     target_path = DATAROOT + 'cfg_%s/' % configuration
     images_log_path = target_path + 'images_%s/' % before_after
@@ -424,25 +425,26 @@ if __name__ == '__main__':
     os.makedirs(images_log_path, exist_ok=True)
     os.makedirs(preprocess_label_path, exist_ok=True)
 
-    name = "devoted-terrain-29"
+    # name = "devoted-terrain-29"
+    name = "whole-cherry-11"
 
     show_baseline = 0
-    show_results_flag = False
+    show_results_flag = True
 
     if command == 'recover':
 
         env = Arm(is_render=False)
-        visual_path = '../train_multi_knolling/results/%s/cfg_%s/pred_after/'%(name,configuration)
+        visual_path = '../train_multi_knolling_zzz/results/%s/cfg_%s/pred_after/'%(name,configuration)
 
         for i in range(range_low, range_high):
 
-            box_num = 10
+            box_num = 5
             if show_results_flag:
                 if show_baseline == 0:
                     data = np.loadtxt(visual_path + '/num_%d.txt' % box_num)
-                    savefolder = '../train_multi_knolling/results/%s/cfg_%s/pred_after/image/' % (name, configuration)
+                    savefolder = '../train_multi_knolling_zzz/results/%s/cfg_%s/pred_after/image/' % (name, configuration)
                 elif show_baseline == 1:
-                    data = np.loadtxt('../train_multi_knolling/baseline/mlp_result/outputs.csv')
+                    data = np.loadtxt('../train_multi_knolling_zzz/baseline/mlp_result/outputs.csv')
 
             else:
                 data = np.loadtxt(DATAROOT + '/labels_%s_%s/num_%d.txt' % (before_after, configuration, i))
@@ -450,7 +452,7 @@ if __name__ == '__main__':
                 test_start = int(len(data)*0.8)
                 # test_end = int(len(data)*0.81)
                 data = data[:test_start]
-                savefolder = '../train_multi_knolling/results/%s/cfg_%s/pred_%s/' % (name, configuration,before_after)
+                savefolder = '../train_multi_knolling_zzz/results/%s/cfg_%s/pred_%s/' % (name, configuration,before_after)
 
             os.makedirs(savefolder, exist_ok=True)
 
@@ -466,7 +468,8 @@ if __name__ == '__main__':
             # new_index_flag = []
             # for j in range(start_evaluations, end_evaluations):
             # for j in [ 81434, 100777,  88176, 148385,  9905,  23617,  95448, 103549, 113927,  17746]:
-            for j in [88176,  9905,  81434]:
+            # for j in [88176,  9905,  81434]:
+            for j in range(len(data)):
                 env.get_parameters(box_num=box_num)
                 print(f'this is data {j}')
                 one_img_data = data[j].reshape(-1, 5)

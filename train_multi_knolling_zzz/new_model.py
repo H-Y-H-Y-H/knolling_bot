@@ -18,7 +18,7 @@ print(device)
 SCALE_DATA = 100
 SHIFT_DATA = 50
 # DATAROOT = "C:/Users/yuhan/Downloads/learning_data_804_20w/"
-DATAROOT = "../../knolling_dataset/learning_data_817/"
+DATAROOT = "../../knolling_dataset/learning_data_818_2/"
 
 def pad_sequences(sequences, max_seq_length=10, pad_value=0):
     padded_sequences = []

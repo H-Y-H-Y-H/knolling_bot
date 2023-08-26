@@ -75,9 +75,9 @@ if __name__ == '__main__':
 
     api = wandb.Api()
     # Project is specified by <entity/project-name>
-    runs = api.runs("robotics/knolling_multi")
+    runs = api.runs("knolling_multi")
 
-    name = "tough-dust-33"
+    name = "whole-cherry-11"
     # model_name = 'latest_model.pt'
     model_name = "best_model.pt"
 
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     dataset_path = DATAROOT + '/labels_after_%d/' % cfg
     raw_data = 0
 
-    for NUM_objects in range(10, 11):
+    for NUM_objects in range(5, 6):
         print('load data:', NUM_objects)
         raw_data = np.loadtxt(dataset_path + 'num_%d.txt' % NUM_objects)
 
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     test_label_padded = pad_sequences(valid_output_data, max_seq_length=config.max_seq_length)
 
     test_dataset = CustomDataset(test_input_padded, test_label_padded)
-    val_loader = DataLoader(test_dataset, batch_size=512, shuffle=False)
+    val_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
     model = Knolling_Transformer(
         input_length=config.max_seq_length,
@@ -144,7 +144,7 @@ if __name__ == '__main__':
         forwardtype=config.forwardtype,
         high_dim_encoder=config.high_dim_encoder,
         all_steps = config.all_steps,
-        max_obj_num = 10,
+        max_obj_num = 5,
         num_gaussians=5
     )
 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     log_path = 'results/%s/cfg_%d' % (name, cfg)
     os.makedirs(log_path, exist_ok=True)
-    for NUM_objects in range(10,11):
+    for NUM_objects in range(5,6):
         outputs, loss_list = test_model_batch(val_loader, model, log_path, num_obj=NUM_objects)
         for i in range(NUM_objects):
             raw_data[:, i * 5:i * 5 + 2] = outputs[:, i * 2:i * 2 + 2]

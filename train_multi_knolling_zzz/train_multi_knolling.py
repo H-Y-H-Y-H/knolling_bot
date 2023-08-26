@@ -345,7 +345,8 @@ if __name__ == '__main__':
                 avg_loss = total_loss / len(val_loader)
                 scheduler.step(avg_loss)
 
-                train_loss_list.append(avg_loss)
+                # train_loss_list.append(avg_loss)
+                valid_loss_list.append(avg_loss)
 
                 if avg_loss < min_loss:
                     min_loss = avg_loss

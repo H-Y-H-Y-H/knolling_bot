@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-name = "prime-plant-2"
+name = "glad-violet-9"
 # DATAROOT = "C:/Users/yuhan/Downloads/learning_data_804_20w/"
 DATAROOT = "../../../knolling_dataset/learning_data_817"
 
@@ -15,7 +15,8 @@ for cfg in range(1):
 
         # raw_data = np.loadtxt(dataset_path + 'real_before/num_%d_d3.txt' % NUM_objects)
         # raw_data = raw_data [int(len(raw_data) * 0.8):int(len(raw_data) * 0.81)]
-        raw_data = raw_data[:int(len(raw_data) * 0.8)]
+        # raw_data = raw_data[:int(len(raw_data) * 0.8)]
+        raw_data = raw_data[int(len(raw_data) * 0.8):]
 
         results = np.loadtxt(name + '/cfg_%d/outputs.csv'%cfg)
         print(raw_data)
