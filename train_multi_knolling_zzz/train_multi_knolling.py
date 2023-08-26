@@ -62,7 +62,7 @@ if __name__ == '__main__':
     valid_input_data = []
     valid_output_data = []
 
-    DATA_CUT = 25000
+    DATA_CUT = 500000
 
     for cfg in range(5):
         dataset_path = DATAROOT + 'labels_after_%d/' % cfg

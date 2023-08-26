@@ -5,8 +5,8 @@ configuration = np.arange(4, 5)
 num_range = np.arange(5, 6)
 
 start_evaluations = 0
-end_evaluations =   800000
-step_num = 400
+end_evaluations =   500000
+step_num = 250
 solution_num = 5
 save_point = np.linspace(int((end_evaluations - start_evaluations) / step_num + start_evaluations), end_evaluations, step_num)
 
@@ -16,7 +16,7 @@ def merge():
 
         for m in range(solution_num):
 
-            target_path = '../../knolling_dataset/learning_data_824/'
+            target_path = '../../knolling_dataset/learning_data_826/'
             before_path = target_path + 'labels_before_0/'
             after_path = target_path + 'labels_after_%s/' % m
             index_path = target_path + 'index_flag/'

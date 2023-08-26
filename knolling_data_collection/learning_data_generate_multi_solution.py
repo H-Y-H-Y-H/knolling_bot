@@ -432,8 +432,8 @@ if __name__ == '__main__':
     command = 'knolling'
     before_after = 'after'
 
-    start_evaluations = 780000
-    end_evaluations =   800000
+    start_evaluations = 480000
+    end_evaluations =   500000
     step_num = 10
     save_point = np.linspace(int((end_evaluations - start_evaluations) / step_num + start_evaluations), end_evaluations, step_num)
 
@@ -441,8 +441,8 @@ if __name__ == '__main__':
     range_high = 6
     kind_num = 5
 
-    area_num = 1
-    ratio_num = 2
+    area_num = 2
+    ratio_num = 1
 
     solution_num = 5
 
@@ -453,7 +453,7 @@ if __name__ == '__main__':
     upper_left_max = False
     forced_rotate_box = False
 
-    target_path = '../../knolling_dataset/learning_data_824/'
+    target_path = '../../knolling_dataset/learning_data_826/'
     images_log_path = target_path + 'images_%s/' % before_after
     os.makedirs(images_log_path, exist_ok=True)
     # os.makedirs(preprocess_label_path, exist_ok=True)
