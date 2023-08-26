@@ -1,0 +1,39 @@
+2023-08-17 23:41:44,317 INFO    MainThread:23222 [wandb_setup.py:_flush():76] Current SDK version is 0.15.5
+2023-08-17 23:41:44,317 INFO    MainThread:23222 [wandb_setup.py:_flush():76] Configure stats pid to 23222
+2023-08-17 23:41:44,317 INFO    MainThread:23222 [wandb_setup.py:_flush():76] Loading settings from /home/zhizhuo/.config/wandb/settings
+2023-08-17 23:41:44,318 INFO    MainThread:23222 [wandb_setup.py:_flush():76] Loading settings from /home/zhizhuo/Creative_Machines_Lab/knolling_bot/train_multi_knolling_zzz/wandb/settings
+2023-08-17 23:41:44,318 INFO    MainThread:23222 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-08-17 23:41:44,318 INFO    MainThread:23222 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-08-17 23:41:44,318 INFO    MainThread:23222 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'train_multi_knolling_zzz/train_multi_knolling.py', 'program': '/home/zhizhuo/Creative_Machines_Lab/knolling_bot/train_multi_knolling_zzz/train_multi_knolling.py'}
+2023-08-17 23:41:44,318 INFO    MainThread:23222 [wandb_init.py:_log_setup():507] Logging user logs to /home/zhizhuo/Creative_Machines_Lab/knolling_bot/train_multi_knolling_zzz/wandb/run-20230817_234144-cuc107ja/logs/debug.log
+2023-08-17 23:41:44,318 INFO    MainThread:23222 [wandb_init.py:_log_setup():508] Logging internal logs to /home/zhizhuo/Creative_Machines_Lab/knolling_bot/train_multi_knolling_zzz/wandb/run-20230817_234144-cuc107ja/logs/debug-internal.log
+2023-08-17 23:41:44,319 INFO    MainThread:23222 [wandb_init.py:init():547] calling init triggers
+2023-08-17 23:41:44,319 INFO    MainThread:23222 [wandb_init.py:init():554] wandb.init called with sweep_config: {}
+config: {}
+2023-08-17 23:41:44,319 INFO    MainThread:23222 [wandb_init.py:init():596] starting backend
+2023-08-17 23:41:44,319 INFO    MainThread:23222 [wandb_init.py:init():600] setting up manager
+2023-08-17 23:41:44,323 INFO    MainThread:23222 [backend.py:_multiprocessing_setup():106] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2023-08-17 23:41:44,326 INFO    MainThread:23222 [wandb_init.py:init():606] backend started and connected
+2023-08-17 23:41:44,328 INFO    MainThread:23222 [wandb_init.py:init():705] updated telemetry
+2023-08-17 23:41:44,339 INFO    MainThread:23222 [wandb_init.py:init():738] communicating run to backend with 60.0 second timeout
+2023-08-17 23:41:44,671 INFO    MainThread:23222 [wandb_run.py:_on_init():2173] communicating current version
+2023-08-17 23:41:44,756 INFO    MainThread:23222 [wandb_run.py:_on_init():2182] got version response upgrade_message: "wandb version 0.15.8 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2023-08-17 23:41:44,756 INFO    MainThread:23222 [wandb_init.py:init():789] starting run threads in backend
+2023-08-17 23:41:44,961 WARNING MainThread:23222 [wandb_init.py:init():1176] interrupted
+Traceback (most recent call last):
+  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/site-packages/wandb/sdk/wandb_init.py", line 1154, in init
+    run = wi.init()
+  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/site-packages/wandb/sdk/wandb_init.py", line 800, in init
+    run_start_result = run_start_handle.wait(timeout=30)
+  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/site-packages/wandb/sdk/lib/mailbox.py", line 283, in wait
+    found, abandoned = self._slot._get_and_clear(timeout=wait_timeout)
+  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/site-packages/wandb/sdk/lib/mailbox.py", line 130, in _get_and_clear
+    if self._wait(timeout=timeout):
+  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/site-packages/wandb/sdk/lib/mailbox.py", line 126, in _wait
+    return self._event.wait(timeout=timeout)
+  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/threading.py", line 581, in wait
+    signaled = self._cond.wait(timeout)
+  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/threading.py", line 316, in wait
+    gotit = waiter.acquire(True, timeout)
+KeyboardInterrupt
