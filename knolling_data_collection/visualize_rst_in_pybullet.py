@@ -417,7 +417,7 @@ if __name__ == '__main__':
     forced_rotate_box = False
 
     # DATAROOT = "C:/Users/yuhan/Downloads/learning_data_804_20w/"
-    DATAROOT = "../../knolling_dataset/learning_data_818_2"
+    DATAROOT = "../../knolling_dataset/learning_data_824/"
 
     target_path = DATAROOT + 'cfg_%s/' % configuration
     images_log_path = target_path + 'images_%s/' % before_after
@@ -426,7 +426,7 @@ if __name__ == '__main__':
     os.makedirs(preprocess_label_path, exist_ok=True)
 
     # name = "devoted-terrain-29"
-    name = "whole-cherry-11"
+    name = "brisk-energy-15"
 
     show_baseline = 0
     show_results_flag = True

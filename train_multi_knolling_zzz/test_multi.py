@@ -77,7 +77,7 @@ if __name__ == '__main__':
     # Project is specified by <entity/project-name>
     runs = api.runs("knolling_multi")
 
-    name = "whole-cherry-11"
+    name = "brisk-energy-15"
     # model_name = 'latest_model.pt'
     model_name = "best_model.pt"
 
@@ -111,7 +111,7 @@ if __name__ == '__main__':
         #     raw_data = np.hstack((raw_data,np.zeros((len(raw_data),50-len(raw_data[0])))))
         # raw_data = raw_data[int(len(raw_data) * 0.8):int(len(raw_data) * 0.81)]
 
-        raw_data = raw_data[int(len(raw_data) * 0.8):]
+        raw_data = raw_data[int(len(raw_data) * 0.8):int(len(raw_data) * 0.8) + 1000]
         test_data = raw_data * SCALE_DATA + SHIFT_DATA
         valid_input = []
         valid_label = []
