@@ -429,7 +429,7 @@ class Arm:
 
 if __name__ == '__main__':
 
-    command = 'knolling'
+    command = 'recover'
     before_after = 'after'
 
     start_evaluations = 0
@@ -464,7 +464,7 @@ if __name__ == '__main__':
     if command == 'recover':
 
         env = Arm(is_render=False)
-        for i in range(range_low, range_high):
+        for cfg in range(len(config_dict)):
 
             # data = np.loadtxt(target_path + 'labels_%s/num_%d.txt' % (before_after, i))
 
@@ -472,12 +472,13 @@ if __name__ == '__main__':
             # data_before = []
             save_urdf_path = []
             for m in range(solution_num):
-                names['data_' + str(m)] = np.loadtxt(target_path + 'labels_%s_%s/num_%d.txt' % (before_after, m, i))
+                # names['data_' + str(m)] = np.loadtxt(target_path + 'labels_%s_%s/num_%d.txt' % (before_after, m, i))
+                names['data_' + str(m)] = np.loadtxt(target_path + 'cfg_%d/num_%d_after_%d.txt' % (2, boxes_num, m))
 
                 if len(names['data_' + str(m)].shape) == 1:
                     names['data_' + str(m)] = names['data_' + str(m)].reshape(1, len(names['data_' + str(m)]))
 
-                box_num = i
+                box_num = boxes_num
                 print('this is len data', len(names['data_' + str(m)]))
                 save_urdf_path.append(target_path + 'box_urdf/num_%s_%d/' % (m, box_num))
                 os.makedirs(save_urdf_path[m], exist_ok=True)
@@ -485,7 +486,7 @@ if __name__ == '__main__':
             # new_data = []
             # new_index_flag = []
             for j in range(start_evaluations, end_evaluations):
-                env.get_parameters(box_num=box_num)
+                env.get_parameters(box_num=boxes_num)
                 for m in range(solution_num):
                     print(f'this is data {j}')
                     one_img_data = names['data_' + str(m)][j].reshape(-1, 5)
