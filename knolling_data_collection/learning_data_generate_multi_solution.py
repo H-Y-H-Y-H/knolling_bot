@@ -429,11 +429,11 @@ class Arm:
 
 if __name__ == '__main__':
 
-    command = 'recover'
+    command = 'knolling'
     before_after = 'after'
 
-    start_evaluations = 0
-    end_evaluations =   100
+    start_evaluations = 270000
+    end_evaluations =   300000
     step_num = 10
     save_point = np.linspace(int((end_evaluations - start_evaluations) / step_num + start_evaluations), end_evaluations, step_num)
 
@@ -575,6 +575,7 @@ if __name__ == '__main__':
                 pos_after_epoch, ori_after_epoch, xy_after_epoch, transform_after, pos_before_epoch, ori_before_epoch = env.change_config()
 
                 save_flag = False
+                fail_time = 0
                 for m in range(solution_num):
 
                     if j + start_evaluations == int(save_point[-1]):
@@ -596,28 +597,31 @@ if __name__ == '__main__':
                     break_flag = False
                     for i in range(len(pos_after)):
                         if pos_after[i, 0] > 0.27 or pos_after[i, 1] > 0.19 or pos_after[i, 1] < -0.19:
-                            print(f'num{boxes_num}, evaluation {j} out of the boundary!')
+                            print(f'num{boxes_num}, solution{m}, evaluation {j} out of the boundary!')
                             break_flag = True
+                            fail_time += 1
                     if break_flag == True:
                         break
-                    else:
+
+                if fail_time == 0:
+                    for m in range(solution_num):
                         names['data_after_' + str(m)].append(np.concatenate((pos_after, xy_after, ori_after.reshape(-1, 1)), axis=1).reshape(-1))
                         if m == 0:
                             data_before_0.append(np.concatenate((pos_before, xy_after, ori_before.reshape(-1, 1)), axis=1).reshape(-1))
                         # data_after.append(np.concatenate((pos_after, xy_after, ori_after.reshape(-1, 1)), axis=1).reshape(-1))
                         # index_flag.append(np.concatenate((boxes_index, transform_after)))
 
-                    if len(names['data_after_' + str(m)]) == int((end_evaluations - start_evaluations) / step_num):
-
-                        names['data_after_' + str(m)] = np.asarray(names['data_after_' + str(m)])
-                        np.savetxt(after_path[m] + 'num_%s_%s.txt' % (boxes_num, int(save_point[index_point])), names['data_after_' + str(m)])
-                        names['data_after_' + str(m)] = []
-                        if m == 0:
-                            data_before_0 = np.asarray(data_before_0)
-                            np.savetxt(before_path + 'num_%s_%s.txt' % (boxes_num, int(save_point[index_point])), data_before_0)
-                            data_before_0 = []
-                        save_flag = True
-
+                        if len(names['data_after_' + str(m)]) == int((end_evaluations - start_evaluations) / step_num):
+                            names['data_after_' + str(m)] = np.asarray(names['data_after_' + str(m)])
+                            np.savetxt(after_path[m] + 'num_%s_%s.txt' % (boxes_num, int(save_point[index_point])), names['data_after_' + str(m)])
+                            names['data_after_' + str(m)] = []
+                            print('save data in:' + after_path[m] + 'num_%s_%s.txt' % (boxes_num, int(save_point[index_point])))
+                            if m == 0:
+                                data_before_0 = np.asarray(data_before_0)
+                                np.savetxt(before_path + 'num_%s_%s.txt' % (boxes_num, int(save_point[index_point])), data_before_0)
+                                data_before_0 = []
+                                print('save data in:' + before_path + 'num_%s_%s.txt' % (boxes_num, int(save_point[index_point])))
+                            save_flag = True
 
                 if break_flag == False:
                     print(j)
