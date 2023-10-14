@@ -392,7 +392,7 @@ if __name__ == '__main__':
 
     command = 'recover'
     before_after = 'before'
-    configuration = '0'
+    configuration = '1'
 
     start_evaluations = 0
     end_evaluations =   1000000
@@ -417,7 +417,7 @@ if __name__ == '__main__':
     forced_rotate_box = False
 
     # DATAROOT = "C:/Users/yuhan/Downloads/learning_data_804_20w/"
-    DATAROOT = "../../knolling_dataset/learning_data_824/"
+    DATAROOT = "../../knolling_dataset/learning_data_910/"
 
     target_path = DATAROOT + 'cfg_%s/' % configuration
     images_log_path = target_path + 'images_%s/' % before_after
@@ -425,8 +425,8 @@ if __name__ == '__main__':
     os.makedirs(images_log_path, exist_ok=True)
     os.makedirs(preprocess_label_path, exist_ok=True)
 
-    # name = "devoted-terrain-29"
-    name = "brisk-energy-15"
+    # name = "devoted-terraqin-29"
+    name = "autumn-meadow-16"
 
     show_baseline = 0
     show_results_flag = True
@@ -434,7 +434,7 @@ if __name__ == '__main__':
     if command == 'recover':
 
         env = Arm(is_render=False)
-        visual_path = '../train_multi_knolling_zzz/results/%s/cfg_%s/pred_after/'%(name,configuration)
+        visual_path = '../train_multi_knolling_zzz/results/%s/cfg_%s/pred_after'%(name,configuration)
 
         for i in range(range_low, range_high):
 
@@ -486,7 +486,7 @@ if __name__ == '__main__':
                 cv2.imwrite(savefolder+'%d.png'%j,image)
                 cv2.namedWindow('zzz', 0)
                 cv2.imshow("zzz", image)
-                print('This is the data: ', data[j])
+                print('This is the data: \n', data[j])
 
                 cv2.waitKey()
                 cv2.destroyAllWindows()

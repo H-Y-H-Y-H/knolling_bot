@@ -432,17 +432,20 @@ if __name__ == '__main__':
     command = 'knolling'
     before_after = 'after'
 
-    start_evaluations = 480000
-    end_evaluations =   500000
+    start_evaluations = 0
+    end_evaluations =   100
     step_num = 10
     save_point = np.linspace(int((end_evaluations - start_evaluations) / step_num + start_evaluations), end_evaluations, step_num)
 
-    range_low = 5
-    range_high = 6
+    boxes_num = 10
     kind_num = 5
 
     area_num = 2
     ratio_num = 1
+
+    config_dict = [[2, 1],
+                   [1, 2],
+                   [2, 2]]
 
     solution_num = 5
 
@@ -453,7 +456,7 @@ if __name__ == '__main__':
     upper_left_max = False
     forced_rotate_box = False
 
-    target_path = '../../knolling_dataset/learning_data_826/'
+    target_path = '../../knolling_dataset/learning_data_1013/'
     images_log_path = target_path + 'images_%s/' % before_after
     os.makedirs(images_log_path, exist_ok=True)
     # os.makedirs(preprocess_label_path, exist_ok=True)
@@ -519,8 +522,8 @@ if __name__ == '__main__':
             f.write(f'start_evaluation: {start_evaluations}\n')
             f.write(f'end_evaluation: {end_evaluations}\n')
             f.write(f'step_num: {step_num}\n')
-            f.write(f'boxes_num: {range_low}\n')
-            f.write(f'kind_num: {kind_num}\n')
+            f.write(f'boxes_num: {boxes_num}\n')
+            # f.write(f'kind_num: {kind_num}\n')
             f.write(f'solution_num: {solution_num}\n')
             f.write(f'area_num: {area_num}, ratio_num: {ratio_num}\n')
             f.write(f'item_odd_prevent: {item_odd_prevent}\n')
@@ -528,30 +531,28 @@ if __name__ == '__main__':
             f.write(f'upper_left_max: {upper_left_max}\n')
             f.write(f'forced_rotate_box: {forced_rotate_box}\n')
 
-        before_path = target_path + 'labels_before_0/'
-        os.makedirs(before_path, exist_ok=True)
-        after_path = []
-        for i in range(solution_num):
-            after_path.append(target_path + 'labels_after_%s/' % i)
-            # index_flag_path = target_path + 'index_flag/'
-            # os.makedirs(before_path, exist_ok=True)
-            os.makedirs(after_path[i], exist_ok=True)
-
         env = Arm(is_render=False)
-        for num in range(range_low, range_high):
+        for cfg in range(len(config_dict)):
+
+            change_cfg_flag = False
+
+            after_path = []
+
+            before_path = target_path + 'cfg_%s/' % cfg + 'labels_before_0/'
+            os.makedirs(before_path, exist_ok=True)
+            for i in range(solution_num):
+                after_path.append(target_path + 'cfg_%s/' % cfg + 'labels_after_%s/' % i)
+                # index_flag_path = target_path + 'index_flag/'
+                # os.makedirs(before_path, exist_ok=True)
+                os.makedirs(after_path[i], exist_ok=True)
 
             names = locals()
-            # data_before = []
             for m in range(solution_num):
                 names['data_after_' + str(m)] = []
             data_before_0 = []
-            # index_flag = []
             j = 0
             index_point = 0
-            while True:
-
-                box_num = num
-
+            while change_cfg_flag == False:
                 total_offset = [0.016, -0.17 + 0.016, 0]
                 gap_item = 0.015
                 gap_block = 0.015
@@ -562,7 +563,7 @@ if __name__ == '__main__':
                 obs_img_from = 'env'
                 use_yolo_pos = False
 
-                env.get_parameters(box_num=box_num, area_num=area_num, ratio_num=ratio_num, solution_num=solution_num, kind_num=kind_num,
+                env.get_parameters(box_num=boxes_num, area_num=config_dict[cfg][0], ratio_num=config_dict[cfg][0], solution_num=solution_num, kind_num=kind_num,
                                    total_offset=total_offset,
                                    gap_item=gap_item, gap_block=gap_block,
                                    real_operate=real_operate, obs_order=obs_order,
@@ -574,6 +575,12 @@ if __name__ == '__main__':
 
                 save_flag = False
                 for m in range(solution_num):
+
+                    if j + start_evaluations == int(save_point[-1]):
+                        print('over!!!!!!!!!!!!')
+                        change_cfg_flag = True
+                        break
+
                     pos_after = pos_after_epoch[m]
                     ori_after = ori_after_epoch[m]
                     xy_after = xy_after_epoch[m]
@@ -588,7 +595,7 @@ if __name__ == '__main__':
                     break_flag = False
                     for i in range(len(pos_after)):
                         if pos_after[i, 0] > 0.27 or pos_after[i, 1] > 0.19 or pos_after[i, 1] < -0.19:
-                            print(f'num{num}, evaluation {j} out of the boundary!')
+                            print(f'num{boxes_num}, evaluation {j} out of the boundary!')
                             break_flag = True
                     if break_flag == True:
                         break
@@ -602,19 +609,15 @@ if __name__ == '__main__':
                     if len(names['data_after_' + str(m)]) == int((end_evaluations - start_evaluations) / step_num):
 
                         names['data_after_' + str(m)] = np.asarray(names['data_after_' + str(m)])
-                        np.savetxt(after_path[m] + 'num_%s_%s.txt' % (num, int(save_point[index_point])), names['data_after_' + str(m)])
+                        np.savetxt(after_path[m] + 'num_%s_%s.txt' % (boxes_num, int(save_point[index_point])), names['data_after_' + str(m)])
                         names['data_after_' + str(m)] = []
                         if m == 0:
                             data_before_0 = np.asarray(data_before_0)
-                            np.savetxt(before_path + 'num_%s_%s.txt' % (num, int(save_point[index_point])), data_before_0)
+                            np.savetxt(before_path + 'num_%s_%s.txt' % (boxes_num, int(save_point[index_point])), data_before_0)
                             data_before_0 = []
                         save_flag = True
 
-                    if j == 100:
-                        print('here')
-                    if j + start_evaluations == int(save_point[-1]):
-                        print('over!!!!!!!!!!!!')
-                        quit()
+
                 if break_flag == False:
                     print(j)
                     j += 1

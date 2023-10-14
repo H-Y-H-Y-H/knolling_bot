@@ -38,6 +38,9 @@ def test_model_batch(val_loader, model, log_path, num_obj=10):
 
             target_batch[num_obj:] = -100
             loss = model.maskedMSELoss(predictions, target_batch)
+            target_batch_demo = target_batch.cpu().detach().numpy().reshape(5, 2)
+            predictions_demo = predictions.cpu().detach().numpy().reshape(5, 2)
+            input_demo = input_batch.cpu().detach().numpy().reshape(5, 2)
 
             print('output', predictions[:, 0].flatten())
             print('target', target_batch[:, 0].flatten())
@@ -73,11 +76,13 @@ if __name__ == '__main__':
     import wandb
     import argparse
 
+    DATAROOT = "../../knolling_dataset/learning_data_826/"
+
     api = wandb.Api()
     # Project is specified by <entity/project-name>
     runs = api.runs("knolling_multi")
 
-    name = "brisk-energy-15"
+    name = "autumn-meadow-16"
     # model_name = 'latest_model.pt'
     model_name = "best_model.pt"
 
@@ -104,7 +109,7 @@ if __name__ == '__main__':
 
     for NUM_objects in range(5, 6):
         print('load data:', NUM_objects)
-        raw_data = np.loadtxt(dataset_path + 'num_%d.txt' % NUM_objects)
+        raw_data = np.loadtxt(dataset_path + 'num_%d_new.txt' % NUM_objects)
 
         # raw_data = np.loadtxt(dataset_path + 'real_before/num_%d_d9.txt' % NUM_objects)
         # if len(raw_data[0]) != 50:
@@ -164,4 +169,4 @@ if __name__ == '__main__':
         log_folder = 'results/%s/cfg_%d/pred_after/' % (name, cfg)
         os.makedirs(log_folder, exist_ok=True)
         print(log_folder)
-        np.savetxt(log_folder + '/num_%d.txt' % NUM_objects, raw_data)
+        np.savetxt(log_folder + '/num_%d_new.txt' % NUM_objects, raw_data)

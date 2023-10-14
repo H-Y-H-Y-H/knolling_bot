@@ -9,13 +9,13 @@ class Sort_objects():
         pass
     def get_data_virtual(self, box_num, kind_num):
 
-        length_range = np.round(np.random.uniform(0.016, 0.048, size=(kind_num, 1)), decimals=3)
-        width_range = np.round(np.random.uniform(0.016, np.minimum(length_range, 0.036), size=(kind_num, 1)), decimals=3)
-        height_range = np.round(np.random.uniform(0.010, 0.020, size=(kind_num, 1)), decimals=3)
+        length_range = np.round(np.random.uniform(0.016, 0.048, size=(box_num, 1)), decimals=3)
+        width_range = np.round(np.random.uniform(0.016, np.minimum(length_range, 0.036), size=(box_num, 1)), decimals=3)
+        height_range = np.round(np.random.uniform(0.010, 0.020, size=(box_num, 1)), decimals=3)
         random_range = np.concatenate((length_range, width_range, height_range), axis=1)
         index = np.random.randint(0, kind_num, size=(box_num,))
-        # xyz_list = np.concatenate((length_range, width_range, height_range), axis=1)
-        xyz_list = random_range[index]
+        xyz_list = np.concatenate((length_range, width_range, height_range), axis=1)
+        # xyz_list = random_range[index]
 
         return xyz_list
         # return self.judge(xyz_list, pos_list, ori_list, area_num, ratio_num)
