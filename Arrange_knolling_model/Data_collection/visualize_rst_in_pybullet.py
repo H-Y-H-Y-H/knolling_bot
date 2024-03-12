@@ -491,13 +491,12 @@ if __name__ == '__main__':
     num_samples = 100
 
     SHIFT_DATA_SET = 0
-    name = 'flowing-moon-116'
 
     method_list = ['flowing-moon-116', 'eternal-sweep-1', 'restful-sweep-1',
                    'dazzling-sweep-1', 'sage-sweep-1', 'magic-tree-145']
 
     name = method_list[5] + '_min'
-    n_all_solutions = 3  # num_gaussian**object_num
+    n_all_solutions = 1  # num_gaussian**object_num
 
     for object_num in range(10,11):
 
