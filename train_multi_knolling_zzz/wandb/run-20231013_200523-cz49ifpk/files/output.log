@@ -1,9 +1,0 @@
-Traceback (most recent call last):
-  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/site-packages/numpy/lib/npyio.py", line 975, in _read
-    fh = np.lib._datasource.open(fname, 'rt', encoding=encoding)
-  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/site-packages/numpy/lib/_datasource.py", line 193, in open
-    return ds.open(path, mode, encoding=encoding, newline=newline)
-  File "/home/zhizhuo/anaconda3/envs/knolling/lib/python3.9/site-packages/numpy/lib/_datasource.py", line 533, in open
-    raise FileNotFoundError(f"{path} not found.")
-FileNotFoundError: ../../knolling_dataset/learning_data_910/labels_after_0/num_5.txt not found.
-load data: 5
