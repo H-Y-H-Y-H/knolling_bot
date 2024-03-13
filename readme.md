@@ -15,8 +15,38 @@ This repository contains the supplementary materials for our paper titled "Knoll
       - `data/flowing-moon-116/`: Directory where the trained model is stored.
 
 ## Usage
+Ensure you have the necessary dependencies installed as specified in the `requirements.txt` file located in the root of the `knolling_bot` directory.
 
-To use the code provided in this repository, follow the instructions in the respective directories. Ensure you have the necessary dependencies installed as specified in the `requirements.txt` file located in the root of the `knolling_bot` directory.
+### Visualizing Prediction Results
+
+Navigate to the Data_collection directory:
+
+```
+cd knolling_bot/Arrange_knolling_model/Data_collection
+```
+Run the visualization script:
+```
+python visualize_rst_in_pybullet.py
+```
+
+### Training the Model
+
+Navigate to the train_and_test directory:
+```
+cd knolling_bot/Arrange_knolling_model/train_and_test
+```
+Execute the training script:
+```
+python model_train.py
+```
+### Testing the Model
+After training, you can test the model by running:
+```
+python model_test.py
+```
+
+## Dataset Availability
+The dataset used for training our model will be uploaded once the paper gets accepted.
 
 ## Citation
 
