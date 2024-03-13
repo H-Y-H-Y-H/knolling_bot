@@ -140,7 +140,7 @@ if __name__ == '__main__':
     method_list = ['flowing-moon-116', 'eternal-sweep-1', 'restful-sweep-1',
                    'dazzling-sweep-1', 'sage-sweep-1', 'magic-tree-145']
 
-    name = method_list[5]
+    name = method_list[0]
 
     model_name = "best_model.pt"
 
