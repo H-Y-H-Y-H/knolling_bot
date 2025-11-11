@@ -1,6 +1,6 @@
-# Knolling Bot: Learning Robotic Object Arrangement from Tidy Demonstrations
+# Knolling Bot: Teaching Robots the Human Notion of Tidiness
 
-This repository contains the supplementary materials for our paper titled "Knolling Bot: Learning Robotic Object Arrangement from Tidy Demonstrations," submitted for review. In this work, we address the complex challenge of organizing scattered items in domestic spaces by introducing a self-supervised learning framework. Inspired by advancements in natural language processing (NLP), our approach allows robots to understand and replicate the concept of tidiness from demonstrations of well-organized layouts.
+This repository contains the code  for our paper titled "Knolling Bot: Teaching Robots the Human Notion of Tidiness", accepted at NeurIPS 2025. In this work, we address the complex challenge of organizing scattered items in domestic spaces by introducing a self-supervised learning framework. Inspired by advancements in natural language processing (NLP), our approach allows robots to understand and replicate the concept of tidiness from demonstrations of well-organized layouts.
 
 ![Teaser Image](image.jpg)
 
@@ -8,7 +8,6 @@ This repository contains the supplementary materials for our paper titled "Knoll
 
 ## Repository Structure
 
-- `supplemental_materials.pdf`: Contains additional details and results supplementing our submitted paper.
 - `knolling_bot/`: Directory housing the code for training and testing the knolling model.
   - `Arrange_knolling_model/`: Contains the implementation of our knolling model.
     - `train_and_test/`: Scripts and data for training and evaluating the model.
@@ -52,11 +51,14 @@ The dataset used for training our model will be uploaded once the paper gets acc
 
 If you find our work useful, please consider citing it as follows:
 
-@article{hu2023knolling,
-  title={Knolling bot: A Transformer-based Approach to Organizing a Messy Table},
-  author={Hu, Yuhang and Zhang, Zhizhuo and Liu, Ruibo and Wyder, Philippe and Lipson, Hod},
-  journal={arXiv preprint arXiv:2310.04566},
-  year={2023}
+@misc{hu2025knollingbotteachingrobots,
+      title={Knolling Bot: Teaching Robots the Human Notion of Tidiness}, 
+      author={Yuhang Hu and Judah Goldfeder and Zhizhuo Zhang and Xinyue Zhu and Ruibo Liu and Philippe Wyder and Jiong Lin and Hod Lipson},
+      year={2025},
+      eprint={2310.04566},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2310.04566}, 
 }
 
 ## Acknowledgments
