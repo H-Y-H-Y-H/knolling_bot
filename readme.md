@@ -1,6 +1,6 @@
 # Knolling Bot: Teaching Robots the Human Notion of Tidiness
 
-This repository contains the code  for our paper titled "Knolling Bot: Teaching Robots the Human Notion of Tidiness", accepted at NeurIPS 2025. In this work, we address the complex challenge of organizing scattered items in domestic spaces by introducing a self-supervised learning framework. Inspired by advancements in natural language processing (NLP), our approach allows robots to understand and replicate the concept of tidiness from demonstrations of well-organized layouts.
+This repository contains the code  for our paper titled "[Knolling Bot: Teaching Robots the Human Notion of Tidiness](https://arxiv.org/abs/2310.04566)", by Yuhang Hu, Judah Goldfeder, Zhizhuo Zhang, Xinyue Zhu, Ruibo Liu, Philippe Wyder, Jiong Lin, and Hod Lipson, accepted at NeurIPS 2025. In this work, we address the complex challenge of organizing scattered items in domestic spaces by introducing a self-supervised learning framework. Inspired by advancements in natural language processing (NLP), our approach allows robots to understand and replicate the concept of tidiness from demonstrations of well-organized layouts.
 
 ![Teaser Image](image.jpg)
 
