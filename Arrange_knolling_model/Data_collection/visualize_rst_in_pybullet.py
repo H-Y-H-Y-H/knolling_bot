@@ -12,12 +12,12 @@ import torch
 import sys
 sys.path.append('../train_and_test')
 sys.path.append('../../')
-from model_structure import *
+# from model_structure import *
 import pandas
 import matplotlib.pyplot as plt
 # from urdfpy import URDF
 
-from arrange_policy import configuration_zzz
+# from arrange_policy import configuration_zzz
 
 torch.manual_seed(42)
 np.random.seed(100)
